@@ -52,6 +52,7 @@ export function LoginForm(){
             onError:(ctx)=>{
                 toast.error(ctx.error.message);
             }
+
         }
     )
     }
@@ -78,6 +79,12 @@ export function LoginForm(){
                                     type="button"
                                     disabled={isPending}
                                     >
+                                        <Image
+                                        width={20}
+                                        height={20}
+                                        alt="github"
+                                        src="logos/github.svg"
+                                        />
                                         Continue With GitHub
 
                                     </Button>
@@ -88,6 +95,13 @@ export function LoginForm(){
                                     type="button"
                                     disabled={isPending}
                                     >
+                                        <Image
+                                        height={20}
+                                        width={20}
+                                        alt="google"
+                                        src="/logos/google.svg"
+                                        />
+                                        
                                         Continue With Google
 
                                     </Button>
