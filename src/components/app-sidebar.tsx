@@ -22,6 +22,8 @@ import { group } from "console"
 import { Item } from "@radix-ui/react-accordion"
 
 import { authClient } from "@/lib/auth-client"
+import { useHasActiveSubscription } from "@/features/auth/components/subscriptions/hooks/use-subscription"
+
 
 
 const menuItems = [
@@ -55,6 +57,7 @@ const menuItems = [
 
 
 export const AppSidebar = () => {
+    const {hasActiveSubscription, isLoading} = useHasActiveSubscription()
     const router = useRouter()
     const pathname = usePathname()
     return (
@@ -104,12 +107,14 @@ export const AppSidebar = () => {
                 ))}
             </SidebarContent>
             <SidebarFooter>
+               
                 <SidebarMenu>
+                     {!hasActiveSubscription && !isLoading && (
                     <SidebarMenuItem>
                         <SidebarMenuButton
                             tooltip="upgrade to Pro"
                             className="gap-x-4 h-10 px-4"
-                            onClick={() => { }}
+                            onClick={() => authClient.checkout({slug:"pro"})}
                         >
                             <StarIcon className="h-4 w-4" />
                             <span>
@@ -119,12 +124,13 @@ export const AppSidebar = () => {
 
                         </SidebarMenuButton>
                     </SidebarMenuItem>
+                    )}
 
                     <SidebarMenuItem>
                         <SidebarMenuButton
                             tooltip="Billing Portal"
                             className="gap-x-4 h-10 px-4"
-                            onClick={() => { }}
+                            onClick={() => authClient.customer.portal()}
                         >
                             <CreditCardIcon className="h-4 w-4" />
                             <span>
