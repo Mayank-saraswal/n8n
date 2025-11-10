@@ -5,6 +5,8 @@ import { useState , useCallback } from "react";
 import {ReactFlow , applyNodeChanges , applyEdgeChanges , addEdge ,  type NodeChange , type EdgeChange , type Connection ,type Node , type Edge, Background, Controls, MiniMap} from '@xyflow/react'
 import '@xyflow/react/dist/style.css';
 import { nodeComponents } from "@/config/node-components";
+import { Panel } from "@xyflow/react";
+import { AddNodeButton } from "./add-node-button";
 
 
 
@@ -57,6 +59,10 @@ export const Editor = ({workflowId}:{workflowId:string}) => {
          <Background/>  
          <Controls/>
          <MiniMap/> 
+         <Panel position="top-right">
+          <AddNodeButton/>
+         
+         </Panel>
         </ReactFlow>       
        </div>
     )
