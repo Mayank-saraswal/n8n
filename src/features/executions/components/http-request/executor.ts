@@ -4,6 +4,7 @@ import { NonRetriableError } from "inngest";
 import ky ,{type Options as KyOptions } from "ky";
 import { Variable } from "lucide-react";
 import Handlebars from "handlebars";
+import { httpRequestChannel } from "@/inngest/channels/http-request";
 
 
 Handlebars.registerHelper("json", (context)=> {
@@ -23,20 +24,44 @@ export const httpRequestExecutor:NodeExecutor<HttpRequestData> = async({
     nodeId,
     context,
     step,
+    publish
 }) =>{
-    //Todo : publish loading state for http request
+
+     await publish (
+        httpRequestChannel().status({
+            nodeId,
+            status:"loading"
+        })
+     )
     if(!data.endpoint){
+
+         await publish (
+        httpRequestChannel().status({
+            nodeId,
+            status:"error"
+        })
+     )
 
         throw new NonRetriableError("HttpRequest node:No endpoint configure");
     }
 
      if(!data.variableName){
-
+         await publish (
+        httpRequestChannel().status({
+            nodeId,
+            status:"error"
+        })
+     )
         throw new NonRetriableError("Variable name not configured ");
     }
 
      if(!data.method){
-
+          await publish (
+        httpRequestChannel().status({
+            nodeId,
+            status:"error"
+        })
+     )
         throw new NonRetriableError("method not configured ");
     }
 
@@ -78,10 +103,14 @@ export const httpRequestExecutor:NodeExecutor<HttpRequestData> = async({
 
     })
 
+    await publish (
+        httpRequestChannel().status({
+            nodeId,
+            status:"success"
+        })
+     )
 
-    // const result = await step.run("http-request", async()=>context)
 
-    //Todo public success state 
 
     return { httpResponse: result }
 
