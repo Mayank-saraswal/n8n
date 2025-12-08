@@ -33,7 +33,7 @@ A modern, visual workflow automation platform built with Next.js, React Flow, an
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/nodebase.git
+   git clone https://github.com/Mayank-saraswal/n8n.git
    cd nodebase
    ```
 
