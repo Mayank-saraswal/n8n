@@ -9,6 +9,7 @@
     "lint": "biome check",
     "format": "biome format --write",
     "inngest:dev": "inngest-cli dev",
+    "ngrok:dev": "ngrok http --url=vast-lemur-notable.ngrok-free.app 3000",
     "dev:all": "mprocs"
   },
   "dependencies": {
