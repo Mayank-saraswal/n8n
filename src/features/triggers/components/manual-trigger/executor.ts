@@ -1,4 +1,5 @@
 import type { NodeExecutor } from "@/features/executions/types";
+import { manualTriggerChannel } from "@/inngest/channels/manual-trigger";
 import { retry } from "@polar-sh/sdk/lib/retries.js";
 
 
@@ -8,13 +9,24 @@ export const manualTriggerExecutor:NodeExecutor<ManualTriggerData> = async({
     nodeId,
     context,
     step,
+    publish,
 }) =>{
-    //Todo : publish loading state for manual trigger
-
+      await publish(
+        manualTriggerChannel().status({
+            nodeId ,
+            status:"loading"
+        })
+      )
 
     const result = await step.run("manual-trigger", async()=>context)
 
-    //Todo public success state 
+     await publish(
+        manualTriggerChannel().status({
+            nodeId ,
+            status:"success"
+        })
+      )
 
+     
     return result
 }
