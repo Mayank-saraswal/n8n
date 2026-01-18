@@ -12,6 +12,6 @@ export const  prefetchCredentials = (params: Input) =>{
 //for one
 export const prefetchCredential = ( id:string)=>{
     return(
-        prefetch(trpc.workflows.getOne.queryOptions({id}))
+        prefetch(trpc.credentials.getOne.queryOptions({id}))
     )
 }

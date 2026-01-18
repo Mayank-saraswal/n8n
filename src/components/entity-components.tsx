@@ -274,14 +274,13 @@ export function EntityList<T>({
     className
 }:EntityListProps<T>){
     if(items.length === 0 && emptyView){
-        return 
-        <div className="flex flex-1 justify-center items-center">
-            <div className="max-w-sm mx-auto ">
-                {emptyView}
-
+        return (
+            <div className="flex flex-1 justify-center items-center">
+                <div className="max-w-sm mx-auto ">
+                    {emptyView}
+                </div>
             </div>
-
-        </div>
+        )
     }
 
     return (
