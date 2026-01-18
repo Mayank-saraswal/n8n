@@ -12,6 +12,7 @@ import { stripeTriggerChannel } from "./channels/stripe-trigger";
 import { geminiChannel } from "./channels/gemini";
 import { openAiChannel } from "./channels/openai";
 import { anthropicChannel } from "./channels/anthropic";
+import { xAiChannel } from "./channels/xai";
 
 
 
@@ -32,6 +33,7 @@ export const executeWorkflow = inngest.createFunction(
       geminiChannel(),
       openAiChannel(),
       anthropicChannel(),
+      xAiChannel(),
     
     ]
   },

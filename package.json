@@ -15,7 +15,9 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.37",
     "@ai-sdk/google": "^2.0.23",
+    "@ai-sdk/groq": "^3.0.10",
     "@ai-sdk/openai": "^2.0.53",
+    "@ai-sdk/xai": "^3.0.26",
     "@hookform/resolvers": "^5.2.2",
     "@inngest/realtime": "^0.4.5",
     "@paralleldrive/cuid2": "^3.0.4",

@@ -75,7 +75,14 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Anthropic",
         description:"Use Anthropic to generate text",
         icon:"/logos/anthropic.svg"
+    },
+    {
+        type:NodeType.XAI,
+        label:"xAi",
+        description:"Use xAi to generate text",
+        icon:"/logos/xai.svg"
     }
+
 ]
 
 interface NodeSelectorProps{
