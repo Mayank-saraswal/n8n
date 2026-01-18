@@ -25,6 +25,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   workflows     workflow[]
+  credentials Credenial[]
 
   @@unique([email])
   @@map("user")
@@ -100,6 +101,26 @@ enum NodeType{
   XAI
 }
 
+model Credenial{
+  id String @id @default(cuid())
+  name String
+  value String
+  userId String
+  type CredentialType
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Node Node[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+
+enum CredentialType {
+OPENAI
+ANTHROPIC
+GEMINI
+}
+
 model Node {
   id String @id @default(cuid())
   name String
@@ -110,6 +131,8 @@ model Node {
   outputConnections Connection[] @relation("FromNode")
   inputConnections Connection[] @relation("ToNode")
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  credentialId String?
+  credential Credenial? @relation(fields: [credentialId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
