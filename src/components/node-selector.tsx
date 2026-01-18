@@ -53,6 +53,20 @@ const executionNodes: NodeTypeOptions[] = [
         label:"HTTP Request",
         description:"Runs the flow on receiving a HTTP request",
         icon:GlobeIcon
+    },
+
+     {
+        type:NodeType.GEMINI,
+        label:"Gemini",
+        description:"Use google gemini to generate text",
+        icon:"/logos/gemini.svg"
+    },
+    
+     {
+        type:NodeType.OPENAI,
+        label:"OpenAi",
+        description:"Use OpenAi to generate text",
+        icon:"/logos/openai.svg"
     }
 ]
 
