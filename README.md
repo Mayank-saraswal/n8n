@@ -1,213 +1,118 @@
-# Nodebase - Workflow Automation Platform
+# 🚀 Nodebase - Your Personal Automation Powerhouse
 
-A modern, visual workflow automation platform built with Next.js, React Flow, and Inngest. Create, manage, and execute complex workflows with an intuitive drag-and-drop interface.
+Hi there! Welcome to **Nodebase**. 👋
 
-## 🚀 Features
+Think of this as your own personal control center for automating tasks. It's a visual tool (like a whiteboard) where you can connect different services together to make things happen automatically.
 
-- **Visual Workflow Builder**: Drag-and-drop interface powered by React Flow
-- **Real-time Execution**: Background job processing with Inngest
-- **HTTP Request Nodes**: Make API calls with configurable methods and parameters
-- **Manual Triggers**: Execute workflows on-demand with manual trigger nodes
-- **Variable System**: Pass data between nodes using template variables
-- **Authentication**: Secure user authentication and workspace isolation
-- **Responsive Design**: Modern UI built with Tailwind CSS and shadcn/ui
-
-## 🛠 Tech Stack
-
-- **Frontend**: Next.js 15, React, TypeScript
-- **UI Components**: shadcn/ui, Tailwind CSS
-- **Workflow Engine**: React Flow for visual editing
-- **Background Jobs**: Inngest for reliable workflow execution
-- **Database**: Prisma ORM with PostgreSQL
-- **Authentication**: NextAuth.js
-- **API**: tRPC for type-safe APIs
-- **State Management**: Jotai for atomic state management
-
-## 📋 Prerequisites
-
-- Node.js 18+ 
-- PostgreSQL database
-- npm or yarn package manager
-
-## 🔧 Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/Mayank-saraswal/n8n.git
-   cd nodebase
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env.local
-   ```
-   
-   Configure the following variables:
-   ```env
-   DATABASE_URL="postgresql://username:password@localhost:5432/nodebase"
-   NEXTAUTH_SECRET="your-secret-key"
-   NEXTAUTH_URL="http://localhost:3000"
-   INNGEST_EVENT_KEY="your-inngest-event-key"
-   INNGEST_SIGNING_KEY="your-inngest-signing-key"
-   ```
-
-4. **Set up the database**
-   ```bash
-   npx prisma generate
-   npx prisma db push
-   ```
-
-5. **Start the development server**
-   ```bash
-   npm run dev
-   ```
-
-6. **Start Inngest Dev Server** (in a separate terminal)
-   ```bash
-   npx inngest-cli@latest dev
-   ```
-
-## 🎯 Usage
-
-### Creating a Workflow
-
-1. Navigate to the Workflows page
-2. Click "Create Workflow" to start a new workflow
-3. Use the visual editor to add nodes:
-   - **Manual Trigger**: Start workflows manually
-   - **HTTP Request**: Make API calls to external services
-
-### Configuring Nodes
-
-**Manual Trigger Node:**
-- Automatically added to new workflows
-- Click to configure trigger settings
-- Enables the "Execute Workflow" button
-
-**HTTP Request Node:**
-- Configure endpoint URL
-- Select HTTP method (GET, POST, PUT, DELETE, PATCH)
-- Add request body for POST/PUT/PATCH requests
-- Set variable name for referencing response data
-
-### Using Variables
-
-Reference data from previous nodes using template syntax:
-- `{{variableName.httpResponse.data}}` - Access response data
-- `{{variableName.httpResponse.status}}` - Access HTTP status
-- `{{json variableName}}` - Stringify objects
-
-### Executing Workflows
-
-1. Ensure your workflow has a Manual Trigger node
-2. Click the "Execute Workflow" button that appears at the bottom
-3. Monitor execution progress in the Inngest dashboard
-4. View results and debug any issues
-
-## 📁 Project Structure
-
-```
-src/
-├── app/                    # Next.js app router pages
-├── components/             # Reusable UI components
-├── config/                 # Configuration files
-├── features/               # Feature-based modules
-│   ├── editer/            # Workflow editor components
-│   ├── executions/        # Node execution logic
-│   ├── triggers/          # Trigger node components
-│   └── workflows/         # Workflow management
-├── inngest/               # Background job functions
-├── lib/                   # Utility libraries
-└── trpc/                  # API routes and procedures
-```
-
-## 🔌 Available Node Types
-
-### Trigger Nodes
-- **Manual Trigger**: Execute workflows on-demand
-
-### Execution Nodes
-- **HTTP Request**: Make HTTP requests to external APIs
-  - Supports all HTTP methods
-  - Configurable headers and body
-  - Response data available to subsequent nodes
-
-## 🚀 Deployment
-
-### Vercel (Recommended)
-
-1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Configure environment variables in Vercel dashboard
-4. Deploy automatically on push
-
-### Docker
-
-```bash
-# Build the image
-docker build -t nodebase .
-
-# Run the container
-docker run -p 3000:3000 nodebase
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 Development Guidelines
-
-- Use TypeScript for all new code
-- Follow the existing code structure and patterns
-- Add proper error handling and validation
-- Write meaningful commit messages
-- Test your changes thoroughly
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Workflow not executing:**
-- Ensure Inngest dev server is running
-- Check that event names match between API and functions
-- Verify all required node fields are configured
-
-**Database connection errors:**
-- Verify DATABASE_URL is correct
-- Ensure PostgreSQL is running
-- Run `npx prisma db push` to sync schema
-
-**Authentication issues:**
-- Check NEXTAUTH_SECRET is set
-- Verify NEXTAUTH_URL matches your domain
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [React Flow](https://reactflow.dev/) for the visual workflow editor
-- [Inngest](https://www.inngest.com/) for reliable background job processing
-- [shadcn/ui](https://ui.shadcn.com/) for beautiful UI components
-- [Prisma](https://www.prisma.io/) for database management
-
-## 📞 Support
-
-If you have any questions or need help, please:
-- Open an issue on GitHub
-- Check the documentation
-- Join our community discussions
+Built with the latest and greatest tech (Next.js, React Flow, Inngest), it's designed to be powerful for developers but friendly enough for anyone to understand.
 
 ---
 
-Built with ❤️ using modern web technologies
+## ✨ What can it do?
+
+*   **Visual Building**: No complex code. Just drag blocks, drop them, and connect the dots. 🎨
+*   **Reliable**: It uses a smart system (Inngest) to make sure your workflows finish their job, even if something hiccups. 🛡️
+*   **Connect Anything**: Use "HTTP Request" blocks to talk to almost any service on the internet. 🌐
+*   **Secure**: Your data is yours. It comes with built-in login and security. 🔒
+*   **Lookin' Good**: It's easy on the eyes, thanks to a modern design. 😎
+
+---
+
+## 🛠️ The Tech Under the Hood
+
+For the curious developers out there, here's what makes it tick:
+
+*   **Frontend**: Next.js 15, React, TypeScript (The face of the app)
+*   **Visuals**: React Flow (The drag-and-drop magic)
+*   **Styling**: Tailwind CSS & shadcn/ui (The pretty colors and buttons)
+*   **Backend Engine**: Inngest (The brain that runs tasks)
+*   **Database**: PostgreSQL with Prisma (The memory)
+*   **Auth**: NextAuth.js (The bouncer)
+
+---
+
+## 🏁 Get Started in 5 Minutes
+
+Want to take it for a spin? Here is how to set it up on your machine.
+
+### Prerequisites (What you need first)
+*   [Node.js](https://nodejs.org/) (Version 18 or higher)
+*   A [PostgreSQL](https://www.postgresql.org/) database active and ready.
+*   `npm` or `yarn` (comes with Node.js).
+
+### Installation Steps
+
+1.  **Grab the Code**:
+    ```bash
+    git clone https://github.com/Mayank-saraswal/n8n.git
+    cd nodebase
+    ```
+
+2.  **Install the "Parts"**:
+    ```bash
+    npm install
+    ```
+
+3.  **Secrets & Config**:
+    We need to tell the app where your database is.
+    ```bash
+    cp .env.example .env.local
+    ```
+    Now, open `.env.local` and fill in your details (Database URL, Secret keys, etc.).
+
+4.  **Prep the Database**:
+    ```bash
+    npx prisma generate
+    npx prisma db push
+    ```
+
+5.  **Ignition! 🚀**:
+    Start the app:
+    ```bash
+    npm run dev
+    ```
+
+6.  **Start the Engine** (New Terminal):
+    The app needs the background engine running too.
+    ```bash
+    npx inngest-cli@latest dev
+    ```
+
+Visit `http://localhost:3000` and you're in! 🎉
+
+---
+
+## � How to Play
+
+### 1. Create a Workflow
+Go to the **Workflows** page and hit **Create**. You'll see a blank canvas. This is your playground.
+
+### 2. Add Stuff
+*   **Manual Trigger**: This is your "Start" button. Every workflow needs a trigger.
+*   **HTTP Request**: Want to fetch weather data? Post a tweet? Send a message to Discord? Use this.
+
+### 3. Connect & Configure
+*   Draw lines between nodes to connect them.
+*   Click a node to change its settings (like the URL you want to hit).
+*   **Pro Tip**: You can use data from previous steps! If your first step got some data, you can use it in the second step like this: `{{stepName.data}}`.
+
+### 4. Run It!
+Click **Execute Workflow** and watch the magic happen. You can see the status of every run.
+
+---
+
+## ❓ Stuck?
+
+*   **Workflow not running?** Make sure you ran that second terminal command (`npx inngest-cli...`). It's the engine!
+*   **Database error?** Double-check that `DATABASE_URL` in your `.env` file. It needs to be perfect.
+*   **Something else?** Open an issue on GitHub, and we'll help you out.
+
+---
+
+## � License
+
+MIT License. Basically, do cool stuff with this project.
+
+---
+
+Made with ❤️ by [Mayank Saraswal](https://github.com/Mayank-saraswal). Happy Automating!
