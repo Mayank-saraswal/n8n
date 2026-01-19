@@ -9,6 +9,7 @@ import { openAiExecutor } from "../components/openai/executor";
 import { anthropicExecutor } from "../components/anthropic/executor";
 import {  xAiExecutor } from "../components/xai/executor";
 import { discordExecutor } from "../components/discord/executor";
+import { slackExecutor } from "../components/slack/executor";
 
 export const executorRegistry: Record<NodeType , NodeExecutor> ={
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -22,7 +23,7 @@ export const executorRegistry: Record<NodeType , NodeExecutor> ={
     [NodeType.XAI]:xAiExecutor,
     [NodeType.GROQ]:xAiExecutor, 
     [NodeType.DISCORD]:discordExecutor,
-    [NodeType.SLACK]:discordExecutor,//change latter
+    [NodeType.SLACK]:slackExecutor,
     
 }
 
