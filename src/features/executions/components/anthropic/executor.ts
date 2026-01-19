@@ -1,7 +1,5 @@
 import type { NodeExecutor } from "@/features/executions/types";
-import { retry } from "@polar-sh/sdk/lib/retries.js";
 import { NonRetriableError } from "inngest";
-import { Variable } from "lucide-react";
 import { createAnthropic} from "@ai-sdk/anthropic";
 import Handlebars from "handlebars";
 import { generateText } from "ai";
@@ -27,7 +25,8 @@ export const anthropicExecutor:NodeExecutor<AnthropicData > = async({
     nodeId,
     context,
     step,
-    publish
+    publish,
+    userId
 }) =>{
 
      await publish (
@@ -84,7 +83,8 @@ export const anthropicExecutor:NodeExecutor<AnthropicData > = async({
      const credential = await step.run("get-credential",()=>{
             return prisma.credenial.findUnique({
                 where:{
-                    id:data.credentialId
+                    id:data.credentialId,
+                    userId
                 }
             })
         });

@@ -2,7 +2,7 @@
 
 import { CredentialType } from "@/generated/prisma";
 import { useParams, useRouter } from "next/navigation";
-import z, { string } from "zod";
+import z from "zod";
 import { useCreateCredential, useUpdateCredential , useSuspennseCredential} from "../hooks/use-credentials";
 import { useUpgradeModal } from "@/hooks/use-upgrade-modal";
 import { zodResolver } from "@hookform/resolvers/zod";
