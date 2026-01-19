@@ -7,6 +7,7 @@ import Handlebars from "handlebars";
 import {geminiChannel } from "@/inngest/channels/gemini";
 import { googleGenAIIntegration } from "@sentry/nextjs";
 import { generateText } from "ai";
+import prisma from "@/lib/db";
 
 
 Handlebars.registerHelper("json", (context)=> {
@@ -17,6 +18,7 @@ Handlebars.registerHelper("json", (context)=> {
 
 type GeminiData = {
     variableName?:string
+    credentialId?:string
     // model?: string;
     userPrompt?: string;
     systemPrompt?: string;
@@ -59,7 +61,17 @@ export const geminiExecutor:NodeExecutor<GeminiData > = async({
          throw new NonRetriableError("gemini node: user prompt is missing")
      }
 
-     //todo throw if cred is missing
+     if (!data.credentialId) {
+        await publish(
+            geminiChannel().status({
+                nodeId,
+                status:"error",
+                
+            })
+         );
+         throw new NonRetriableError("gemini node: credential is missing")
+     }
+    
  
     const systemPrompt = data.systemPrompt 
     ? Handlebars.compile(data.systemPrompt)(context)
@@ -70,11 +82,21 @@ export const geminiExecutor:NodeExecutor<GeminiData > = async({
     : "No prompt provided"
 
     //Fetch credentials 
+    const credential = await step.run("get-credential",()=>{
+        return prisma.credenial.findUnique({
+            where:{
+                id:data.credentialId
+            }
+        })
+    });
 
-    const credentialValue = process.env.GOOGLE_GENERATIVE_AI_API_KEY!
+    if (!credential) {
+        throw new NonRetriableError("gemini node: credential not found")
+    }
+
 
     const google = createGoogleGenerativeAI({
-        apiKey: credentialValue
+        apiKey: credential.value
     })
 
 

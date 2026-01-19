@@ -7,9 +7,11 @@ import { EntityContainer } from "@/components/entity-components";
 import { useRouter } from "next/navigation";
 import { useCredentialsParams } from "../hooks/use-credentials-params";
 import { useEntitySearch } from "@/hooks/use-entity-search";
-import type{ Credenial } from "@/generated/prisma";
+import type{ Credenial, } from "@/generated/prisma";
+import  { CredentialType  } from "@/generated/prisma";
 import { KeyIcon } from "lucide-react";
 import {formatDistanceToNow} from "date-fns"
+import Image from "next/image";
 
 export  const CredentialsSearch= ()=>{
   const [ params , setParams ] =  useCredentialsParams()
@@ -130,6 +132,12 @@ export const CredentialsEmpty = ()=>{
   )
 }
 
+const credentialsLogos:Record<CredentialType , string> = {
+  [CredentialType.OPENAI]:"/logos/openai.svg",
+  [CredentialType.ANTHROPIC]:"/logos/anthropic.svg",
+  [CredentialType.GEMINI]:"/logos/gemini.svg",
+}
+
 export const CredentialsItem = ({
   data ,
 }:{data:Credenial})=>{
@@ -138,6 +146,8 @@ export const CredentialsItem = ({
  const handleRemove = ()=>{
   RemoveCredentials.mutate( {id: data.id})
  }
+
+ const logo= credentialsLogos[data.type] || "/logos/openai.svg";
 
   return(
     <EntityItem
@@ -151,7 +161,7 @@ export const CredentialsItem = ({
       </>
     } image = {
       <div className="size-8 flex items-center justify-center">
-        <KeyIcon className="size-5 text-muted-foreground" />
+        <Image src={logo} alt={data.type} width={20} height={20}/>
 
       </div>
     }onRemove={ handleRemove}

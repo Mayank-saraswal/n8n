@@ -73,7 +73,7 @@ export const useSuspennseCredential =(id:string)=>{
 
 
 
-export const useUpdateCredentials = ()=>{
+export const useUpdateCredential = ()=>{
     
     const queryClient = useQueryClient()
     const trpc = useTRPC()
