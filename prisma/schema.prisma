@@ -99,6 +99,8 @@ enum NodeType{
   OPENAI
   GROQ
   XAI
+  DISCORD
+  SLACK
 }
 
 model Credenial{

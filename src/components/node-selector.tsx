@@ -81,6 +81,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"xAi",
         description:"Use xAi to generate text",
         icon:"/logos/xai.svg"
+    },
+    {
+        type:NodeType.DISCORD,
+        label:"Discord",
+        description:"Send message to discord",
+        icon:"/logos/discord.svg"
     }
 
 ]
