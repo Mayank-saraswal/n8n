@@ -25,7 +25,7 @@ const Page =async ({searchParams}:Props)=>{
         <ErrorBoundary fallback={ <ExecutionsError />}>
         <Suspense fallback={ <ExecutionsLoading />}>
          
-         <ExecutionsList/>
+        <ExecutionsList/>
         </Suspense>
 
         </ErrorBoundary>

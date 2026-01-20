@@ -1,217 +1,195 @@
 "use client"
 
-import { CredentialType } from "@/generated/prisma";
-import { useParams, useRouter } from "next/navigation";
-import z from "zod";
-import { useCreateCredential, useUpdateCredential , useSuspennseCredential} from "../hooks/use-credentials";
-import { useUpgradeModal } from "@/hooks/use-upgrade-modal";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { ExecutionStatus } from "@/generated/prisma"
+import { CheckCircle2Icon , Loader2Icon , XCircleIcon , ClockIcon } from "lucide-react"
+import Link from "next/link"
+import { useParams } from "next/navigation"
+import { Card , CardContent , CardDescription, CardFooter , CardHeader , CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { useState } from "react"
+import { Collapsible , CollapsibleContent , CollapsibleTrigger } from "@/components/ui/collapsible"
+import { useSuspennseExecution } from "../hooks/use-executions"
+import { formatDistanceToNow } from "date-fns"
 
-import { Form , FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select , SelectContent , SelectItem , SelectTrigger , SelectValue } from "@/components/ui/select";
-import { Card , CardContent , CardDescription , CardFooter , CardHeader , CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";   
-import  Image  from "next/image";
-import Link from "next/link";
+const getStatusIcon = (status: ExecutionStatus) => {
+  switch (status) {
+    case ExecutionStatus.SUCCESS:
+      return <CheckCircle2Icon className="size-5 text-green-500"/>
+    case ExecutionStatus.FAILED:
+      return <XCircleIcon className="size-5 text-red-500"/>
+    case ExecutionStatus.RUNNING:
+      return <Loader2Icon className="size-5 text-blue-500 animate-spin"/>
+    default:
+      return <ClockIcon className="size-5 text-gray-500"/>
+  }
+}
 
-
-const formSchema = z.object({
-    name:z.string().min(1, "Name is Required"),
-    type:z.enum(CredentialType),
-    value:z.string().min(1 , "Api key  is required")
-})
-
-
-
-
-type FormValues = z.infer<typeof formSchema>
-
-const credentialTypeOptions=[
-    {
-        value:CredentialType.OPENAI,
-        label:"Open AI",
-        logo:"/logos/openai.svg"
-    },
-    {
-        value:CredentialType.ANTHROPIC,
-        label:"Anthropic",
-        logo:"/logos/anthropic.svg"
-    },
-    {
-        value:CredentialType.GEMINI,
-        label:"Gemini",
-        logo:"/logos/gemini.svg"
-    },
-    
-]
-
-interface CredentialsFormPage{
-   initialData?:{
-    id?:string;
-    name:string;
-    type:CredentialType
-    value:string
-
-   }
-};
-
-
-export const CredentialForm = ({initialData}:CredentialsFormPage)=>{
-   const router = useRouter();
-   const createCredential = useCreateCredential();
-   const updateCredential = useUpdateCredential();
-   const {handleError , modal} = useUpgradeModal();
-    
-   const isEdit = !!initialData?.id;
-   const form = useForm<FormValues>({
-    resolver:zodResolver(formSchema),
-    defaultValues: initialData||{
-        name: "",
-        type:CredentialType.OPENAI,
-        value:""
-    }
-   })
-
-   const onSubmit = async (values:FormValues)=>{
-    if(isEdit && initialData?.id){
-        await updateCredential.mutate({
-         id:initialData.id,
-         
-         ...values
-        })
-    }else{
-        await  createCredential.mutate(values,{
-         onSuccess:(data)=>{
-            router.push(`/credentials/${data.id}`)
-         },
-         onError:(error)=>{
-            handleError(error);
-         }
-
-        })
-    }
-   }
-
-   return(
-      <>
-      {modal}
-    <Card>
-        <CardHeader>
-            <CardTitle>
-                {isEdit ? "Edit Credential" : "Create Credential"}
-            </CardTitle>
-            <CardDescription>
-                {isEdit ? "Update your api key or credentials" : "Add a new api key or credentials to your account"}
-            </CardDescription>
-        </CardHeader>
-        <CardContent>
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-
-                    <FormField
-                    control={form.control}
-                    name="name"
-                    render={({field})=>(
-                        <FormItem>
-                        <FormLabel>Name</FormLabel>
-                        <FormControl>
-                            <Input placeholder="MY Api key" {...field}/>
-                        </FormControl>
-                        <FormMessage/>
-                        </FormItem>
-                    )}
-
-
-                    />
-
-                    <FormField
-                    control={form.control}
-                    name="type"
-                    render={({field})=>(
-                        <FormItem>
-                        <FormLabel>Type</FormLabel>
-                        
-                            <Select 
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Select a type" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {credentialTypeOptions.map((option)=>(
-                                    <SelectItem key={option.value} value={option.value}>
-                                        <div className="flex items-center gap-2">
-                                            <Image src={option.logo} alt={option.label} width={16} height={16}/>
-                                            <span>{option.label}</span>
-                                        </div>
-                                    </SelectItem>
-                                ))}
-                              </SelectContent>
-
-                                
-
-                            </Select>
-                            <FormMessage/>
-                            
-                        
-                        
-                        </FormItem>
-                    )}
-
-
-                    />
-
-
-                    <FormField
-                    control={form.control}
-                    name="value"
-                    render={({field})=>(
-                        <FormItem>
-                        <FormLabel>Api Key</FormLabel>
-                        <FormControl>
-                            <Input  type="password" placeholder="sk-..." {...field}/>
-                        </FormControl>
-                        <FormMessage/>
-                        </FormItem>
-                    )}
-
-
-                    />
-
-                    <div className="flex gap-4">
-                     <Button type="submit" 
-                     disabled={
-                        createCredential.isPending || updateCredential.isPending
-                     }
-                     >{isEdit ? "Update" : "Create"}</Button>
-                     <Button  asChild variant="outline" onClick={()=>router.push("/credentials")}>
-
-                        <Link href="/credentials" prefetch >Cancel</Link>
-                     </Button>
-                    </div>
-                </form>
-            </Form>
-        </CardContent>
-    </Card>
-    </>
-   )
+const formatStatus = (status: ExecutionStatus) => {
+ return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 }
 
 
+export const ExecutionView = ({executionId}: {executionId: string}) => {
+  const {data: execution}= useSuspennseExecution(executionId)
+  const [showStackTrace , setShowStackTrace] = useState(false)
+  const duration = execution.completedAt
+    ? Math.round(new Date(execution.completedAt).getTime() - new Date(execution.startedAt).getTime()) / 1000
+    : null;
+
+  return (
+    <Card className="shadow-none"> 
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          {getStatusIcon(execution.status)}
+          <div>
+            <CardTitle>{formatStatus(execution.status)}</CardTitle>
+            <CardDescription>
+              Execution for {execution.workflow.name}
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+            <div>
+                <p className="text-sm text-muted-foreground font-medium">
+                    Workflow
+                </p>
+                <Link 
+                prefetch
+                className="text-primary hover:underline text-sm"
+                href={`/workflows/${execution.workflowId}`}>
+                    {execution.workflow.name}
+                </Link>
+            </div>
+
+            <div>
+                <p className="text-sm text-muted-foreground font-medium">
+                    Status
+                </p>
+                <p className="text-sm ">
+                    {formatStatus(execution.status)}
+                </p>
+            </div>
+
+            <div>
+                <p className="text-sm text-muted-foreground font-medium">
+                    Started At
+                </p>
+                <p className="text-sm ">
+                    {formatDistanceToNow(new Date(execution.startedAt), {
+                        addSuffix: true
+                      })}
+                </p>
+            </div>
+
+            <div>
+                <p className="text-sm text-muted-foreground font-medium">
+                    Started At
+                </p>
+                <p className="text-sm ">
+                    {formatDistanceToNow(new Date(execution.startedAt), {
+                        addSuffix: true
+                      })}
+                </p>
+            </div>
+
+            <div>
+                <p className="text-sm text-muted-foreground font-medium">
+                    Started At
+                </p>
+                <p className="text-sm ">
+                    {formatDistanceToNow(new Date(execution.startedAt), {
+                        addSuffix: true
+                      })}
+                </p>
+            </div>
+            {execution.completedAt ?(
+                <div>
+                <p className="text-sm text-muted-foreground font-medium">
+                    Completed 
+                </p>
+                <p className="text-sm ">
+                    {formatDistanceToNow(new Date(execution.completedAt), {
+                        addSuffix: true
+                      })}
+                </p>
+            </div>
+            ):null}
 
 
+             {duration !==null ?(
+                <div>
+                <p className="text-sm text-muted-foreground font-medium">
+                    Duration 
+                </p>
+                <p className="text-sm ">
+                    {duration} seconds
+                </p>
+            </div>
+            ):null}
 
+             
+                <div>
+                <p className="text-sm text-muted-foreground font-medium">
+                    Event ID 
+                </p>
+                <p className="text-sm ">
+                    {execution.inngestEventId}
+                </p>
+            </div>
+            </div>
+            {execution.error &&(
+                <div className="mt-6 p-6 bg-red-50 rounded-md space-y-3">
+                    <div>
+                        <p className="text-sm font-medium text-red-900 mb-2">
+                            Error
+                        </p>
+                        <p className="text-sm text-red-800 font-mono">
+                            {execution.error}
+                        </p>
+                    </div>
+                    {execution.errorStack &&(
+                        <div>
+                            <Collapsible 
 
-
-export const  CredentialView = ({credentialId}: {credentialId: string})=>{
-   const {data:credential} = useSuspennseCredential(credentialId);
-
-   return(
-    <CredentialForm initialData={credential}/>
-   )
+                            onOpenChange={setShowStackTrace}
+                            open={showStackTrace}
+                            >
+                                <CollapsibleTrigger
+                                asChild
+                                >
+                                    <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-900 hover:bg-red-100"
+                                    >
+                                        {showStackTrace ? "Hide Stack Trace" : "Show Stack Trace"}
+                                    </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <pre className="text-xs text-red-800 font-mono overflow-auto mt-2 bg-red-100 rounded">
+                                        {execution.errorStack}
+                                    </pre>
+                                </CollapsibleContent>
+                            </Collapsible>
+                        </div>
+                    )}
+                
+            </div>
+            )}
+           {execution.output &&(
+            <div className="mt-6 p-6 bg-muted rounded-md ">
+                <p className="text-sm font-medium mb-2">
+                    Output
+                </p>
+                <pre className="text-xs text-mono overflow-auto">
+                    {JSON.stringify(execution.output, null, 2)}
+                </pre>
+            </div>
+           )}
+      </CardContent>
+      
+    </Card>
+  )
 }
