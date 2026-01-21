@@ -6,8 +6,8 @@ export default function Home() {
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
         <Image
           className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
+          src="/logos/logo.svg"
+          alt="Nodebase logo"
           width={180}
           height={38}
           priority
@@ -34,8 +34,8 @@ export default function Home() {
           >
             <Image
               className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
+              src="/logos/logo.svg"
+              alt="Nodebase logo"
               width={20}
               height={20}
             />
@@ -60,8 +60,8 @@ export default function Home() {
         >
           <Image
             aria-hidden
-            src="/file.svg"
-            alt="File icon"
+            src="/logos/logo.svg"
+            alt="Nodebase logo"
             width={16}
             height={16}
           />
@@ -75,8 +75,8 @@ export default function Home() {
         >
           <Image
             aria-hidden
-            src="/window.svg"
-            alt="Window icon"
+            src="/logo/logo.svg"
+            alt="Nodebase logo"
             width={16}
             height={16}
           />
@@ -90,8 +90,8 @@ export default function Home() {
         >
           <Image
             aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
+            src="/logo/logo.svg"
+            alt="Nodebase logo"
             width={16}
             height={16}
           />
