@@ -1,5 +1,5 @@
 {
-  "name": "n8n",
+  "name": "nodebase",
   "version": "0.1.0",
   "private": true,
   "scripts": {
