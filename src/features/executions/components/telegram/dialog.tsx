@@ -162,7 +162,7 @@ export const TelegramDialog = ({
                             name="chatId"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel> Chat ID</FormLabel>
+                                    <FormLabel> Channel ID</FormLabel>
 
 
                                     <FormControl>
@@ -173,6 +173,8 @@ export const TelegramDialog = ({
                                     </FormControl>
                                     <FormDescription>
                                         The unique identifier for the target chat or username of the target channel (in the format @channelusername)
+                                        open the telegram in web browser and go to the channel amd copy the channel id from the url its look like -51259XXXXX
+                                        and make sure to copy with - sign
                                     </FormDescription>
                                     <FormMessage />
 
