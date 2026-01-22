@@ -15,6 +15,9 @@ import { anthropicChannel } from "./channels/anthropic";
 import { xAiChannel } from "./channels/xai";
 import { discordChannel } from "./channels/discord";
 import { slackChannel } from "./channels/slack";
+import { perplexityChannel } from "./channels/perplexity";
+import { deepseekChannel } from "./channels/deepseek";
+import { groqChannel } from "./channels/groq";
 
 
 
@@ -52,6 +55,9 @@ export const executeWorkflow = inngest.createFunction(
       xAiChannel(),
       discordChannel(),
       slackChannel(),
+      perplexityChannel(),
+      deepseekChannel(),
+      groqChannel(),
     
     ]
   },

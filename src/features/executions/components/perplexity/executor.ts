@@ -1,12 +1,16 @@
 import type { NodeExecutor } from "@/features/executions/types";
+import { retry } from "@polar-sh/sdk/lib/retries.js";
 import { NonRetriableError } from "inngest";
-import { createXai } from "@ai-sdk/xai";
+import { Variable } from "lucide-react";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import Handlebars from "handlebars";
+import { geminiChannel } from "@/inngest/channels/gemini";
+import { googleGenAIIntegration } from "@sentry/nextjs";
 import { generateText } from "ai";
-import { xAiChannel } from "@/inngest/channels/xai";
 import prisma from "@/lib/db";
 import { decrypt } from "@/lib/encryption";
-
+import { perplexityChannel } from "@/inngest/channels/perplexity";
+import { createPerplexity } from "@ai-sdk/perplexity";
 
 Handlebars.registerHelper("json", (context) => {
     const jsonString = JSON.stringify(context, null, 2);
@@ -14,14 +18,14 @@ Handlebars.registerHelper("json", (context) => {
     return safeString
 });
 
-type XaiData = {
+type PerplexityData = {
     variableName?: string
     credentialId?: string
     // model?: string;
     userPrompt?: string;
     systemPrompt?: string;
 };
-export const xAiExecutor: NodeExecutor<XaiData> = async ({
+export const perplexityExecutor: NodeExecutor<PerplexityData> = async ({
     data,
     nodeId,
     context,
@@ -31,7 +35,7 @@ export const xAiExecutor: NodeExecutor<XaiData> = async ({
 }) => {
 
     await publish(
-        xAiChannel().status({
+        perplexityChannel().status({
             nodeId,
             status: "loading"
         })
@@ -40,35 +44,35 @@ export const xAiExecutor: NodeExecutor<XaiData> = async ({
 
     if (!data.variableName) {
         await publish(
-            xAiChannel().status({
+            perplexityChannel().status({
                 nodeId,
                 status: "error",
 
             })
         );
-        throw new NonRetriableError("X ai node: Variable name is missing")
+        throw new NonRetriableError("perplexity node: Variable name is missing")
     }
 
     if (!data.userPrompt) {
         await publish(
-            xAiChannel().status({
+            perplexityChannel().status({
                 nodeId,
                 status: "error",
 
             })
         );
-        throw new NonRetriableError("Xai node: user prompt is missing")
+        throw new NonRetriableError("perplexity node: user prompt is missing")
     }
 
     if (!data.credentialId) {
         await publish(
-            xAiChannel().status({
+            perplexityChannel().status({
                 nodeId,
                 status: "error",
 
             })
         );
-        throw new NonRetriableError("xai node: credential is missing")
+        throw new NonRetriableError("perplexity node: credential is missing")
     }
 
 
@@ -91,21 +95,21 @@ export const xAiExecutor: NodeExecutor<XaiData> = async ({
     });
 
     if (!credential) {
-        throw new NonRetriableError("xai node: credential not found")
+        throw new NonRetriableError("perplexity node: credential not found")
     }
 
-
-    const xai = createXai({
+    //todo fix this latter
+    const perplexity = createPerplexity({
         apiKey: decrypt(credential.value)
     })
 
 
     try {
         const { steps } = await step.ai.wrap(
-            "xai-generate-text",
+            "perplexity-generate-text",
             generateText,
             {
-                model: xai("grok-2") as any,
+                model: perplexity("sonar-pro"),
                 prompt: userPrompt,
                 system: systemPrompt,
                 experimental_telemetry: {
@@ -122,7 +126,7 @@ export const xAiExecutor: NodeExecutor<XaiData> = async ({
                 : ""
 
         await publish(
-            xAiChannel().status({
+            perplexityChannel().status({
                 nodeId,
                 status: "success",
 
@@ -137,14 +141,14 @@ export const xAiExecutor: NodeExecutor<XaiData> = async ({
 
 
     } catch (error) {
-        console.error('xAi API Error:', error);
+        console.error('Perplexity API Error:', error);
         await publish(
-            xAiChannel().status({
+            perplexityChannel().status({
                 nodeId,
                 status: "error",
 
             })
         )
-        throw new NonRetriableError(`xAi API error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        throw new NonRetriableError(`Perplexity API error: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
 }

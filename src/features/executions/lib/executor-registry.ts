@@ -10,6 +10,9 @@ import { anthropicExecutor } from "../components/anthropic/executor";
 import {  xAiExecutor } from "../components/xai/executor";
 import { discordExecutor } from "../components/discord/executor";
 import { slackExecutor } from "../components/slack/executor";
+import { perplexityExecutor } from "../components/perplexity/executor";
+import { deepseekExecutor } from "../components/deepseek/executor";
+import { groqExecutor } from "../components/groq/executor";
 
 export const executorRegistry: Record<NodeType , NodeExecutor> ={
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -21,9 +24,11 @@ export const executorRegistry: Record<NodeType , NodeExecutor> ={
     [NodeType.ANTHROPIC]:anthropicExecutor,
     [NodeType.OPENAI]:openAiExecutor,
     [NodeType.XAI]:xAiExecutor,
-    [NodeType.GROQ]:xAiExecutor, 
     [NodeType.DISCORD]:discordExecutor,
     [NodeType.SLACK]:slackExecutor,
+    [NodeType.PERPLEXITY]:perplexityExecutor,
+    [NodeType.DEEPSEEK]:deepseekExecutor,
+    [NodeType.GROQ]:groqExecutor,
     
 }
 

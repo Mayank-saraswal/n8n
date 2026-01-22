@@ -93,6 +93,24 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Slack",
         description:"Send message to slack",
         icon:"/logos/slack.svg"
+    },
+    {
+        type:NodeType.PERPLEXITY,
+        label:"Perplexity",
+        description:"Use Perplexity to generate text",
+        icon:"/logos/perplexity.svg"
+    },
+    {
+        type:NodeType.DEEPSEEK,
+        label:"DeepSeek",
+        description:"Use DeepSeek to generate text",
+        icon:"/logos/deepseek.svg"
+    },
+    {
+        type:NodeType.GROQ,
+        label:"Groq",
+        description:"Use Groq to generate text",
+        icon:"/logos/groq.svg"
     }
 
 ]

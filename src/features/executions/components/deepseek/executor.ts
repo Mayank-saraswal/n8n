@@ -1,11 +1,16 @@
 import type { NodeExecutor } from "@/features/executions/types";
+import { retry } from "@polar-sh/sdk/lib/retries.js";
 import { NonRetriableError } from "inngest";
-import { createXai } from "@ai-sdk/xai";
+import { Variable } from "lucide-react";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import Handlebars from "handlebars";
+import { geminiChannel } from "@/inngest/channels/gemini";
+import { googleGenAIIntegration } from "@sentry/nextjs";
 import { generateText } from "ai";
-import { xAiChannel } from "@/inngest/channels/xai";
 import prisma from "@/lib/db";
 import { decrypt } from "@/lib/encryption";
+import { deepseekChannel } from "@/inngest/channels/deepseek";
+import { createDeepSeek } from "@ai-sdk/deepseek";
 
 
 Handlebars.registerHelper("json", (context) => {
@@ -14,14 +19,14 @@ Handlebars.registerHelper("json", (context) => {
     return safeString
 });
 
-type XaiData = {
+type DeepseekData = {
     variableName?: string
     credentialId?: string
     // model?: string;
     userPrompt?: string;
     systemPrompt?: string;
 };
-export const xAiExecutor: NodeExecutor<XaiData> = async ({
+export const deepseekExecutor: NodeExecutor<DeepseekData> = async ({
     data,
     nodeId,
     context,
@@ -31,7 +36,7 @@ export const xAiExecutor: NodeExecutor<XaiData> = async ({
 }) => {
 
     await publish(
-        xAiChannel().status({
+        deepseekChannel().status({
             nodeId,
             status: "loading"
         })
@@ -40,35 +45,35 @@ export const xAiExecutor: NodeExecutor<XaiData> = async ({
 
     if (!data.variableName) {
         await publish(
-            xAiChannel().status({
+            deepseekChannel().status({
                 nodeId,
                 status: "error",
 
             })
         );
-        throw new NonRetriableError("X ai node: Variable name is missing")
+        throw new NonRetriableError("deepseek node: Variable name is missing")
     }
 
     if (!data.userPrompt) {
         await publish(
-            xAiChannel().status({
+            deepseekChannel().status({
                 nodeId,
                 status: "error",
 
             })
         );
-        throw new NonRetriableError("Xai node: user prompt is missing")
+        throw new NonRetriableError("deepseek node: user prompt is missing")
     }
 
     if (!data.credentialId) {
         await publish(
-            xAiChannel().status({
+            deepseekChannel().status({
                 nodeId,
                 status: "error",
 
             })
         );
-        throw new NonRetriableError("xai node: credential is missing")
+        throw new NonRetriableError("deepseek node: credential is missing")
     }
 
 
@@ -91,21 +96,21 @@ export const xAiExecutor: NodeExecutor<XaiData> = async ({
     });
 
     if (!credential) {
-        throw new NonRetriableError("xai node: credential not found")
+        throw new NonRetriableError("deepseek node: credential not found")
     }
 
 
-    const xai = createXai({
+    const deepseek = createDeepSeek({
         apiKey: decrypt(credential.value)
     })
 
 
     try {
         const { steps } = await step.ai.wrap(
-            "xai-generate-text",
+            "deepseek-generate-text",
             generateText,
             {
-                model: xai("grok-2") as any,
+                model: deepseek("deepseek-chat"),
                 prompt: userPrompt,
                 system: systemPrompt,
                 experimental_telemetry: {
@@ -122,7 +127,7 @@ export const xAiExecutor: NodeExecutor<XaiData> = async ({
                 : ""
 
         await publish(
-            xAiChannel().status({
+            deepseekChannel().status({
                 nodeId,
                 status: "success",
 
@@ -137,14 +142,14 @@ export const xAiExecutor: NodeExecutor<XaiData> = async ({
 
 
     } catch (error) {
-        console.error('xAi API Error:', error);
+        console.error('Deepseek API Error:', error);
         await publish(
-            xAiChannel().status({
+            deepseekChannel().status({
                 nodeId,
                 status: "error",
 
             })
         )
-        throw new NonRetriableError(`xAi API error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        throw new NonRetriableError(`Deepseek API error: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
 }

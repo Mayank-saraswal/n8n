@@ -46,24 +46,24 @@ const formSchema = z.object({
     userPrompt: z.string().min(1, { message: "User prompt is required" })
 })
 
-export type XaiFormValues = z.infer<typeof formSchema>
+export type GroqFormValues = z.infer<typeof formSchema>
 interface Props {
     open: boolean
     onOpenChange: (open: boolean) => void
     onSubmit: (values: z.infer<typeof formSchema>) => void
-    defaultValues?: Partial<XaiFormValues>
+    defaultValues?: Partial<GroqFormValues>
 
 
 }
 
-export const XaiDialog = ({
+export const GroqDialog = ({
     open,
     onOpenChange,
     onSubmit,
     defaultValues = {}
 
 }: Props) => {
-    const { data: credentials, isLoading: isLoadingCredentials } = useCredentialsByType(CredentialType.XAI)
+    const { data: credentials, isLoading: isLoadingCredentials } = useCredentialsByType(CredentialType.GROQ)
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -87,7 +87,7 @@ export const XaiDialog = ({
         }
     }, [open, defaultValues, form])
 
-    const watchVariableName = form.watch("variableName") || "myXai"
+    const watchVariableName = form.watch("variableName") || "myApiCall"
 
     const handleSubmit = (values: z.infer<typeof formSchema>) => {
         onSubmit(values)
@@ -97,7 +97,7 @@ export const XaiDialog = ({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Xai Configration </DialogTitle>
+                    <DialogTitle>Groq Configration </DialogTitle>
                     <DialogDescription>
                         Configure the Ai model and prompts for this node
                     </DialogDescription>
@@ -115,7 +115,7 @@ export const XaiDialog = ({
                                     </FormLabel>
                                     <FormControl>
                                         <Input
-                                            placeholder="myXai"
+                                            placeholder="myApiCall"
                                             {...field}
                                         />
                                     </FormControl>
@@ -129,14 +129,16 @@ export const XaiDialog = ({
                                 </FormItem>
 
                             )}
+
                         />
+
 
                         <FormField
                             control={form.control}
                             name="credentialId"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel> xAI Credential</FormLabel>
+                                    <FormLabel> Groq Credential</FormLabel>
 
                                     <Select
                                         onValueChange={field.onChange}
@@ -152,7 +154,7 @@ export const XaiDialog = ({
                                             {credentials?.map((credential) => (
                                                 <SelectItem key={credential.id} value={credential.id}>
                                                     <div className="flex items-center gap-2">
-                                                        <Image src="/logos/xai.svg" alt="xai" width={16} height={16} />
+                                                        <Image src="/logos/groq.svg" alt="groq" width={16} height={16} />
                                                         <span>{credential.name}</span>
                                                     </div>
                                                 </SelectItem>
@@ -171,8 +173,6 @@ export const XaiDialog = ({
 
 
                         />
-
-
 
                         {/* <FormField
                             control={form.control}
