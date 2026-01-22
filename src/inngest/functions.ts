@@ -18,6 +18,7 @@ import { slackChannel } from "./channels/slack";
 import { perplexityChannel } from "./channels/perplexity";
 import { deepseekChannel } from "./channels/deepseek";
 import { groqChannel } from "./channels/groq";
+import { telegramChannel } from "./channels/telegram";
 
 
 
@@ -58,6 +59,7 @@ export const executeWorkflow = inngest.createFunction(
       perplexityChannel(),
       deepseekChannel(),
       groqChannel(),
+      telegramChannel()
     
     ]
   },

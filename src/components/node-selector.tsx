@@ -111,6 +111,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Groq",
         description:"Use Groq to generate text",
         icon:"/logos/groq.svg"
+    },
+     {
+        type:NodeType.TELEGRAM,
+        label:"Telegram",
+        description:"Use Telegram to send messages",
+        icon:"/logos/telegram.svg"
     }
 
 ]

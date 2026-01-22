@@ -104,6 +104,7 @@ enum NodeType {
   SLACK
   DEEPSEEK
   PERPLEXITY
+  TELEGRAM
 }
 
 model Credenial {

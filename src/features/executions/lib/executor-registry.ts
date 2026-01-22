@@ -13,6 +13,7 @@ import { slackExecutor } from "../components/slack/executor";
 import { perplexityExecutor } from "../components/perplexity/executor";
 import { deepseekExecutor } from "../components/deepseek/executor";
 import { groqExecutor } from "../components/groq/executor";
+import { telegramExecutor } from "../components/telegram/executor";
 
 export const executorRegistry: Record<NodeType , NodeExecutor> ={
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -29,6 +30,7 @@ export const executorRegistry: Record<NodeType , NodeExecutor> ={
     [NodeType.PERPLEXITY]:perplexityExecutor,
     [NodeType.DEEPSEEK]:deepseekExecutor,
     [NodeType.GROQ]:groqExecutor,
+    [NodeType.TELEGRAM]:telegramExecutor
     
 }
 
