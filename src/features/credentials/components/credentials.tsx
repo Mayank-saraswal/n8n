@@ -7,9 +7,8 @@ import { EntityContainer } from "@/components/entity-components";
 import { useRouter } from "next/navigation";
 import { useCredentialsParams } from "../hooks/use-credentials-params";
 import { useEntitySearch } from "@/hooks/use-entity-search";
-import type{ Credenial, } from "@/generated/prisma";
+import type{ Credenial } from "@/generated/prisma";
 import  { CredentialType  } from "@/generated/prisma";
-import { KeyIcon } from "lucide-react";
 import {formatDistanceToNow} from "date-fns"
 import Image from "next/image";
 
