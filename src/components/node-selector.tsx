@@ -117,6 +117,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Telegram",
         description:"Use Telegram to send messages",
         icon:"/logos/telegram.svg"
+    },
+    {
+        type:NodeType.X,
+        label:"X",
+        description:"Use X to send messages",
+        icon:"/logos/x.svg"
     }
 
 ]

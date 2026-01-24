@@ -105,6 +105,7 @@ enum NodeType {
   DEEPSEEK
   PERPLEXITY
   TELEGRAM
+  X
 }
 
 model Credenial {

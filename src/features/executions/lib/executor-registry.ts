@@ -7,39 +7,41 @@ import { stripeTriggerExecutor } from "@/features/triggers/components/stripe-tri
 import { geminiExecutor } from "../components/gemini/executor";
 import { openAiExecutor } from "../components/openai/executor";
 import { anthropicExecutor } from "../components/anthropic/executor";
-import {  xAiExecutor } from "../components/xai/executor";
+import { xAiExecutor } from "../components/xai/executor";
 import { discordExecutor } from "../components/discord/executor";
 import { slackExecutor } from "../components/slack/executor";
 import { perplexityExecutor } from "../components/perplexity/executor";
 import { deepseekExecutor } from "../components/deepseek/executor";
 import { groqExecutor } from "../components/groq/executor";
 import { telegramExecutor } from "../components/telegram/executor";
+import { xExecutor } from "../components/x/executor";
 
-export const executorRegistry: Record<NodeType , NodeExecutor> ={
+export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
-    [NodeType.HTTP_REQUEST]:httpRequestExecutor,
-    [NodeType.INITIAL]:manualTriggerExecutor,   
-    [NodeType.GOOGLE_FORM_TRIGGER]:googleFormTriggerExecutor,
-    [NodeType.STRIPE_TRIGGER]:stripeTriggerExecutor,
-    [NodeType.GEMINI]:geminiExecutor,
-    [NodeType.ANTHROPIC]:anthropicExecutor,
-    [NodeType.OPENAI]:openAiExecutor,
-    [NodeType.XAI]:xAiExecutor,
-    [NodeType.DISCORD]:discordExecutor,
-    [NodeType.SLACK]:slackExecutor,
-    [NodeType.PERPLEXITY]:perplexityExecutor,
-    [NodeType.DEEPSEEK]:deepseekExecutor,
-    [NodeType.GROQ]:groqExecutor,
-    [NodeType.TELEGRAM]:telegramExecutor
-    
+    [NodeType.HTTP_REQUEST]: httpRequestExecutor,
+    [NodeType.INITIAL]: manualTriggerExecutor,
+    [NodeType.GOOGLE_FORM_TRIGGER]: googleFormTriggerExecutor,
+    [NodeType.STRIPE_TRIGGER]: stripeTriggerExecutor,
+    [NodeType.GEMINI]: geminiExecutor,
+    [NodeType.ANTHROPIC]: anthropicExecutor,
+    [NodeType.OPENAI]: openAiExecutor,
+    [NodeType.XAI]: xAiExecutor,
+    [NodeType.DISCORD]: discordExecutor,
+    [NodeType.SLACK]: slackExecutor,
+    [NodeType.PERPLEXITY]: perplexityExecutor,
+    [NodeType.DEEPSEEK]: deepseekExecutor,
+    [NodeType.GROQ]: groqExecutor,
+    [NodeType.TELEGRAM]: telegramExecutor,
+    [NodeType.X]: xExecutor
+
 }
 
-export const getExecutor = (type:NodeType):NodeExecutor =>{
+export const getExecutor = (type: NodeType): NodeExecutor => {
     const executor = executorRegistry[type]
     if (!executor) {
         throw new Error(`No executor found for node type:${type}`)
     }
 
     return executor;
-    
+
 };

@@ -19,33 +19,34 @@ import { perplexityChannel } from "./channels/perplexity";
 import { deepseekChannel } from "./channels/deepseek";
 import { groqChannel } from "./channels/groq";
 import { telegramChannel } from "./channels/telegram";
+import { xChannel } from "./channels/x";
 
 
 
 
 export const executeWorkflow = inngest.createFunction(
-  { 
+  {
     id: "execute-workflow",
     retries: process.env.NODE_ENV === "production" ? 3 : 0,
-    onFailure: async({event , step})=>{
-  
-        return await prisma.execution.update({
-          where: {
-            inngestEventId: event.data.event.id,
-          },
-          data: {
-            status: ExecutionStatus.FAILED,
-            error: event.data.error.message,
-            errorStack: event.data.error.stack,
-           
-          },
-        });
+    onFailure: async ({ event, step }) => {
+
+      return await prisma.execution.update({
+        where: {
+          inngestEventId: event.data.event.id,
+        },
+        data: {
+          status: ExecutionStatus.FAILED,
+          error: event.data.error.message,
+          errorStack: event.data.error.stack,
+
+        },
+      });
     }
 
-   },
+  },
   {
-     event: "workflow/execute.workflow",
-     channels:[
+    event: "workflow/execute.workflow",
+    channels: [
       httpRequestChannel(),
       manualTriggerChannel(),
       googleformTriggerChannel(),
@@ -59,20 +60,21 @@ export const executeWorkflow = inngest.createFunction(
       perplexityChannel(),
       deepseekChannel(),
       groqChannel(),
-      telegramChannel()
-    
+      telegramChannel(),
+      xChannel()
+
     ]
   },
-  async({event , step, publish})=>{
+  async ({ event, step, publish }) => {
 
     const inngestEventId = event.id;
     const workflowId = event.data.workflowId;
 
-    if(!inngestEventId || !workflowId){
+    if (!inngestEventId || !workflowId) {
       throw new NonRetriableError("Inngest event ID or Workflow ID is missing");
     }
 
-    const execution = await step.run("create-execution", async()=>{
+    const execution = await step.run("create-execution", async () => {
       return await prisma.execution.create({
         data: {
           inngestEventId,
@@ -81,28 +83,28 @@ export const executeWorkflow = inngest.createFunction(
       });
     });
 
-    const SortedNodes = await step.run("prepare-workflow", async()=>{
+    const SortedNodes = await step.run("prepare-workflow", async () => {
       const workflow = await prisma.workflow.findUniqueOrThrow({
         where: {
           id: workflowId,
         },
         include: {
           nodes: true,
-          connections:true
+          connections: true
         },
 
       });
       return topologicalSort(workflow.nodes, workflow.connections);
-      
+
     })
 
-    const userId = await step.run("find-user-id", async()=>{
+    const userId = await step.run("find-user-id", async () => {
       const workflow = await prisma.workflow.findUniqueOrThrow({
         where: {
           id: workflowId,
         },
-        select:{
-          userId:true
+        select: {
+          userId: true
         }
       })
       return workflow.userId;
@@ -123,7 +125,7 @@ export const executeWorkflow = inngest.createFunction(
       })
     }
 
-    await step.run("update-execution", async()=>{
+    await step.run("update-execution", async () => {
       return await prisma.execution.update({
         where: {
           inngestEventId,
@@ -137,8 +139,8 @@ export const executeWorkflow = inngest.createFunction(
       });
     });
     return {
-      workflowId , 
+      workflowId,
       result: context
     }
   }
-  );
+);

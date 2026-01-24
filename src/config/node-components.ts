@@ -15,6 +15,7 @@ import { DeepseekNode } from "@/features/executions/components/deepseek/node";
 import { PerplexityNode } from "@/features/executions/components/perplexity/node";
 import { GroqNode } from "@/features/executions/components/groq/node";
 import { TelegramNode } from "@/features/executions/components/telegram/node";
+import { XNode } from "@/features/executions/components/x/node";
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -32,6 +33,7 @@ export const nodeComponents = {
     [NodeType.PERPLEXITY]: PerplexityNode,
     [NodeType.GROQ]: GroqNode,
     [NodeType.TELEGRAM]: TelegramNode,
+    [NodeType.X]: XNode,
     //change later
 
 
