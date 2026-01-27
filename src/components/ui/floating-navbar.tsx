@@ -11,6 +11,8 @@ import {
 import { cn } from "@/lib/utils";
 
 
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+
 export const FloatingNav = ({
   navItems,
   className,
@@ -98,6 +100,7 @@ export const FloatingNav = ({
           <span>Signup</span>
           <span className="absolute inset-x-0 w-1/2 mx-auto -bottom-px bg-gradient-to-r from-transparent via-blue-500 to-transparent  h-px" />
         </button>
+        <AnimatedThemeToggler />
       </motion.div>
     </AnimatePresence>
   );
