@@ -7,6 +7,7 @@ import { Provider } from "jotai";
 import { Analytics } from '@vercel/analytics/next';
 
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,20 +30,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      
+
       >
         <TRPCReactProvider>
           <NuqsAdapter>
             <Provider>
-
-        {children}
-         <Analytics />
-        <Toaster/>
-        </Provider>
-        </NuqsAdapter>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="light"
+                enableSystem
+                disableTransitionOnChange
+              >
+                {children}
+                <Analytics />
+                <Toaster />
+              </ThemeProvider>
+            </Provider>
+          </NuqsAdapter>
         </TRPCReactProvider>
       </body>
     </html>
