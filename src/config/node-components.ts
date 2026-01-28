@@ -16,6 +16,7 @@ import { PerplexityNode } from "@/features/executions/components/perplexity/node
 import { GroqNode } from "@/features/executions/components/groq/node";
 import { TelegramNode } from "@/features/executions/components/telegram/node";
 import { XNode } from "@/features/executions/components/x/node";
+import { WorkdayNode } from "@/features/executions/components/workday/node";
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -34,6 +35,7 @@ export const nodeComponents = {
     [NodeType.GROQ]: GroqNode,
     [NodeType.TELEGRAM]: TelegramNode,
     [NodeType.X]: XNode,
+    [NodeType.WORKDAY]: WorkdayNode,
     //change later
 
 

@@ -106,6 +106,7 @@ enum NodeType {
   PERPLEXITY
   TELEGRAM
   X
+  WORKDAY
 }
 
 model Credenial {

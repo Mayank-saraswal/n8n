@@ -15,6 +15,7 @@ import { deepseekExecutor } from "../components/deepseek/executor";
 import { groqExecutor } from "../components/groq/executor";
 import { telegramExecutor } from "../components/telegram/executor";
 import { xExecutor } from "../components/x/executor";
+import { workdayExecutor } from "../components/workday/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -32,7 +33,8 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.DEEPSEEK]: deepseekExecutor,
     [NodeType.GROQ]: groqExecutor,
     [NodeType.TELEGRAM]: telegramExecutor,
-    [NodeType.X]: xExecutor
+    [NodeType.X]: xExecutor,
+    [NodeType.WORKDAY]: workdayExecutor
 
 }
 

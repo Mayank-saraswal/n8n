@@ -123,6 +123,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"X",
         description:"Use X to send messages",
         icon:"/logos/x.svg"
+    },
+    {
+        type:NodeType.WORKDAY,
+        label:"Workday",
+        description:"Use Workday to send messages",
+        icon:"/logos/workday.svg"
     }
 
 ]

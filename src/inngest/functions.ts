@@ -20,6 +20,7 @@ import { deepseekChannel } from "./channels/deepseek";
 import { groqChannel } from "./channels/groq";
 import { telegramChannel } from "./channels/telegram";
 import { xChannel } from "./channels/x";
+import { workdayChannel } from "./channels/workday";
 
 
 
@@ -61,7 +62,8 @@ export const executeWorkflow = inngest.createFunction(
       deepseekChannel(),
       groqChannel(),
       telegramChannel(),
-      xChannel()
+      xChannel(),
+      workdayChannel()
 
     ]
   },
