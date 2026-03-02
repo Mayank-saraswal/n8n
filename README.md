@@ -118,4 +118,3 @@ MIT License. Basically, do cool stuff with this project.
 Made with ❤️ by [Mayank Saraswal](https://github.com/Mayank-saraswal). Happy Automating!
  
 
- Bye ! 
