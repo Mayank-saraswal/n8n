@@ -1,7 +1,7 @@
 "use client"
 import { createId} from "@paralleldrive/cuid2"
 import { useReactFlow } from "@xyflow/react"
-import {  GlobeIcon , MousePointerIcon } from "lucide-react"
+import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon } from "lucide-react"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { 
@@ -44,6 +44,20 @@ const triggerNodes: NodeTypeOptions[] = [
         label:" Stripe",
         description:" when stripe event is captured",
         icon:"/logos/stripe.svg"
+    },
+
+     {
+        type:NodeType.WEBHOOK_TRIGGER,
+        label:"Webhook",
+        description:"Trigger a workflow via HTTP request",
+        icon:LinkIcon
+    },
+
+     {
+        type:NodeType.SCHEDULE_TRIGGER,
+        label:"Schedule",
+        description:"Run a workflow on a time-based schedule",
+        icon:ClockIcon
     },
 ]
 

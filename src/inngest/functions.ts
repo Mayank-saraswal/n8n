@@ -21,6 +21,8 @@ import { groqChannel } from "./channels/groq";
 import { telegramChannel } from "./channels/telegram";
 import { xChannel } from "./channels/x";
 import { workdayChannel } from "./channels/workday";
+import { webhookTriggerChannel } from "./channels/webhook-trigger";
+import { scheduleTriggerChannel } from "./channels/schedule-trigger";
 
 
 
@@ -63,7 +65,9 @@ export const executeWorkflow = inngest.createFunction(
       groqChannel(),
       telegramChannel(),
       xChannel(),
-      workdayChannel()
+      workdayChannel(),
+      webhookTriggerChannel(),
+      scheduleTriggerChannel()
 
     ]
   },
