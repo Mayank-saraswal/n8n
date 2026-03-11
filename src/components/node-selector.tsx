@@ -154,7 +154,7 @@ const executionNodes: NodeTypeOptions[] = [
         type:NodeType.GMAIL,
         label:"Gmail",
         description:"Send an email via Gmail",
-        icon:MailIcon
+        icon:"/logos/gmail.svg"
     }
 
 ]
