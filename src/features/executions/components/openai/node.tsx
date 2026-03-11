@@ -4,7 +4,7 @@ import { memo , useState } from "react"
 import { BaseExecutionNode } from "../base-execution-node"  
 import { GlobeIcon } from "lucide-react"
 import { OpenAiFormValues, OpenAiDialog } from "./dialog"
-import { useNodeStatus } from "@/features/triggers/components/manual-trigger/hooks/use-node-status"
+import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-node-status"
 import { fetchOpenAiRealtimeToken} from "./actions"
 import { OPENAI_CHANNEL_NAME } from "@/inngest/channels/openai"
 

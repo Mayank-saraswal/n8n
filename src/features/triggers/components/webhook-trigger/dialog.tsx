@@ -9,8 +9,11 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { CopyIcon } from "lucide-react"
+import { useTRPC } from "@/trpc/client"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { CopyIcon, Loader2Icon } from "lucide-react"
 import { useParams } from "next/navigation"
+import { useEffect } from "react"
 import { toast } from "sonner"
 
 interface Props{
@@ -25,9 +28,36 @@ export const WebhookTriggerDialog =({
 
     const params = useParams();
     const workflowId = params.workflowId as string;
+    const trpc = useTRPC();
+    const queryClient = useQueryClient();
+
+    const { data: webhookTrigger, isLoading } = useQuery(
+        trpc.webhookTrigger.getByWorkflowId.queryOptions(
+            { workflowId },
+            { enabled: open }
+        )
+    );
+
+    const createTrigger = useMutation(
+        trpc.webhookTrigger.createWebhookTrigger.mutationOptions({
+            onSuccess: () => {
+                queryClient.invalidateQueries(
+                    trpc.webhookTrigger.getByWorkflowId.queryOptions({ workflowId })
+                );
+            },
+        })
+    );
+
+    useEffect(() => {
+        if (open && !isLoading && !webhookTrigger) {
+            createTrigger.mutate({ workflowId });
+        }
+    }, [open, isLoading, webhookTrigger]);
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    const webhookUrl = `${baseUrl}/api/webhooks/trigger/${workflowId}`
+    const webhookUrl = webhookTrigger
+        ? `${baseUrl}/api/webhooks/trigger/${webhookTrigger.webhookId}`
+        : "Loading..."
 
     const copyToClipboard = async()=>{
         try {
@@ -51,6 +81,11 @@ export const WebhookTriggerDialog =({
                         Use this Webhook URL to trigger this workflow via HTTP request
                     </DialogDescription>
                 </DialogHeader>
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2Icon className="size-6 animate-spin text-muted-foreground" />
+                    </div>
+                ) : (
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="webhook-url">
@@ -138,6 +173,7 @@ export const WebhookTriggerDialog =({
                         </ul>
                     </div>
                 </div>
+                )}
             </DialogContent>
         </Dialog>
     )

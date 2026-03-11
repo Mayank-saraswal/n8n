@@ -3,7 +3,7 @@ import { useReactFlow, type Node, type NodeProps } from "@xyflow/react"
 import { memo, useState } from "react"
 import { BaseExecutionNode } from "../base-execution-node"
 import { WorkdayFormValues, WorkdayDialog } from "./dialog"
-import { useNodeStatus } from "@/features/triggers/components/manual-trigger/hooks/use-node-status"
+import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-node-status"
 import { WORKDAY_CHANNEL_NAME } from "@/inngest/channels/workday"
 import { fetchWorkdayRealtimeToken } from "./actions"
 
