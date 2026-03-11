@@ -19,6 +19,7 @@ import { telegramExecutor } from "../components/telegram/executor";
 import { xExecutor } from "../components/x/executor";
 import { workdayExecutor } from "../components/workday/executor";
 import { ifElseExecutor } from "@/features/triggers/components/if-else/executor";
+import { gmailExecutor } from "../components/gmail/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -41,6 +42,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.X]: xExecutor,
     [NodeType.WORKDAY]: workdayExecutor,
     [NodeType.IF_ELSE]: ifElseExecutor,
+    [NodeType.GMAIL]: gmailExecutor,
 
 }
 

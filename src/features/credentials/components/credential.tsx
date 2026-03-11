@@ -20,7 +20,26 @@ import Link from "next/link";
 const formSchema = z.object({
     name: z.string().min(1, "Name is Required"),
     type: z.enum(CredentialType),
-    value: z.string().min(1, "Api key  is required")
+    value: z.string().min(1, "Api key  is required"),
+    gmailEmail: z.string().optional(),
+    gmailAppPassword: z.string().optional(),
+}).superRefine((data, ctx) => {
+    if (data.type === CredentialType.GMAIL) {
+        if (!data.gmailEmail) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Gmail address is required",
+                path: ["gmailEmail"],
+            })
+        }
+        if (!data.gmailAppPassword) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "App Password is required",
+                path: ["gmailAppPassword"],
+            })
+        }
+    }
 })
 
 
@@ -64,6 +83,11 @@ const credentialTypeOptions = [
         label: "Groq",
         logo: "/logos/groq.svg"
     },
+    {
+        value: CredentialType.GMAIL,
+        label: "Gmail",
+        logo: "/logos/gmail.svg"
+    },
 
 ]
 
@@ -90,19 +114,36 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
         defaultValues: initialData || {
             name: "",
             type: CredentialType.OPENAI,
-            value: ""
+            value: "",
+            gmailEmail: "",
+            gmailAppPassword: "",
         }
     })
 
+    const watchType = form.watch("type")
+    const isGmail = watchType === CredentialType.GMAIL
+
     const onSubmit = async (values: FormValues) => {
+        let submitValues = { ...values }
+
+        // For Gmail, encode email + appPassword as JSON in the value field
+        if (values.type === CredentialType.GMAIL) {
+            submitValues.value = JSON.stringify({
+                email: values.gmailEmail,
+                appPassword: values.gmailAppPassword,
+            })
+        }
+
+        const { gmailEmail, gmailAppPassword, ...payload } = submitValues
+
         if (isEdit && initialData?.id) {
             await updateCredential.mutate({
                 id: initialData.id,
 
-                ...values
+                ...payload
             })
         } else {
-            await createCredential.mutate(values, {
+            await createCredential.mutate(payload, {
                 onSuccess: (data) => {
                     router.push(`/credentials/${data.id}`)
                 },
@@ -154,7 +195,17 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                         <FormLabel>Type</FormLabel>
 
                                         <Select
-                                            onValueChange={field.onChange}
+                                            onValueChange={(val) => {
+                                                field.onChange(val)
+                                                // Set a placeholder value for Gmail so validation passes
+                                                if (val === CredentialType.GMAIL) {
+                                                    form.setValue("value", "gmail-credential")
+                                                } else {
+                                                    if (form.getValues("value") === "gmail-credential") {
+                                                        form.setValue("value", "")
+                                                    }
+                                                }
+                                            }}
                                             defaultValue={field.value}
                                         >
                                             <FormControl>
@@ -187,21 +238,56 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                             />
 
 
-                            <FormField
-                                control={form.control}
-                                name="value"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Api Key</FormLabel>
-                                        <FormControl>
-                                            <Input type="password" placeholder="sk-..." {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
+                            {isGmail ? (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="gmailEmail"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Gmail Address</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="you@gmail.com" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="gmailAppPassword"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>App Password</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" placeholder="xxxx xxxx xxxx xxxx" {...field} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Generate at: Google Account → Security → 2-Step Verification → App Passwords
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </>
+                            ) : (
+                                <FormField
+                                    control={form.control}
+                                    name="value"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Api Key</FormLabel>
+                                            <FormControl>
+                                                <Input type="password" placeholder="sk-..." {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
 
 
-                            />
+                                />
+                            )}
 
                             <div className="flex gap-4">
                                 <Button type="submit"

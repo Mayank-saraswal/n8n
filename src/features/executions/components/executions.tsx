@@ -7,7 +7,7 @@ import { EntityContainer } from "@/components/entity-components";
 import { useRouter } from "next/navigation";
 import { useExecutionsParams } from "../hooks/use-executions.params";
 import { useEntitySearch } from "@/hooks/use-entity-search";
-import type { Credenial, Execution, } from "@/generated/prisma";
+import type { Credential, Execution, } from "@/generated/prisma";
 import { CredentialType, ExecutionStatus } from "@/generated/prisma";
 import { CheckCircle2Icon, ClockIcon, KeyIcon, Loader2Icon, XCircleIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns"

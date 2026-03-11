@@ -25,7 +25,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   workflows     workflow[]
-  credentials   Credenial[]
+  credentials   Credential[]
 
   @@unique([email])
   @@map("user")
@@ -88,6 +88,7 @@ model workflow {
   webhookTrigger  WebhookTrigger?
   scheduleTrigger ScheduleTrigger?
   ifElseNodes     IfElseNode[]
+  gmailNodes      GmailNode[]
   userId          String
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -113,6 +114,7 @@ enum NodeType {
   X
   WORKDAY
   IF_ELSE
+  GMAIL
 }
 
 enum HttpMethod {
@@ -155,7 +157,7 @@ model ScheduleTrigger {
   @@index([workflowId])
 }
 
-model Credenial {
+model Credential {
   id     String         @id @default(cuid())
   name   String
   value  String
@@ -166,6 +168,8 @@ model Credenial {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("Credenial")
 }
 
 enum CredentialType {
@@ -176,6 +180,7 @@ enum CredentialType {
   PERPLEXITY
   XAI
   GROQ
+  GMAIL
 }
 
 model Node {
@@ -189,7 +194,7 @@ model Node {
   inputConnections  Connection[] @relation("ToNode")
   workflow          workflow     @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   credentialId      String?
-  credential        Credenial?   @relation(fields: [credentialId], references: [id])
+  credential        Credential?  @relation(fields: [credentialId], references: [id])
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @default(now()) @updatedAt
 }
@@ -263,6 +268,27 @@ model IfElseNode {
   updatedAt DateTime @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+model GmailNode {
+  id           String   @id @default(cuid())
+  workflowId   String
+  nodeId       String   @unique
+  credentialId String
+
+  // Email fields — support template variables like {{body.name}}
+  to           String   @default("")
+  subject      String   @default("")
+  body         String   @default("") @db.Text
+  isHtml       Boolean  @default(false)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workflow     workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@index([workflowId])
   @@index([nodeId])
