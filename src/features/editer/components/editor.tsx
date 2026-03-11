@@ -12,6 +12,13 @@ import { editorAtom } from "../store/atoms";
 import { NodeType } from "@/generated/prisma";
 import { ExecuteWorkflowButton } from "./execute-workflow-button";
 
+const EXECUTABLE_TRIGGER_TYPES = [
+    NodeType.INITIAL,
+    NodeType.MANUAL_TRIGGER,
+    NodeType.WEBHOOK_TRIGGER,
+    NodeType.SCHEDULE_TRIGGER,
+] as const
+
 
 
 
@@ -48,9 +55,12 @@ export const Editor = ({workflowId}:{workflowId:string}) => {
     [],
   );
 
-  const hasManualTrigger = useMemo(()=>{
-    return nodes.some((node)=>node.type ===NodeType.MANUAL_TRIGGER)
-     },[nodes])
+  const executableTriggerType = useMemo(()=>{
+    const triggerNode = nodes.find((node)=>
+      EXECUTABLE_TRIGGER_TYPES.includes(node.type as typeof EXECUTABLE_TRIGGER_TYPES[number])
+    )
+    return triggerNode?.type as typeof EXECUTABLE_TRIGGER_TYPES[number] | undefined
+  },[nodes])
  
     return ( 
        <div className="size-full">
@@ -74,9 +84,9 @@ export const Editor = ({workflowId}:{workflowId:string}) => {
          <Controls/>
 
          <MiniMap/> 
-         {hasManualTrigger && (
+         {executableTriggerType && (
             <Panel position="bottom-center">
-            <ExecuteWorkflowButton workflowId={workflowId}/>
+            <ExecuteWorkflowButton workflowId={workflowId} triggerType={executableTriggerType}/>
             </Panel>
          )}
          <Panel position="top-right">
