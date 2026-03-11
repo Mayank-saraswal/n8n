@@ -50,7 +50,7 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
   const credential = await step.run(
     `gmail-${nodeId}-load-credential`,
     async () => {
-      return prisma.credenial.findUnique({
+      return prisma.credential.findUnique({
         where: {
           id: config.credentialId,
           userId,

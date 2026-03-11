@@ -25,7 +25,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   workflows     workflow[]
-  credentials   Credenial[]
+  credentials   Credential[]
 
   @@unique([email])
   @@map("user")
@@ -157,7 +157,7 @@ model ScheduleTrigger {
   @@index([workflowId])
 }
 
-model Credenial {
+model Credential {
   id     String         @id @default(cuid())
   name   String
   value  String
@@ -168,6 +168,8 @@ model Credenial {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("Credenial")
 }
 
 enum CredentialType {
@@ -192,7 +194,7 @@ model Node {
   inputConnections  Connection[] @relation("ToNode")
   workflow          workflow     @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   credentialId      String?
-  credential        Credenial?   @relation(fields: [credentialId], references: [id])
+  credential        Credential?  @relation(fields: [credentialId], references: [id])
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @default(now()) @updatedAt
 }
