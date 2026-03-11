@@ -2,7 +2,7 @@ import { BaseTriggerNode } from "../base-trigger-node"
 import { memo , useState } from "react"
 import { NodeProps } from "@xyflow/react"
 import { WebhookTriggerDialog } from "./dialog"
-import { useNodeStatus } from "./hooks/use-node-status"
+import { useNodeStatus } from "../shared/hooks/use-node-status"
 import { fetchWebhookTriggerRealtimeToken } from "./actions"
 import { WEBHOOK_TRIGGER_CHANNEL_NAME } from "@/inngest/channels/webhook-trigger"
 import { LinkIcon } from "lucide-react"
@@ -36,3 +36,5 @@ export const WebhookTriggerNode = memo((props:NodeProps)=>{
         </>
         )
 })
+
+WebhookTriggerNode.displayName = "WebhookTriggerNode"

@@ -4,7 +4,7 @@ import { memo, useState } from "react"
 import { BaseExecutionNode } from "../base-execution-node"
 import { GlobeIcon } from "lucide-react"
 import { XaiDialog, XaiFormValues } from "./dialog"
-import { useNodeStatus } from "@/features/triggers/components/manual-trigger/hooks/use-node-status"
+import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-node-status"
 import { fetchXaiRealtimeToken } from "./actions"
 import { XAI_CHANNEL_NAME } from "@/inngest/channels/xai"
 

@@ -9,8 +9,10 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { CopyIcon } from "lucide-react"
+import { useTRPC } from "@/trpc/client"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { useParams } from "next/navigation"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 const CRON_PRESETS = [
@@ -36,15 +38,37 @@ export const ScheduleTriggerDialog =({
 
     const params = useParams();
     const workflowId = params.workflowId as string;
+    const trpc = useTRPC();
 
-    const copyToClipboard = async(text:string)=>{
-        try {
-            await navigator.clipboard.writeText(text);
-            toast.success("Copied to clipboard")
-        } catch  {
-            toast.error("Failed to copy")
+    const [cronExpression, setCronExpression] = useState("0 9 * * *")
+    const [timezone, setTimezone] = useState("UTC")
+    const [isSaved, setIsSaved] = useState(false)
+
+    const { data: scheduleTrigger } = useQuery(
+        trpc.scheduleTrigger.getByWorkflowId.queryOptions(
+            { workflowId },
+            { enabled: open }
+        )
+    );
+
+    useEffect(() => {
+        if (scheduleTrigger) {
+            setCronExpression(scheduleTrigger.cronExpression)
+            setTimezone(scheduleTrigger.timezone)
         }
-    }
+    }, [scheduleTrigger])
+
+    const isValidCron = /^(\S+\s){4}\S+$/.test(cronExpression.trim())
+
+    const saveSchedule = useMutation(
+        trpc.scheduleTrigger.createOrUpdateScheduleTrigger.mutationOptions({
+            onSuccess: () => {
+                setIsSaved(true)
+                toast.success("Schedule saved")
+            },
+            onError: () => toast.error("Failed to save schedule"),
+        })
+    )
 
     return(
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -57,25 +81,42 @@ export const ScheduleTriggerDialog =({
                 </DialogHeader>
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="workflow-id">
-                            Workflow ID
+                        <Label htmlFor="cron-expression">
+                            Cron Expression
                         </Label>
-                        <div className="flex gap-2">
-                            <Input  
-                            id="workflow-id"
-                            value={workflowId}
-                            readOnly
+                        <Input
+                            id="cron-expression"
+                            value={cronExpression}
+                            onChange={(e) => {
+                                setCronExpression(e.target.value)
+                                setIsSaved(false)
+                            }}
+                            placeholder="0 9 * * *"
                             className="font-mono text-sm"
-                            />
-                            <Button 
-                            type="button"
-                            size="icon"
-                            variant="outline"
-                            onClick={()=>copyToClipboard(workflowId)}
-                            >
-                                <CopyIcon className="size-4"/>
-                            </Button>
-                        </div>
+                        />
+                        {!isValidCron && cronExpression.trim() !== "" && (
+                            <p className="text-sm text-destructive">
+                                Invalid cron expression. Must have 5 space-separated fields.
+                            </p>
+                        )}
+                        <p className="text-sm text-muted-foreground">
+                            Expression: <code className="font-mono">{cronExpression}</code>
+                        </p>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="timezone">
+                            Timezone
+                        </Label>
+                        <Input
+                            id="timezone"
+                            value={timezone}
+                            onChange={(e) => {
+                                setTimezone(e.target.value)
+                                setIsSaved(false)
+                            }}
+                            placeholder="UTC"
+                            className="font-mono text-sm"
+                        />
                     </div>
                    <div className="rounded-lg bg-muted p-4 space-y-2">
                     <h4 className="font-medium text-sm">
@@ -89,13 +130,22 @@ export const ScheduleTriggerDialog =({
                                 variant="outline"
                                 size="sm"
                                 className="justify-start text-xs"
-                                onClick={()=>copyToClipboard(preset.value)}
+                                onClick={() => {
+                                    setCronExpression(preset.value)
+                                    setIsSaved(false)
+                                }}
                             >
                                 {preset.label}
                             </Button>
                         ))}
                     </div>
                    </div>
+                    <Button
+                        onClick={() => saveSchedule.mutate({ workflowId, cronExpression, timezone })}
+                        disabled={!isValidCron || saveSchedule.isPending}
+                    >
+                        {saveSchedule.isPending ? "Saving..." : isSaved ? "Saved ✓" : "Save Schedule"}
+                    </Button>
                    <div className="rounded-lg bg-muted p-4 space-y-2">
                     <h4 className="font-medium text-sm">
                         Setup instructions:
