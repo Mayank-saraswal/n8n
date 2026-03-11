@@ -480,6 +480,7 @@ export const ScheduleTriggerDialog =({
                    </div>
                     <Button
                         onClick={() => saveSchedule.mutate({ workflowId, cronExpression, timezone })}
+                        disabled={!isValidCron || saveSchedule.isPending}
                         className="w-full"
                     >
                         {saveSchedule.isPending ? "Saving..." : isSaved ? "Saved ✓" : "Save Schedule"}
