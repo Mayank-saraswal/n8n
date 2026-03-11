@@ -1,6 +1,5 @@
 import { CronExpressionParser } from "cron-parser";
 import { inngest } from "@/inngest/client";
-import { sendWorkflowExecution } from "@/inngest/utils";
 import prisma from "@/lib/db";
 
 export const schedulePoller = inngest.createFunction(
@@ -18,27 +17,39 @@ export const schedulePoller = inngest.createFunction(
 
       const now = new Date();
       const fired: string[] = [];
+      // Truncate to the current minute for deterministic deduplication
+      const minuteKey = `${now.getUTCFullYear()}-${now.getUTCMonth()}-${now.getUTCDate()}-${now.getUTCHours()}-${now.getUTCMinutes()}`;
 
       for (const trigger of activeTriggers) {
         try {
-          const interval = CronExpressionParser.parse(trigger.cronExpression, {
-            currentDate: now,
-            tz: trigger.timezone ?? "UTC",
-          });
+          const cronIterator = CronExpressionParser.parse(
+            trigger.cronExpression,
+            {
+              currentDate: now,
+              tz: trigger.timezone ?? "UTC",
+            },
+          );
 
-          const prev = interval.prev();
+          const prev = cronIterator.prev();
           const secondsSincePrev =
             (now.getTime() - prev.toDate().getTime()) / 1000;
 
           if (secondsSincePrev <= 60) {
-            await sendWorkflowExecution({
-              workflowId: trigger.workflowId,
-              triggerData: {
-                schedule: {
-                  firedAt: now.toISOString(),
-                  workflowId: trigger.workflowId,
-                  cronExpression: trigger.cronExpression,
-                  timezone: trigger.timezone ?? "UTC",
+            // Use a deterministic event ID to prevent duplicate executions
+            // if the poller runs multiple times within the same minute
+            const eventId = `sched-${trigger.workflowId}-${minuteKey}`;
+            await inngest.send({
+              name: "workflow/execute.workflow",
+              id: eventId,
+              data: {
+                workflowId: trigger.workflowId,
+                triggerData: {
+                  schedule: {
+                    firedAt: now.toISOString(),
+                    workflowId: trigger.workflowId,
+                    cronExpression: trigger.cronExpression,
+                    timezone: trigger.timezone ?? "UTC",
+                  },
                 },
               },
             });
