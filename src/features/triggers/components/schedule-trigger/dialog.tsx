@@ -19,7 +19,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useTRPC } from "@/trpc/client"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useParams } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -172,6 +172,7 @@ export const ScheduleTriggerDialog =({
     const params = useParams();
     const workflowId = params.workflowId as string;
     const trpc = useTRPC();
+    const queryClient = useQueryClient();
 
     const [cronExpression, setCronExpression] = useState("0 9 * * *")
     const [timezone, setTimezone] = useState("UTC")
@@ -201,6 +202,7 @@ export const ScheduleTriggerDialog =({
             setCronExpression(scheduleTrigger.cronExpression)
             setTimezone(scheduleTrigger.timezone)
             setCustomCron(scheduleTrigger.cronExpression)
+            setIsSaved(true)
             const parsed = parseCronToVisualState(scheduleTrigger.cronExpression)
             if (parsed) {
                 setRepeatMode(parsed.repeatMode)
@@ -283,8 +285,23 @@ export const ScheduleTriggerDialog =({
             onSuccess: () => {
                 setIsSaved(true)
                 toast.success("Schedule saved")
+                queryClient.invalidateQueries(
+                    trpc.scheduleTrigger.getByWorkflowId.queryFilter({ workflowId })
+                )
             },
             onError: () => toast.error("Failed to save schedule"),
+        })
+    )
+
+    const toggleSchedule = useMutation(
+        trpc.scheduleTrigger.toggleScheduleTrigger.mutationOptions({
+            onSuccess: (data) => {
+                toast.success(data.isActive ? "Schedule activated" : "Schedule paused")
+                queryClient.invalidateQueries(
+                    trpc.scheduleTrigger.getByWorkflowId.queryFilter({ workflowId })
+                )
+            },
+            onError: () => toast.error("Failed to toggle schedule"),
         })
     )
 
@@ -485,6 +502,28 @@ export const ScheduleTriggerDialog =({
                     >
                         {saveSchedule.isPending ? "Saving..." : isSaved ? "Saved ✓" : "Save Schedule"}
                     </Button>
+                    {isSaved && scheduleTrigger && (
+                        <div className="flex items-center justify-between p-3 rounded-lg border">
+                            <div>
+                                <p className="text-sm font-medium">
+                                    {scheduleTrigger.isActive ? "Schedule is active" : "Schedule is paused"}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    {scheduleTrigger.isActive
+                                        ? `Running: ${humanReadable}`
+                                        : "Enable to start running automatically"}
+                                </p>
+                            </div>
+                            <Button
+                                variant={scheduleTrigger.isActive ? "destructive" : "default"}
+                                size="sm"
+                                onClick={() => toggleSchedule.mutate({ workflowId, isActive: !scheduleTrigger.isActive })}
+                                disabled={toggleSchedule.isPending}
+                            >
+                                {scheduleTrigger.isActive ? "Pause" : "Activate"}
+                            </Button>
+                        </div>
+                    )}
                    <div className="rounded-lg bg-muted p-4 space-y-2">
                     <h4 className="font-medium text-sm">
                         Setup instructions:
