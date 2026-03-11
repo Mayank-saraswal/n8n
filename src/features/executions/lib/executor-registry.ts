@@ -18,6 +18,7 @@ import { groqExecutor } from "../components/groq/executor";
 import { telegramExecutor } from "../components/telegram/executor";
 import { xExecutor } from "../components/x/executor";
 import { workdayExecutor } from "../components/workday/executor";
+import { ifElseExecutor } from "@/features/triggers/components/if-else/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -38,7 +39,8 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.GROQ]: groqExecutor,
     [NodeType.TELEGRAM]: telegramExecutor,
     [NodeType.X]: xExecutor,
-    [NodeType.WORKDAY]: workdayExecutor
+    [NodeType.WORKDAY]: workdayExecutor,
+    [NodeType.IF_ELSE]: ifElseExecutor,
 
 }
 

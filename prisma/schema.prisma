@@ -87,6 +87,7 @@ model workflow {
   executions      Execution[]
   webhookTrigger  WebhookTrigger?
   scheduleTrigger ScheduleTrigger?
+  ifElseNodes     IfElseNode[]
   userId          String
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -111,6 +112,7 @@ enum NodeType {
   TELEGRAM
   X
   WORKDAY
+  IF_ELSE
 }
 
 enum HttpMethod {
@@ -226,4 +228,42 @@ model Execution {
   error          String?         @db.Text
   errorStack     String?         @db.Text
   status         ExecutionStatus @default(RUNNING)
+}
+
+enum IfElseOperator {
+  EQUALS
+  NOT_EQUALS
+  CONTAINS
+  NOT_CONTAINS
+  STARTS_WITH
+  ENDS_WITH
+  GREATER_THAN
+  LESS_THAN
+  GREATER_THAN_OR_EQUAL
+  LESS_THAN_OR_EQUAL
+  IS_EMPTY
+  IS_NOT_EMPTY
+  IS_TRUE
+  IS_FALSE
+  REGEX_MATCH
+}
+
+model IfElseNode {
+  id         String         @id @default(cuid())
+  workflowId String
+  nodeId     String         @unique
+
+  // Condition configuration
+  field    String         @default("")
+  operator IfElseOperator @default(EQUALS)
+  value    String         @default("")
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
 }

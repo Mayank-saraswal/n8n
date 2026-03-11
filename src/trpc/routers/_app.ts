@@ -10,12 +10,14 @@ import { credentialsRouter } from '@/features/credentials/server/routers';
 import { executionRouter } from '@/features/executions/server/routers';
 import { webhookTriggerRouter } from '@/server/routers/webhook-trigger.router';
 import { scheduleTriggerRouter } from '@/server/routers/schedule-trigger.router';
+import { ifElseRouter } from '@/server/routers/if-else.router';
 export const appRouter = createTRPCRouter({
   workflows: workflowsRouter,
   credentials:credentialsRouter,
   executions:executionRouter,
   webhookTrigger: webhookTriggerRouter,
   scheduleTrigger: scheduleTriggerRouter,
+  ifElse: ifElseRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;
