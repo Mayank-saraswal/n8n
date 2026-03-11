@@ -15,7 +15,7 @@ import { sendWorkflowExecution } from "@/inngest/utils";
 export const workflowsRouter = createTRPCRouter({
 
     execute: protectedProcedure
-        .input(z.object({ id: z.string() }))
+        .input(z.object({ id: z.string(), triggerData: z.record(z.string(), z.unknown()).optional() }))
         .mutation(async ({ input, ctx }) => {
             const workflow = await prisma.workflow.findUniqueOrThrow({
                 where: {
@@ -28,6 +28,7 @@ export const workflowsRouter = createTRPCRouter({
 
             await sendWorkflowExecution({
                 workflowId: input.id,
+                ...(input.triggerData ? { triggerData: input.triggerData } : {}),
             })
             return workflow
         }),
