@@ -147,8 +147,17 @@ export const executeWorkflow = inngest.createFunction(
           const nonTakenConnections = preparedWorkflow.connections.filter(
             (c) => c.fromNodeId === node.id && c.fromOutput !== `source-${branch}`
           );
-          for (const conn of nonTakenConnections) {
-            skippedNodes.add(conn.toNodeId);
+          // Recursively skip all nodes reachable only through non-taken branches
+          const toSkip = nonTakenConnections.map((c) => c.toNodeId);
+          while (toSkip.length > 0) {
+            const nodeIdToSkip = toSkip.pop()!;
+            if (skippedNodes.has(nodeIdToSkip)) continue;
+            skippedNodes.add(nodeIdToSkip);
+            // Also skip downstream nodes of skipped nodes
+            const downstream = preparedWorkflow.connections
+              .filter((c) => c.fromNodeId === nodeIdToSkip)
+              .map((c) => c.toNodeId);
+            toSkip.push(...downstream);
           }
         }
       }

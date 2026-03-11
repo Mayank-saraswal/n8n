@@ -32,6 +32,8 @@ interface IfElseDialogProps {
   workflowId: string
 }
 
+const MAX_PREVIEW_LENGTH = 32
+
 const OPERATORS_WITHOUT_VALUE: IfElseOperator[] = [
   IfElseOperator.IS_EMPTY,
   IfElseOperator.IS_NOT_EMPTY,
@@ -79,6 +81,7 @@ export const IfElseDialog = ({
   )
   const [value, setValue] = useState("")
   const [saved, setSaved] = useState(false)
+  const [regexError, setRegexError] = useState<string | null>(null)
 
   const { data: config, isLoading } = useQuery(
     trpc.ifElse.getByNodeId.queryOptions(
@@ -109,6 +112,16 @@ export const IfElseDialog = ({
   )
 
   const handleSave = () => {
+    // Validate regex pattern before saving
+    if (operator === IfElseOperator.REGEX_MATCH && value) {
+      try {
+        new RegExp(value)
+        setRegexError(null)
+      } catch {
+        setRegexError("Invalid regex pattern")
+        return
+      }
+    }
     upsertMutation.mutate({
       workflowId,
       nodeId,
@@ -257,8 +270,14 @@ export const IfElseDialog = ({
                   id="if-else-value"
                   placeholder="Enter value..."
                   value={value}
-                  onChange={(e) => setValue(e.target.value)}
+                  onChange={(e) => {
+                    setValue(e.target.value)
+                    if (regexError) setRegexError(null)
+                  }}
                 />
+                {regexError && (
+                  <p className="text-xs text-destructive">{regexError}</p>
+                )}
               </div>
             )}
 

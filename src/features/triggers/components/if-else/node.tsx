@@ -9,6 +9,8 @@ import { useParams } from "next/navigation"
 import { useTRPC } from "@/trpc/client"
 import { IfElseDialog } from "./dialog"
 
+const MAX_PREVIEW_LENGTH = 32
+
 export const IfElseNode = memo((props: NodeProps) => {
   const [dialogOpen, setDialogOpen] = useState(false)
   const params = useParams()
@@ -25,7 +27,7 @@ export const IfElseNode = memo((props: NodeProps) => {
   const conditionPreview = config?.field
     ? `${config.field} ${config.operator.toLowerCase().replace(/_/g, " ")} ${config.value}`.slice(
         0,
-        32
+        MAX_PREVIEW_LENGTH
       )
     : "Not configured"
 

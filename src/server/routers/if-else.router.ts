@@ -60,7 +60,14 @@ export const ifElseRouter = createTRPCRouter({
 
   delete: protectedProcedure
     .input(z.object({ nodeId: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const node = await prisma.ifElseNode.findUnique({
+        where: { nodeId: input.nodeId },
+        include: { workflow: { select: { userId: true } } },
+      })
+      if (!node || node.workflow.userId !== ctx.auth.user.id) {
+        throw new Error("Unauthorized")
+      }
       return prisma.ifElseNode.delete({ where: { nodeId: input.nodeId } })
     }),
 })
