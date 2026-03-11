@@ -52,7 +52,7 @@ export const WebhookTriggerDialog =({
         if (open && !isLoading && !webhookTrigger) {
             createTrigger.mutate({ workflowId });
         }
-    }, [open, isLoading, webhookTrigger]);
+    }, [open, isLoading, webhookTrigger, workflowId]);
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
     const webhookUrl = webhookTrigger
