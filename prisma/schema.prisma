@@ -88,6 +88,7 @@ model workflow {
   webhookTrigger  WebhookTrigger?
   scheduleTrigger ScheduleTrigger?
   ifElseNodes     IfElseNode[]
+  gmailNodes      GmailNode[]
   userId          String
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -113,6 +114,7 @@ enum NodeType {
   X
   WORKDAY
   IF_ELSE
+  GMAIL
 }
 
 enum HttpMethod {
@@ -176,6 +178,7 @@ enum CredentialType {
   PERPLEXITY
   XAI
   GROQ
+  GMAIL
 }
 
 model Node {
@@ -263,6 +266,27 @@ model IfElseNode {
   updatedAt DateTime @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+model GmailNode {
+  id           String   @id @default(cuid())
+  workflowId   String
+  nodeId       String   @unique
+  credentialId String
+
+  // Email fields — support template variables like {{body.name}}
+  to           String   @default("")
+  subject      String   @default("")
+  body         String   @default("") @db.Text
+  isHtml       Boolean  @default(false)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workflow     workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@index([workflowId])
   @@index([nodeId])

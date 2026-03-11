@@ -139,6 +139,7 @@ const credentialsLogos: Record<CredentialType, string> = {
   [CredentialType.PERPLEXITY]: "/logos/perplexity.svg",
   [CredentialType.XAI]: "/logos/xai.svg",
   [CredentialType.GROQ]: "/logos/groq.svg",
+  [CredentialType.GMAIL]: "/logos/gmail.svg",
 }
 
 export const CredentialsItem = ({
