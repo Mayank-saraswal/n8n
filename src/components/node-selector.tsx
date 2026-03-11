@@ -1,7 +1,7 @@
 "use client"
 import { createId} from "@paralleldrive/cuid2"
 import { useReactFlow } from "@xyflow/react"
-import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon } from "lucide-react"
+import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon } from "lucide-react"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { 
@@ -143,6 +143,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Workday",
         description:"Use Workday to send messages",
         icon:"/logos/workday.svg"
+    },
+    {
+        type:NodeType.IF_ELSE,
+        label:"If / Else",
+        description:"Branch workflow based on a condition",
+        icon:GitBranchIcon
     }
 
 ]

@@ -19,6 +19,7 @@ import { GroqNode } from "@/features/executions/components/groq/node";
 import { TelegramNode } from "@/features/executions/components/telegram/node";
 import { XNode } from "@/features/executions/components/x/node";
 import { WorkdayNode } from "@/features/executions/components/workday/node";
+import { IfElseNode } from "@/features/triggers/components/if-else/node";
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -40,6 +41,7 @@ export const nodeComponents = {
     [NodeType.TELEGRAM]: TelegramNode,
     [NodeType.X]: XNode,
     [NodeType.WORKDAY]: WorkdayNode,
+    [NodeType.IF_ELSE]: IfElseNode,
     //change later
 
 

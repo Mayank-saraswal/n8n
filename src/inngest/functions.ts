@@ -89,7 +89,7 @@ export const executeWorkflow = inngest.createFunction(
       });
     });
 
-    const SortedNodes = await step.run("prepare-workflow", async () => {
+    const preparedWorkflow = await step.run("prepare-workflow", async () => {
       const workflow = await prisma.workflow.findUniqueOrThrow({
         where: {
           id: workflowId,
@@ -100,7 +100,10 @@ export const executeWorkflow = inngest.createFunction(
         },
 
       });
-      return topologicalSort(workflow.nodes, workflow.connections);
+      return {
+        sortedNodes: topologicalSort(workflow.nodes, workflow.connections),
+        connections: workflow.connections,
+      };
 
     })
 
@@ -119,7 +122,13 @@ export const executeWorkflow = inngest.createFunction(
     //Initialize the context with any initial data from the trigger 
     let context = event.data.initialData || {};
 
-    for (const node of SortedNodes) {
+    // Track nodes to skip due to IF_ELSE branching
+    const skippedNodes = new Set<string>();
+
+    for (const node of preparedWorkflow.sortedNodes) {
+      // Skip nodes on non-taken branches
+      if (skippedNodes.has(node.id)) continue;
+
       const executor = getExecutor(node.type as NodeType);
       context = await executor({
         data: node.data as Record<string, unknown>,
@@ -129,6 +138,20 @@ export const executeWorkflow = inngest.createFunction(
         step,
         publish
       })
+
+      // Handle IF_ELSE branching: skip nodes on the non-taken branch
+      if (node.type === NodeType.IF_ELSE) {
+        const branch = (context as Record<string, unknown>).branch as string | undefined;
+        if (branch) {
+          // Find connections from this node that DON'T match the taken branch
+          const nonTakenConnections = preparedWorkflow.connections.filter(
+            (c) => c.fromNodeId === node.id && c.fromOutput !== `source-${branch}`
+          );
+          for (const conn of nonTakenConnections) {
+            skippedNodes.add(conn.toNodeId);
+          }
+        }
+      }
     }
 
     await step.run("update-execution", async () => {
