@@ -76,7 +76,7 @@ export async function GET(
             workflowId: webhookId,
             initialData: {
                 webhook: {
-                    body: queryParams,
+                    body: null,
                     headers,
                     method: "GET",
                     queryParams,
