@@ -21,7 +21,7 @@ export const credentialsRouter = createTRPCRouter({
         .mutation(({ ctx, input }) => {
             const { name, value, type } = input;
 
-            return prisma.credenial.create({
+            return prisma.credential.create({
                 data: {
                     name,
                     userId: ctx.auth.user.id,
@@ -35,7 +35,7 @@ export const credentialsRouter = createTRPCRouter({
             id: z.string()
         }))
         .mutation(async ({ ctx, input }) => {
-            return prisma.credenial.delete({
+            return prisma.credential.delete({
                 where: {
                     id: input.id,
                     userId: ctx.auth.user.id,
@@ -57,13 +57,13 @@ export const credentialsRouter = createTRPCRouter({
         }))
         .mutation(async ({ ctx, input }) => {
             const { name, id, type, value } = input
-            const credenial = await prisma.credenial.findUniqueOrThrow({
+            const credential = await prisma.credential.findUniqueOrThrow({
                 where: {
                     id,
                     userId: ctx.auth.user.id,
                 },
             });
-            return prisma.credenial.update({
+            return prisma.credential.update({
                 where: {
                     id,
                     userId: ctx.auth.user.id,
@@ -83,7 +83,7 @@ export const credentialsRouter = createTRPCRouter({
             id: z.string()
         }))
         .query(({ ctx, input }) => {
-            return prisma.credenial.findUniqueOrThrow({
+            return prisma.credential.findUniqueOrThrow({
                 where: {
                     id: input.id,
                     userId: ctx.auth.user.id,
@@ -101,7 +101,7 @@ export const credentialsRouter = createTRPCRouter({
         .query(async ({ ctx, input }) => {
             const { page, pageSize, search } = input
             const [items, totalCount] = await Promise.all([
-                prisma.credenial.findMany({
+                prisma.credential.findMany({
                     skip: (page - 1) * pageSize,
                     take: pageSize,
                     where: {
@@ -117,7 +117,7 @@ export const credentialsRouter = createTRPCRouter({
 
                 }),
 
-                prisma.credenial.count({
+                prisma.credential.count({
 
                     where: {
                         userId: ctx.auth.user.id,
@@ -154,7 +154,7 @@ export const credentialsRouter = createTRPCRouter({
         )
         .query(({ ctx, input }) => {
             const { type } = input;
-            return prisma.credenial.findMany({
+            return prisma.credential.findMany({
                 where: {
                     userId: ctx.auth.user.id,
 

@@ -7,7 +7,7 @@ import { EntityContainer } from "@/components/entity-components";
 import { useRouter } from "next/navigation";
 import { useCredentialsParams } from "../hooks/use-credentials-params";
 import { useEntitySearch } from "@/hooks/use-entity-search";
-import type { Credenial } from "@/generated/prisma";
+import type { Credential } from "@/generated/prisma";
 import { CredentialType } from "@/generated/prisma";
 import { formatDistanceToNow } from "date-fns"
 import Image from "next/image";
@@ -139,11 +139,12 @@ const credentialsLogos: Record<CredentialType, string> = {
   [CredentialType.PERPLEXITY]: "/logos/perplexity.svg",
   [CredentialType.XAI]: "/logos/xai.svg",
   [CredentialType.GROQ]: "/logos/groq.svg",
+  [CredentialType.GMAIL]: "/logos/gmail.svg",
 }
 
 export const CredentialsItem = ({
   data,
-}: { data: Credenial }) => {
+}: { data: Credential }) => {
 
   const RemoveCredentials = useRemoveCredential()
   const handleRemove = () => {
