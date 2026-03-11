@@ -80,13 +80,15 @@ model workflow {
   id   String @id @default(cuid())
   name String
 
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @default(now()) @updatedAt
-  nodes       Node[]
-  connections Connection[]
-  executions  Execution[]
-  userId      String
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @default(now()) @updatedAt
+  nodes           Node[]
+  connections     Connection[]
+  executions      Execution[]
+  webhookTrigger  WebhookTrigger?
+  scheduleTrigger ScheduleTrigger?
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum NodeType {
@@ -95,6 +97,8 @@ enum NodeType {
   HTTP_REQUEST
   GOOGLE_FORM_TRIGGER
   STRIPE_TRIGGER
+  WEBHOOK_TRIGGER
+  SCHEDULE_TRIGGER
   ANTHROPIC
   GEMINI
   OPENAI
@@ -107,6 +111,46 @@ enum NodeType {
   TELEGRAM
   X
   WORKDAY
+}
+
+enum HttpMethod {
+  GET
+  POST
+  PUT
+  PATCH
+}
+
+model WebhookTrigger {
+  id          String     @id @default(cuid())
+  workflowId  String     @unique
+  webhookId   String     @unique @default(uuid())
+  secretToken String
+  isActive    Boolean    @default(true)
+  httpMethod  HttpMethod @default(POST)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  workflow    workflow   @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@index([workflowId])
+}
+
+model ScheduleTrigger {
+  id                String    @id @default(cuid())
+  workflowId        String    @unique
+  cronExpression    String
+  timezone          String    @default("UTC")
+  isActive          Boolean   @default(true)
+  inngestFunctionId String    @unique
+  lastRunAt         DateTime?
+  nextRunAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  workflow          workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
 }
 
 model Credenial {
