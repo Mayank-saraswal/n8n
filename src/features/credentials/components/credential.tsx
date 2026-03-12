@@ -92,7 +92,7 @@ const credentialTypeOptions = [
     {
         value: CredentialType.GOOGLE_SHEETS,
         label: "Google Sheets",
-        logo: "/logos/google-sheets.svg"
+        logo: "/logos/googlesheets.svg"
     },
 
 ]
