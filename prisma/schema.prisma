@@ -92,6 +92,7 @@ model workflow {
   ifElseNodes     IfElseNode[]
   gmailNodes      GmailNode[]
   setVariableNodes SetVariableNode[]
+  googleSheetsNodes GoogleSheetsNode[]
   userId          String
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -119,6 +120,7 @@ enum NodeType {
   IF_ELSE
   GMAIL
   SET_VARIABLE
+  GOOGLE_SHEETS
 }
 
 enum HttpMethod {
@@ -185,6 +187,7 @@ enum CredentialType {
   XAI
   GROQ
   GMAIL
+  GOOGLE_SHEETS
 }
 
 model Node {
@@ -305,6 +308,30 @@ model SetVariableNode {
   pairs      Json     // stores array of {key: string, value: string}
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+enum GoogleSheetsOp {
+  APPEND_ROW
+  READ_ROWS
+}
+
+model GoogleSheetsNode {
+  id              String            @id @default(cuid())
+  nodeId          String            @unique
+  workflowId      String
+  operation       GoogleSheetsOp    @default(APPEND_ROW)
+  spreadsheetId   String            @default("")
+  sheetName       String            @default("Sheet1")
+  range           String            @default("A:Z")
+  rowData         Json              @default("[]")
+  credentialId    String            @default("")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 

@@ -24,6 +24,7 @@ import { workdayChannel } from "./channels/workday";
 import { webhookTriggerChannel } from "./channels/webhook-trigger";
 import { scheduleTriggerChannel } from "./channels/schedule-trigger";
 import { setVariableChannel } from "./channels/set-variable";
+import { googleSheetsChannel } from "./channels/google-sheets";
 
 
 
@@ -69,7 +70,8 @@ export const executeWorkflow = inngest.createFunction(
       workdayChannel(),
       webhookTriggerChannel(),
       scheduleTriggerChannel(),
-      setVariableChannel()
+      setVariableChannel(),
+      googleSheetsChannel()
 
     ]
   },
