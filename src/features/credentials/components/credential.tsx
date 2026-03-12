@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,11 @@ const credentialTypeOptions = [
         label: "Gmail",
         logo: "/logos/gmail.svg"
     },
+    {
+        value: CredentialType.GOOGLE_SHEETS,
+        label: "Google Sheets",
+        logo: "/logos/google-sheets.svg"
+    },
 
 ]
 
@@ -122,6 +128,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
 
     const watchType = form.watch("type")
     const isGmail = watchType === CredentialType.GMAIL
+    const isGoogleSheets = watchType === CredentialType.GOOGLE_SHEETS
 
     const onSubmit = async (values: FormValues) => {
         let submitValues = { ...values }
@@ -200,6 +207,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                 // Set a placeholder value for Gmail so validation passes
                                                 if (val === CredentialType.GMAIL) {
                                                     form.setValue("value", "gmail-credential")
+                                                } else if (val === CredentialType.GOOGLE_SHEETS) {
+                                                    form.setValue("value", "")
                                                 } else {
                                                     if (form.getValues("value") === "gmail-credential") {
                                                         form.setValue("value", "")
@@ -271,6 +280,37 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                         )}
                                     />
                                 </>
+                            ) : isGoogleSheets ? (
+                                <FormField
+                                    control={form.control}
+                                    name="value"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Service Account JSON</FormLabel>
+                                            <FormControl>
+                                                <Textarea
+                                                    placeholder='{"refreshToken": "1//0...", ...}'
+                                                    rows={6}
+                                                    className="font-mono text-xs"
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <FormDescription>
+                                                Paste the JSON containing your refresh token from{" "}
+                                                <a
+                                                    href="https://developers.google.com/oauthplayground"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary underline"
+                                                >
+                                                    OAuth Playground
+                                                </a>
+                                                {" "}— select &quot;Google Sheets API v4&quot; scope
+                                            </FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
                             ) : (
                                 <FormField
                                     control={form.control}
