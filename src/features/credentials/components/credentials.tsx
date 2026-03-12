@@ -141,6 +141,7 @@ const credentialsLogos: Record<CredentialType, string> = {
   [CredentialType.GROQ]: "/logos/groq.svg",
   [CredentialType.GMAIL]: "/logos/gmail.svg",
   [CredentialType.GOOGLE_SHEETS]: "/logos/google-sheets.svg",
+  [CredentialType.GOOGLE_DRIVE]: "/logos/google-drive.svg",
 }
 
 export const CredentialsItem = ({

@@ -93,6 +93,7 @@ model workflow {
   gmailNodes      GmailNode[]
   setVariableNodes SetVariableNode[]
   googleSheetsNodes GoogleSheetsNode[]
+  googleDriveNodes GoogleDriveNode[]
   userId          String
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -121,6 +122,7 @@ enum NodeType {
   GMAIL
   SET_VARIABLE
   GOOGLE_SHEETS
+  GOOGLE_DRIVE
 }
 
 enum HttpMethod {
@@ -188,6 +190,7 @@ enum CredentialType {
   GROQ
   GMAIL
   GOOGLE_SHEETS
+  GOOGLE_DRIVE
 }
 
 model Node {
@@ -332,6 +335,34 @@ model GoogleSheetsNode {
   credentialId    String            @default("")
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
+
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+enum GoogleDriveOperation {
+  UPLOAD_FILE
+  DOWNLOAD_FILE
+  LIST_FILES
+  CREATE_FOLDER
+}
+
+model GoogleDriveNode {
+  id            String               @id @default(cuid())
+  nodeId        String               @unique
+  workflowId    String
+  credentialId  String?
+  operation     GoogleDriveOperation @default(UPLOAD_FILE)
+  folderId      String?
+  fileId        String?
+  fileName      String?
+  mimeType      String?
+  query         String?
+  maxResults    Int                  @default(10)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
