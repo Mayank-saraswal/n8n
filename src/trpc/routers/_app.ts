@@ -12,6 +12,7 @@ import { webhookTriggerRouter } from '@/server/routers/webhook-trigger.router';
 import { scheduleTriggerRouter } from '@/server/routers/schedule-trigger.router';
 import { ifElseRouter } from '@/server/routers/if-else.router';
 import { gmailRouter } from '@/server/routers/gmail.router';
+import { setVariableRouter } from '@/server/routers/set-variable.router';
 import { usageRouter } from '@/server/routers/usage.router';
 export const appRouter = createTRPCRouter({
   workflows: workflowsRouter,
@@ -21,6 +22,7 @@ export const appRouter = createTRPCRouter({
   scheduleTrigger: scheduleTriggerRouter,
   ifElse: ifElseRouter,
   gmail: gmailRouter,
+  setVariable: setVariableRouter,
   usage: usageRouter,
 });
 // export type definition of API

@@ -91,6 +91,7 @@ model workflow {
   scheduleTrigger ScheduleTrigger?
   ifElseNodes     IfElseNode[]
   gmailNodes      GmailNode[]
+  setVariableNodes SetVariableNode[]
   userId          String
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -117,6 +118,7 @@ enum NodeType {
   WORKDAY
   IF_ELSE
   GMAIL
+  SET_VARIABLE
 }
 
 enum HttpMethod {
@@ -291,6 +293,20 @@ model GmailNode {
   updatedAt    DateTime @updatedAt
 
   workflow     workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+model SetVariableNode {
+  id         String   @id @default(cuid())
+  nodeId     String   @unique
+  workflowId String
+  pairs      Json     // stores array of {key: string, value: string}
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@index([workflowId])
   @@index([nodeId])

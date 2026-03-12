@@ -1,7 +1,7 @@
 "use client"
 import { createId} from "@paralleldrive/cuid2"
 import { useReactFlow } from "@xyflow/react"
-import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon } from "lucide-react"
+import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, SlidersHorizontalIcon } from "lucide-react"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { 
@@ -155,6 +155,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Gmail",
         description:"Send an email via Gmail",
         icon:"/logos/gmail.svg"
+    },
+    {
+        type:NodeType.SET_VARIABLE,
+        label:"Set Variable",
+        description:"Extract and transform data",
+        icon:SlidersHorizontalIcon
     }
 
 ]
