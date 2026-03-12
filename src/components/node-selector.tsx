@@ -1,7 +1,7 @@
 "use client"
 import { createId} from "@paralleldrive/cuid2"
 import { useReactFlow } from "@xyflow/react"
-import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, SlidersHorizontalIcon, TableIcon, CodeIcon } from "lucide-react"
+import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, SlidersHorizontalIcon, TableIcon, HardDriveIcon } from "lucide-react"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { 
@@ -169,6 +169,10 @@ const executionNodes: NodeTypeOptions[] = [
         icon:"/logos/googlesheets.svg"
     },
     {
+        type:NodeType.GOOGLE_DRIVE,
+        label:"Google Drive",
+        description:"Upload, download, or list files",
+        icon:HardDriveIcon
         type:NodeType.CODE,
         label:"Code",
         description:"Run JavaScript to transform data",

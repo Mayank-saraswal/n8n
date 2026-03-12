@@ -94,6 +94,11 @@ const credentialTypeOptions = [
         label: "Google Sheets",
         logo: "/logos/googlesheets.svg"
     },
+    {
+        value: CredentialType.GOOGLE_DRIVE,
+        label: "Google Drive",
+        logo: "/logos/google-drive.svg"
+    },
 
 ]
 
@@ -129,6 +134,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const watchType = form.watch("type")
     const isGmail = watchType === CredentialType.GMAIL
     const isGoogleSheets = watchType === CredentialType.GOOGLE_SHEETS
+    const isGoogleDrive = watchType === CredentialType.GOOGLE_DRIVE
 
     const onSubmit = async (values: FormValues) => {
         let submitValues = { ...values }
@@ -207,7 +213,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                 // Set a placeholder value for Gmail so validation passes
                                                 if (val === CredentialType.GMAIL) {
                                                     form.setValue("value", "gmail-credential")
-                                                } else if (val === CredentialType.GOOGLE_SHEETS) {
+                                                } else if (val === CredentialType.GOOGLE_SHEETS || val === CredentialType.GOOGLE_DRIVE) {
                                                     form.setValue("value", "")
                                                 } else {
                                                     if (form.getValues("value") === "gmail-credential") {
@@ -280,7 +286,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                         )}
                                     />
                                 </>
-                            ) : isGoogleSheets ? (
+                            ) : isGoogleSheets || isGoogleDrive ? (
                                 <FormField
                                     control={form.control}
                                     name="value"
@@ -305,7 +311,9 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                 >
                                                     OAuth Playground
                                                 </a>
-                                                {" "}— select &quot;Google Sheets API v4&quot; scope
+                                                {" "}— select {isGoogleDrive
+                                                    ? "\"Google Drive API v3\" scope: https://www.googleapis.com/auth/drive"
+                                                    : "\"Google Sheets API v4\" scope"}
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>
