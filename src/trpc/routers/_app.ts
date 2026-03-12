@@ -14,6 +14,7 @@ import { ifElseRouter } from '@/server/routers/if-else.router';
 import { gmailRouter } from '@/server/routers/gmail.router';
 import { setVariableRouter } from '@/server/routers/set-variable.router';
 import { usageRouter } from '@/server/routers/usage.router';
+import { googleSheetsRouter } from '@/server/routers/google-sheets.router';
 export const appRouter = createTRPCRouter({
   workflows: workflowsRouter,
   credentials:credentialsRouter,
@@ -24,6 +25,7 @@ export const appRouter = createTRPCRouter({
   gmail: gmailRouter,
   setVariable: setVariableRouter,
   usage: usageRouter,
+  googleSheets: googleSheetsRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;

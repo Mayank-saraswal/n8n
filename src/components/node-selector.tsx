@@ -1,7 +1,7 @@
 "use client"
 import { createId} from "@paralleldrive/cuid2"
 import { useReactFlow } from "@xyflow/react"
-import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, SlidersHorizontalIcon } from "lucide-react"
+import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, SlidersHorizontalIcon, TableIcon } from "lucide-react"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { 
@@ -161,6 +161,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Set Variable",
         description:"Extract and transform data",
         icon:SlidersHorizontalIcon
+    },
+    {
+        type:NodeType.GOOGLE_SHEETS,
+        label:"Google Sheets",
+        description:"Append or read rows in a spreadsheet",
+        icon:TableIcon
     }
 
 ]
