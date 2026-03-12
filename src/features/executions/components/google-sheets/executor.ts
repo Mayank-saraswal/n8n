@@ -78,16 +78,22 @@ export const googleSheetsExecutor: NodeExecutor<GoogleSheetsData> = async ({
     )
   }
 
-  const { refreshToken } = JSON.parse(
-    decrypt(credential.value)
-  ) as GoogleSheetsCredential
+  let decrypted: GoogleSheetsCredential
+  const raw = decrypt(credential.value)
+  try {
+    decrypted = JSON.parse(raw) as GoogleSheetsCredential
+  } catch {
+    decrypted = { refreshToken: raw }
+  }
+
+  const { refreshToken } = decrypted
 
   if (!refreshToken) {
     await publish(
       googleSheetsChannel().status({ nodeId, status: "error" })
     )
     throw new NonRetriableError(
-      "Invalid Google Sheets credential. Refresh token is required."
+      'Google Sheets credential missing refreshToken. Store as JSON: {"refreshToken": "..."}'
     )
   }
 
