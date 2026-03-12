@@ -286,7 +286,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                     name="value"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Service Account JSON</FormLabel>
+                                            <FormLabel>OAuth Refresh Token JSON</FormLabel>
                                             <FormControl>
                                                 <Textarea
                                                     placeholder='{"refreshToken": "1//0...", ...}'
