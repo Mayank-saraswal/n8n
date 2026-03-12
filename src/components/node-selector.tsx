@@ -166,7 +166,7 @@ const executionNodes: NodeTypeOptions[] = [
         type:NodeType.GOOGLE_SHEETS,
         label:"Google Sheets",
         description:"Append or read rows in a spreadsheet",
-        icon:TableIcon
+        icon:"/logos/googlesheets.svg"
     }
 
 ]

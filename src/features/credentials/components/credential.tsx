@@ -88,6 +88,11 @@ const credentialTypeOptions = [
         label: "Gmail",
         logo: "/logos/gmail.svg"
     },
+    {
+        value: CredentialType.GOOGLE_SHEETS,
+        label: "Google Sheets",
+        logo: "/logos/googlesheets.svg"
+    },
 
 ]
 
