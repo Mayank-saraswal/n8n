@@ -157,7 +157,7 @@ export const credentialsRouter = createTRPCRouter({
             return prisma.credential.findMany({
                 where: {
                     userId: ctx.auth.user.id,
-
+                    type,
                 },
                 orderBy: {
                     updatedAt: "desc"
