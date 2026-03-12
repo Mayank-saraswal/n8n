@@ -8,6 +8,7 @@ import { Node, Edge } from "@xyflow/react"
 
 import { inngest } from "@/inngest/client";
 import { sendWorkflowExecution } from "@/inngest/utils";
+import { checkExecutionLimit, incrementExecutionCount } from "@/lib/execution-gate";
 
 
 
@@ -17,6 +18,8 @@ export const workflowsRouter = createTRPCRouter({
     execute: protectedProcedure
         .input(z.object({ id: z.string(), triggerData: z.record(z.string(), z.unknown()).optional() }))
         .mutation(async ({ input, ctx }) => {
+            await checkExecutionLimit(ctx.auth.user.id)
+
             const workflow = await prisma.workflow.findUniqueOrThrow({
                 where: {
                     id: input.id,
@@ -30,6 +33,9 @@ export const workflowsRouter = createTRPCRouter({
                 workflowId: input.id,
                 ...(input.triggerData ? { triggerData: input.triggerData } : {}),
             })
+
+            await incrementExecutionCount(ctx.auth.user.id)
+
             return workflow
         }),
     create: protectedProcedure.mutation(({ ctx }) => {
