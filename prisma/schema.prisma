@@ -26,6 +26,8 @@ model User {
   accounts      Account[]
   workflows     workflow[]
   credentials   Credential[]
+  executionCount     Int      @default(0)
+  executionResetAt   DateTime @default(now())
 
   @@unique([email])
   @@map("user")
