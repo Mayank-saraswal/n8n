@@ -59,6 +59,9 @@ export const codeExecutor: NodeExecutor = async ({
 
       // If user returned something, use it. Otherwise pass context through.
       if (output !== undefined && output !== null) {
+        if (Array.isArray(output)) {
+          return { ...context, codeOutput: output }
+        }
         if (typeof output === "object") {
           return { ...context, ...output }
         }

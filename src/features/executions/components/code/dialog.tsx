@@ -129,7 +129,7 @@ export const CodeDialog = ({
                 Available variables:
               </p>
               <p className="text-xs text-muted-foreground font-mono">
-                $input.body.* &nbsp; $input.headers.* &nbsp; $input.output.* &nbsp; $json (alias for $input)
+                $input.body.* &nbsp; $input.headers.* &nbsp; $json (alias for $input)
               </p>
             </div>
 

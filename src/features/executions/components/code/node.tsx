@@ -49,7 +49,10 @@ export const CodeNode = memo((props: NodeProps<CodeNodeType>) => {
   }
 
   const nodeData = props.data
-  const firstLine = nodeData?.code?.split("\n").find((l) => l.trim() && !l.trim().startsWith("//"))
+  const firstLine = nodeData?.code?.split("\n").find((l) => {
+    const trimmed = l.trim()
+    return trimmed && !trimmed.startsWith("//") && !trimmed.startsWith("/*")
+  })
   const description = firstLine
     ? firstLine.length > 30
       ? `${firstLine.slice(0, 30)}…`
