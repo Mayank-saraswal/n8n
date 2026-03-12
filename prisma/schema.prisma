@@ -15,19 +15,19 @@ datasource db {
 }
 
 model User {
-  id            String      @id
-  name          String
-  email         String
-  emailVerified Boolean     @default(false)
-  image         String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @default(now()) @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  workflows     workflow[]
-  credentials   Credential[]
-  executionCount     Int      @default(0)
-  executionResetAt   DateTime @default(now())
+  id               String       @id
+  name             String
+  email            String
+  emailVerified    Boolean      @default(false)
+  image            String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @default(now()) @updatedAt
+  sessions         Session[]
+  accounts         Account[]
+  workflows        workflow[]
+  credentials      Credential[]
+  executionCount   Int          @default(0)
+  executionResetAt DateTime     @default(now())
 
   @@unique([email])
   @@map("user")
@@ -82,21 +82,21 @@ model workflow {
   id   String @id @default(cuid())
   name String
 
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @default(now()) @updatedAt
-  nodes           Node[]
-  connections     Connection[]
-  executions      Execution[]
-  webhookTrigger  WebhookTrigger?
-  scheduleTrigger ScheduleTrigger?
-  ifElseNodes     IfElseNode[]
-  gmailNodes      GmailNode[]
-  setVariableNodes SetVariableNode[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @default(now()) @updatedAt
+  nodes             Node[]
+  connections       Connection[]
+  executions        Execution[]
+  webhookTrigger    WebhookTrigger?
+  scheduleTrigger   ScheduleTrigger?
+  ifElseNodes       IfElseNode[]
+  gmailNodes        GmailNode[]
+  setVariableNodes  SetVariableNode[]
   googleSheetsNodes GoogleSheetsNode[]
-  googleDriveNodes GoogleDriveNode[]
+  googleDriveNodes  GoogleDriveNode[]
   codeNodes         CodeNode[]
-  userId          String
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum NodeType {
@@ -144,7 +144,7 @@ model WebhookTrigger {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  workflow    workflow   @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@index([webhookId])
   @@index([workflowId])
@@ -162,7 +162,7 @@ model ScheduleTrigger {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  workflow          workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@index([workflowId])
 }
@@ -266,9 +266,9 @@ enum IfElseOperator {
 }
 
 model IfElseNode {
-  id         String         @id @default(cuid())
+  id         String @id @default(cuid())
   workflowId String
-  nodeId     String         @unique
+  nodeId     String @unique
 
   // Condition configuration
   field    String         @default("")
@@ -286,21 +286,21 @@ model IfElseNode {
 }
 
 model GmailNode {
-  id           String   @id @default(cuid())
+  id           String @id @default(cuid())
   workflowId   String
-  nodeId       String   @unique
+  nodeId       String @unique
   credentialId String
 
   // Email fields — support template variables like {{body.name}}
-  to           String   @default("")
-  subject      String   @default("")
-  body         String   @default("") @db.Text
-  isHtml       Boolean  @default(false)
+  to      String  @default("")
+  subject String  @default("")
+  body    String  @default("") @db.Text
+  isHtml  Boolean @default(false)
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  workflow     workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@index([workflowId])
   @@index([nodeId])
@@ -310,7 +310,7 @@ model SetVariableNode {
   id         String   @id @default(cuid())
   nodeId     String   @unique
   workflowId String
-  pairs      Json     // stores array of {key: string, value: string}
+  pairs      Json // stores array of {key: string, value: string}
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -326,17 +326,17 @@ enum GoogleSheetsOp {
 }
 
 model GoogleSheetsNode {
-  id              String            @id @default(cuid())
-  nodeId          String            @unique
-  workflowId      String
-  operation       GoogleSheetsOp    @default(APPEND_ROW)
-  spreadsheetId   String            @default("")
-  sheetName       String            @default("Sheet1")
-  range           String            @default("A:Z")
-  rowData         Json              @default("[]")
-  credentialId    String            @default("")
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id            String         @id @default(cuid())
+  nodeId        String         @unique
+  workflowId    String
+  operation     GoogleSheetsOp @default(APPEND_ROW)
+  spreadsheetId String         @default("")
+  sheetName     String         @default("Sheet1")
+  range         String         @default("A:Z")
+  rowData       Json           @default("[]")
+  credentialId  String         @default("")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
@@ -352,19 +352,22 @@ enum GoogleDriveOperation {
 }
 
 model GoogleDriveNode {
-  id            String               @id @default(cuid())
-  nodeId        String               @unique
-  workflowId    String
-  credentialId  String?
-  operation     GoogleDriveOperation @default(UPLOAD_FILE)
-  folderId      String?
-  fileId        String?
-  fileName      String?
-  mimeType      String?
-  query         String?
-  maxResults    Int                  @default(10)
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  id           String               @id @default(cuid())
+  nodeId       String               @unique
+  workflowId   String
+  credentialId String?
+  operation    GoogleDriveOperation @default(UPLOAD_FILE)
+  folderId     String?
+  fileId       String?
+  fileName     String?
+  mimeType     String?
+  query        String?
+  maxResults   Int                  @default(10)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  workflow     workflow             @relation(fields: [workflowId], references: [id])
+}
+
 model CodeNode {
   id         String   @id @default(cuid())
   nodeId     String   @unique

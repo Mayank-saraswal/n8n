@@ -74,7 +74,7 @@ export const executeWorkflow = inngest.createFunction(
       scheduleTriggerChannel(),
       setVariableChannel(),
       googleSheetsChannel(),
-      googleDriveChannel()
+      googleDriveChannel(),
       codeChannel()
 
     ]
