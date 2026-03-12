@@ -23,6 +23,7 @@ import { xChannel } from "./channels/x";
 import { workdayChannel } from "./channels/workday";
 import { webhookTriggerChannel } from "./channels/webhook-trigger";
 import { scheduleTriggerChannel } from "./channels/schedule-trigger";
+import { setVariableChannel } from "./channels/set-variable";
 
 
 
@@ -67,7 +68,8 @@ export const executeWorkflow = inngest.createFunction(
       xChannel(),
       workdayChannel(),
       webhookTriggerChannel(),
-      scheduleTriggerChannel()
+      scheduleTriggerChannel(),
+      setVariableChannel()
 
     ]
   },
