@@ -3,7 +3,7 @@ import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-q
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useWorkflowParams } from "./use-workflows-params";
-
+import { useQueryClient } from "@tanstack/react-query"
 
 
 
@@ -127,7 +127,7 @@ export const useUpdateWorkflow = ()=>{
 
 export const useExecuteWorkflow = ()=>{
     
-    
+    const queryClient = useQueryClient()
     const trpc = useTRPC()
     return useMutation(
         
@@ -135,7 +135,9 @@ export const useExecuteWorkflow = ()=>{
         onSuccess: (data)=>{
            toast.success(`Workflow "${data.name}" executed`)
            
-    
+           queryClient.invalidateQueries(
+            trpc.usage.getMyUsage.queryOptions()
+           )
         },
         onError: (error)=>{
             toast.error(`Failed to execute workflow: ${error.message}`)
