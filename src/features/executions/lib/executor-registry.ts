@@ -22,6 +22,7 @@ import { ifElseExecutor } from "@/features/triggers/components/if-else/executor"
 import { gmailExecutor } from "../components/gmail/executor";
 import { setVariableExecutor } from "../components/set-variable/executor";
 import { googleSheetsExecutor } from "../components/google-sheets/executor";
+import { codeExecutor } from "../components/code/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -47,6 +48,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.GMAIL]: gmailExecutor,
     [NodeType.SET_VARIABLE]: setVariableExecutor,
     [NodeType.GOOGLE_SHEETS]: googleSheetsExecutor,
+    [NodeType.CODE]: codeExecutor,
 
 }
 

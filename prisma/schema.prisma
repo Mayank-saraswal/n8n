@@ -93,6 +93,7 @@ model workflow {
   gmailNodes      GmailNode[]
   setVariableNodes SetVariableNode[]
   googleSheetsNodes GoogleSheetsNode[]
+  codeNodes         CodeNode[]
   userId          String
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -121,6 +122,7 @@ enum NodeType {
   GMAIL
   SET_VARIABLE
   GOOGLE_SHEETS
+  CODE
 }
 
 enum HttpMethod {
@@ -332,6 +334,20 @@ model GoogleSheetsNode {
   credentialId    String            @default("")
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
+
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+model CodeNode {
+  id         String   @id @default(cuid())
+  nodeId     String   @unique
+  workflowId String
+  code       String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
