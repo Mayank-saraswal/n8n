@@ -166,13 +166,14 @@ const executionNodes: NodeTypeOptions[] = [
         type:NodeType.GOOGLE_SHEETS,
         label:"Google Sheets",
         description:"Append or read rows in a spreadsheet",
-        icon:TableIcon
+        icon:"/logos/googlesheets.svg"
     },
     {
         type:NodeType.CODE,
         label:"Code",
         description:"Run JavaScript to transform data",
         icon:CodeIcon
+        icon:"/logos/googlesheets.svg"
     }
 
 ]
