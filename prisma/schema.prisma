@@ -94,6 +94,7 @@ model workflow {
   setVariableNodes SetVariableNode[]
   googleSheetsNodes GoogleSheetsNode[]
   googleDriveNodes GoogleDriveNode[]
+  codeNodes         CodeNode[]
   userId          String
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -123,6 +124,7 @@ enum NodeType {
   SET_VARIABLE
   GOOGLE_SHEETS
   GOOGLE_DRIVE
+  CODE
 }
 
 enum HttpMethod {
@@ -363,6 +365,13 @@ model GoogleDriveNode {
   maxResults    Int                  @default(10)
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
+model CodeNode {
+  id         String   @id @default(cuid())
+  nodeId     String   @unique
+  workflowId String
+  code       String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 

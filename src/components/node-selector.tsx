@@ -173,6 +173,11 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Google Drive",
         description:"Upload, download, or list files",
         icon:HardDriveIcon
+        type:NodeType.CODE,
+        label:"Code",
+        description:"Run JavaScript to transform data",
+        icon:CodeIcon
+        icon:"/logos/googlesheets.svg"
     }
 
 ]
