@@ -1,7 +1,7 @@
 "use client"
 import { createId} from "@paralleldrive/cuid2"
 import { useReactFlow } from "@xyflow/react"
-import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, SlidersHorizontalIcon, TableIcon } from "lucide-react"
+import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, SlidersHorizontalIcon, TableIcon, CodeIcon } from "lucide-react"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { 
@@ -167,6 +167,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Google Sheets",
         description:"Append or read rows in a spreadsheet",
         icon:TableIcon
+    },
+    {
+        type:NodeType.CODE,
+        label:"Code",
+        description:"Run JavaScript to transform data",
+        icon:CodeIcon
     }
 
 ]

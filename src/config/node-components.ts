@@ -23,6 +23,7 @@ import { IfElseNode } from "@/features/triggers/components/if-else/node";
 import { GmailNode } from "@/features/executions/components/gmail/node";
 import { SetVariableNode } from "@/features/executions/components/set-variable/node";
 import { GoogleSheetsNode } from "@/features/executions/components/google-sheets/node";
+import { CodeNode } from "@/features/executions/components/code/node";
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -48,6 +49,7 @@ export const nodeComponents = {
     [NodeType.GMAIL]: GmailNode,
     [NodeType.SET_VARIABLE]: SetVariableNode,
     [NodeType.GOOGLE_SHEETS]: GoogleSheetsNode,
+    [NodeType.CODE]: CodeNode,
     //change later
 
 
