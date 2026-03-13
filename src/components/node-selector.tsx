@@ -1,7 +1,7 @@
 "use client"
 import { createId} from "@paralleldrive/cuid2"
 import { useReactFlow } from "@xyflow/react"
-import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, SlidersHorizontalIcon, TableIcon, HardDriveIcon, CodeIcon, MessageCircleIcon , RepeatIcon} from "lucide-react"
+import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, SlidersHorizontalIcon, TableIcon, HardDriveIcon, CodeIcon, MessageCircleIcon , RepeatIcon, BookOpenIcon} from "lucide-react"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { 
@@ -190,6 +190,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Loop",
         description:"Iterate over an array of items",
         icon:RepeatIcon
+    },
+    {
+        type:NodeType.NOTION,
+        label:"Notion",
+        description:"Interact with Notion databases, pages, and blocks",
+        icon:"/logos/notion.svg"
     }
 
 ]

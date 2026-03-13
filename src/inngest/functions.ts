@@ -29,6 +29,7 @@ import { googleDriveChannel } from "./channels/google-drive";
 import { whatsappChannel } from "./channels/whatsapp"
 import { codeChannel } from "./channels/code";
 import { loopChannel } from "./channels/loop";
+import { notionChannel } from "./channels/notion";
 
 
 
@@ -79,7 +80,8 @@ export const executeWorkflow = inngest.createFunction(
       googleDriveChannel(),
       codeChannel(),
       whatsappChannel(),
-      loopChannel()
+      loopChannel(),
+      notionChannel()
 
     ]
   },
