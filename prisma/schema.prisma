@@ -96,6 +96,7 @@ model workflow {
   googleDriveNodes  GoogleDriveNode[]
   codeNodes         CodeNode[]
   whatsAppNodes     WhatsAppNode[]
+  loopNodes         LoopNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -127,6 +128,7 @@ enum NodeType {
   GOOGLE_DRIVE
   CODE
   WHATSAPP
+  LOOP
 }
 
 enum HttpMethod {
@@ -410,6 +412,15 @@ model WhatsAppNode {
   reactionMsgId  String             @default("")
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
+model LoopNode {
+  id            String   @id @default(cuid())
+  nodeId        String   @unique
+  workflowId    String
+  inputPath     String   @default("googleSheets.rows")
+  itemVariable  String   @default("item")
+  maxIterations Int      @default(100)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 

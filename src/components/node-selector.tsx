@@ -173,7 +173,6 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Google Drive",
         description:"Upload, download, or list files",
         icon:HardDriveIcon
-        
     },
     {type:NodeType.CODE,
         label:"Code",
@@ -185,6 +184,10 @@ const executionNodes: NodeTypeOptions[] = [
         label:"WhatsApp",
         description:"Send WhatsApp messages via Meta API",
         icon:MessageCircleIcon
+        type:NodeType.LOOP,
+        label:"Loop",
+        description:"Iterate over an array of items",
+        icon:RepeatIcon
     }
 
 ]

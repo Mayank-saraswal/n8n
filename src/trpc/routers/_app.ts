@@ -18,6 +18,7 @@ import { googleSheetsRouter } from '@/server/routers/google-sheets.router';
 import { googleDriveRouter } from '@/server/routers/google-drive.router';
 import { whatsappRouter } from '@/server/routers/whatsapp.router';
 import { codeRouter } from '@/server/routers/code.router';
+import { loopRouter } from '@/server/routers/loop.router';
 export const appRouter = createTRPCRouter({
   workflows: workflowsRouter,
   credentials:credentialsRouter,
@@ -32,6 +33,7 @@ export const appRouter = createTRPCRouter({
   googleDrive: googleDriveRouter,
   code: codeRouter,
   whatsapp: whatsappRouter,
+  loop: loopRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;
