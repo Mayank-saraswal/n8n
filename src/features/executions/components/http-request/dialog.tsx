@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 const keyValuePairSchema = z.object({
@@ -549,11 +550,9 @@ export const HttpRequestDialog = ({
               render={({ field }) => (
                 <FormItem className="flex items-center gap-3">
                   <FormControl>
-                    <input
-                      type="checkbox"
+                    <Switch
                       checked={field.value}
-                      onChange={field.onChange}
-                      className="h-4 w-4 rounded border-gray-300"
+                      onCheckedChange={field.onChange}
                     />
                   </FormControl>
                   <FormLabel className="!mt-0">Follow Redirects</FormLabel>

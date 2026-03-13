@@ -5,7 +5,7 @@ import { httpRequestChannel } from "@/inngest/channels/http-request";
 import { inngest } from "@/inngest/client";
 
 export type HttpRequestToken = Realtime.Token<
-  typeof httpRequestChannel,
+  ReturnType<typeof httpRequestChannel>,
   ["status"]
 >;
 

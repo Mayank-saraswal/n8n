@@ -46,7 +46,7 @@ function buildAuthHeaders(
     case "basicAuth": {
       const user = resolveTemplate(data.basicAuthUser ?? "", ctx);
       const pass = resolveTemplate(data.basicAuthPassword ?? "", ctx);
-      headers.Authorization = `Basic ${btoa(`${user}:${pass}`)}`;
+      headers.Authorization = `Basic ${Buffer.from(`${user}:${pass}`).toString("base64")}`;
       break;
     }
     case "bearerToken": {
@@ -166,7 +166,16 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
         switch (contentType) {
           case "json": {
             const resolved = resolveTemplate(data.body || "{}", context);
-            JSON.parse(resolved); // validate JSON
+            try {
+              JSON.parse(resolved);
+            } catch {
+              throw new NonRetriableError(
+                "HTTP Request: Invalid JSON in request body. " +
+                  "Check your body template resolves to valid JSON. " +
+                  "Body received: " +
+                  resolved.slice(0, 200),
+              );
+            }
             options.body = resolved;
             headers["Content-Type"] = "application/json";
             break;
