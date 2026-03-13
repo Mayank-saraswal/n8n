@@ -190,6 +190,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Loop",
         description:"Iterate over an array of items",
         icon:RepeatIcon
+    },
+    {
+        type:NodeType.NOTION,
+        label:"Notion",
+        description:"Interact with Notion databases, pages, and blocks",
+        icon:"/logos/notion.svg"
     }
 
 ]

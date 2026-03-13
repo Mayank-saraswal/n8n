@@ -27,6 +27,7 @@ import { GoogleDriveNode } from "@/features/executions/components/google-drive/n
 import { WhatsAppNode } from "@/features/executions/components/whatsapp/node";
 import { CodeNode } from "@/features/executions/components/code/node";
 import { LoopNode } from "@/features/executions/components/loop/node";
+import { NotionNode } from "@/features/executions/components/notion/node";
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -56,6 +57,7 @@ export const nodeComponents = {
     [NodeType.CODE]: CodeNode,
     [NodeType.WHATSAPP]: WhatsAppNode,
     [NodeType.LOOP]: LoopNode,
+    [NodeType.NOTION]: NotionNode,
     //change later
 
 

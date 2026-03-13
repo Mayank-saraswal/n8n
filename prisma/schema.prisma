@@ -97,6 +97,7 @@ model workflow {
   codeNodes         CodeNode[]
   whatsAppNodes     WhatsAppNode[]
   loopNodes         LoopNode[]
+  notionNodes       NotionNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -129,6 +130,7 @@ enum NodeType {
   CODE
   WHATSAPP
   LOOP
+  NOTION
 }
 
 enum HttpMethod {
@@ -198,6 +200,7 @@ enum CredentialType {
   GOOGLE_SHEETS
   GOOGLE_DRIVE
   WHATSAPP
+  NOTION
 }
 
 model Node {
@@ -424,6 +427,45 @@ model LoopNode {
   maxIterations Int      @default(100)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+enum NotionOperation {
+  QUERY_DATABASE
+  CREATE_DATABASE_PAGE
+  UPDATE_DATABASE_PAGE
+  GET_PAGE
+  ARCHIVE_PAGE
+  APPEND_BLOCK
+  GET_BLOCK_CHILDREN
+  SEARCH
+  GET_DATABASE
+  GET_USER
+  GET_USERS
+}
+
+model NotionNode {
+  id             String          @id @default(cuid())
+  nodeId         String          @unique
+  workflowId     String
+  credentialId   String?
+  operation      NotionOperation @default(QUERY_DATABASE)
+  databaseId     String          @default("")
+  pageId         String          @default("")
+  blockContent   String          @default("") @db.Text
+  searchQuery    String          @default("")
+  filterJson     String          @default("{}") @db.Text
+  sortsJson      String          @default("[]") @db.Text
+  propertiesJson String          @default("{}") @db.Text
+  notionUserId   String          @default("")
+  pageSize       Int             @default(100)
+  startCursor    String          @default("")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 

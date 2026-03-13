@@ -1,0 +1,368 @@
+import { NonRetriableError } from "inngest"
+import type { NodeExecutor } from "@/features/executions/types"
+import prisma from "@/lib/db"
+import { decrypt } from "@/lib/encryption"
+import { resolveTemplate } from "@/features/executions/lib/template-resolver"
+import { notionChannel } from "@/inngest/channels/notion"
+import { NotionOperation } from "@/generated/prisma"
+
+interface NotionCredential {
+  apiKey: string
+}
+
+type NotionData = {
+  nodeId?: string
+}
+
+const NOTION_API_BASE = "https://api.notion.com/v1"
+const NOTION_VERSION = "2022-06-28"
+
+async function notionRequest(
+  method: string,
+  path: string,
+  apiKey: string,
+  body?: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const url = `${NOTION_API_BASE}${path}`
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`,
+    "Notion-Version": NOTION_VERSION,
+    "Content-Type": "application/json",
+  }
+
+  const response = await fetch(url, {
+    method,
+    headers,
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    const errorMsg =
+      (error as Record<string, string>)?.message ?? `HTTP ${response.status}`
+    throw new NonRetriableError(`Notion API error: ${errorMsg}`)
+  }
+
+  return (await response.json()) as Record<string, unknown>
+}
+
+export const notionExecutor: NodeExecutor<NotionData> = async ({
+  nodeId,
+  context,
+  step,
+  publish,
+  userId,
+}) => {
+  await publish(
+    notionChannel().status({
+      nodeId,
+      status: "loading",
+    })
+  )
+
+  // Step 1: Load config
+  const config = await step.run(`notion-${nodeId}-load-config`, async () => {
+    return prisma.notionNode.findUnique({ where: { nodeId } })
+  })
+
+  if (!config) {
+    await publish(
+      notionChannel().status({
+        nodeId,
+        status: "error",
+      })
+    )
+    throw new NonRetriableError(
+      "Notion node not configured. Open settings to configure."
+    )
+  }
+
+  // Step 2: Load and decrypt credential
+  const credential = await step.run(
+    `notion-${nodeId}-load-credential`,
+    async () => {
+      if (!config.credentialId) return null
+      return prisma.credential.findUnique({
+        where: {
+          id: config.credentialId,
+          userId,
+        },
+      })
+    }
+  )
+
+  if (!credential) {
+    await publish(
+      notionChannel().status({
+        nodeId,
+        status: "error",
+      })
+    )
+    throw new NonRetriableError(
+      "Notion credential not found. Please add a NOTION credential first."
+    )
+  }
+
+  const raw = decrypt(credential.value)
+  let creds: NotionCredential
+  try {
+    creds = JSON.parse(raw)
+  } catch {
+    await publish(
+      notionChannel().status({
+        nodeId,
+        status: "error",
+      })
+    )
+    throw new NonRetriableError(
+      'Invalid Notion credential format. Expected JSON: {"apiKey": "secret_..."}'
+    )
+  }
+
+  if (!creds.apiKey) {
+    await publish(
+      notionChannel().status({
+        nodeId,
+        status: "error",
+      })
+    )
+    throw new NonRetriableError("Notion credential missing apiKey")
+  }
+
+  // Step 3: Execute the operation
+  const result = await step.run(`notion-${nodeId}-execute`, async () => {
+    const databaseId = resolveTemplate(config.databaseId, context)
+    const pageId = resolveTemplate(config.pageId, context)
+    const searchQuery = resolveTemplate(config.searchQuery, context)
+    const blockContent = resolveTemplate(config.blockContent, context)
+    const notionUserId = resolveTemplate(config.notionUserId, context)
+    const startCursor = resolveTemplate(config.startCursor, context)
+
+    let filterObj: Record<string, unknown> = {}
+    try {
+      const resolved = resolveTemplate(config.filterJson, context)
+      filterObj = JSON.parse(resolved)
+    } catch {
+      console.warn(`[Notion] Failed to parse filterJson for node ${nodeId}`)
+    }
+
+    let sortsArr: unknown[] = []
+    try {
+      const resolved = resolveTemplate(config.sortsJson, context)
+      sortsArr = JSON.parse(resolved)
+    } catch {
+      console.warn(`[Notion] Failed to parse sortsJson for node ${nodeId}`)
+    }
+
+    let propertiesObj: Record<string, unknown> = {}
+    try {
+      const resolved = resolveTemplate(config.propertiesJson, context)
+      propertiesObj = JSON.parse(resolved)
+    } catch {
+      console.warn(`[Notion] Failed to parse propertiesJson for node ${nodeId}`)
+    }
+
+    let data: Record<string, unknown>
+
+    switch (config.operation) {
+      case NotionOperation.QUERY_DATABASE: {
+        if (!databaseId)
+          throw new NonRetriableError(
+            "Notion QUERY_DATABASE: 'databaseId' is required"
+          )
+        const body: Record<string, unknown> = {
+          page_size: config.pageSize,
+        }
+        if (Object.keys(filterObj).length > 0) body.filter = filterObj
+        if (sortsArr.length > 0) body.sorts = sortsArr
+        if (startCursor) body.start_cursor = startCursor
+        data = await notionRequest(
+          "POST",
+          `/databases/${databaseId}/query`,
+          creds.apiKey,
+          body
+        )
+        break
+      }
+
+      case NotionOperation.CREATE_DATABASE_PAGE: {
+        if (!databaseId)
+          throw new NonRetriableError(
+            "Notion CREATE_DATABASE_PAGE: 'databaseId' is required"
+          )
+        const body: Record<string, unknown> = {
+          parent: { database_id: databaseId },
+          properties: propertiesObj,
+        }
+        if (blockContent) {
+          try {
+            body.children = JSON.parse(blockContent)
+          } catch {
+            // treat as single paragraph
+            body.children = [
+              {
+                object: "block",
+                type: "paragraph",
+                paragraph: {
+                  rich_text: [{ type: "text", text: { content: blockContent } }],
+                },
+              },
+            ]
+          }
+        }
+        data = await notionRequest("POST", "/pages", creds.apiKey, body)
+        break
+      }
+
+      case NotionOperation.UPDATE_DATABASE_PAGE: {
+        if (!pageId)
+          throw new NonRetriableError(
+            "Notion UPDATE_DATABASE_PAGE: 'pageId' is required"
+          )
+        const body: Record<string, unknown> = {
+          properties: propertiesObj,
+        }
+        data = await notionRequest(
+          "PATCH",
+          `/pages/${pageId}`,
+          creds.apiKey,
+          body
+        )
+        break
+      }
+
+      case NotionOperation.GET_PAGE: {
+        if (!pageId)
+          throw new NonRetriableError(
+            "Notion GET_PAGE: 'pageId' is required"
+          )
+        data = await notionRequest("GET", `/pages/${pageId}`, creds.apiKey)
+        break
+      }
+
+      case NotionOperation.ARCHIVE_PAGE: {
+        if (!pageId)
+          throw new NonRetriableError(
+            "Notion ARCHIVE_PAGE: 'pageId' is required"
+          )
+        data = await notionRequest("PATCH", `/pages/${pageId}`, creds.apiKey, {
+          archived: true,
+        })
+        break
+      }
+
+      case NotionOperation.APPEND_BLOCK: {
+        if (!pageId)
+          throw new NonRetriableError(
+            "Notion APPEND_BLOCK: 'pageId' (block parent) is required"
+          )
+        if (!blockContent)
+          throw new NonRetriableError(
+            "Notion APPEND_BLOCK: 'blockContent' is required"
+          )
+        let children: unknown[]
+        try {
+          children = JSON.parse(blockContent)
+        } catch {
+          // treat as single paragraph
+          children = [
+            {
+              object: "block",
+              type: "paragraph",
+              paragraph: {
+                rich_text: [{ type: "text", text: { content: blockContent } }],
+              },
+            },
+          ]
+        }
+        data = await notionRequest(
+          "PATCH",
+          `/blocks/${pageId}/children`,
+          creds.apiKey,
+          { children }
+        )
+        break
+      }
+
+      case NotionOperation.GET_BLOCK_CHILDREN: {
+        if (!pageId)
+          throw new NonRetriableError(
+            "Notion GET_BLOCK_CHILDREN: 'pageId' (block ID) is required"
+          )
+        let path = `/blocks/${pageId}/children?page_size=${config.pageSize}`
+        if (startCursor) path += `&start_cursor=${startCursor}`
+        data = await notionRequest("GET", path, creds.apiKey)
+        break
+      }
+
+      case NotionOperation.SEARCH: {
+        const body: Record<string, unknown> = {
+          page_size: config.pageSize,
+        }
+        if (searchQuery) body.query = searchQuery
+        if (Object.keys(filterObj).length > 0) body.filter = filterObj
+        // Notion Search API only supports a single sort object, not an array
+        if (sortsArr.length > 0) body.sort = sortsArr[0]
+        if (startCursor) body.start_cursor = startCursor
+        data = await notionRequest("POST", "/search", creds.apiKey, body)
+        break
+      }
+
+      case NotionOperation.GET_DATABASE: {
+        if (!databaseId)
+          throw new NonRetriableError(
+            "Notion GET_DATABASE: 'databaseId' is required"
+          )
+        data = await notionRequest(
+          "GET",
+          `/databases/${databaseId}`,
+          creds.apiKey
+        )
+        break
+      }
+
+      case NotionOperation.GET_USER: {
+        if (!notionUserId)
+          throw new NonRetriableError(
+            "Notion GET_USER: 'userId' is required"
+          )
+        data = await notionRequest(
+          "GET",
+          `/users/${notionUserId}`,
+          creds.apiKey
+        )
+        break
+      }
+
+      case NotionOperation.GET_USERS: {
+        let path = `/users?page_size=${config.pageSize}`
+        if (startCursor) path += `&start_cursor=${startCursor}`
+        data = await notionRequest("GET", path, creds.apiKey)
+        break
+      }
+
+      default:
+        throw new NonRetriableError(
+          `Unknown Notion operation: ${config.operation}`
+        )
+    }
+
+    return {
+      ...context,
+      notion: {
+        operation: config.operation,
+        data,
+        timestamp: new Date().toISOString(),
+      },
+    }
+  })
+
+  await publish(
+    notionChannel().status({
+      nodeId,
+      status: "success",
+    })
+  )
+
+  return result as Record<string, unknown>
+}
