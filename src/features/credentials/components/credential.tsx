@@ -123,6 +123,11 @@ const credentialTypeOptions = [
         label: "WhatsApp",
         logo: "/logos/whatsapp.svg"
     },
+    {
+        value: CredentialType.NOTION,
+        label: "Notion",
+        logo: "/logos/notion.svg"
+    },
 
 ]
 

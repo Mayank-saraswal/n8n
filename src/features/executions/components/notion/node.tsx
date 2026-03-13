@@ -2,7 +2,7 @@
 import { useReactFlow, type Node, type NodeProps } from "@xyflow/react"
 import { memo, useState } from "react"
 import { BaseExecutionNode } from "../base-execution-node"
-import { BookOpen } from "lucide-react"
+
 import { NotionFormValues, NotionDialog } from "./dialog"
 import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-node-status"
 import { fetchNotionRealtimeToken } from "./actions"
@@ -101,7 +101,7 @@ export const NotionNode = memo((props: NodeProps<NotionNodeType>) => {
         name="Notion"
         id={props.id}
         status={nodeStatus}
-        icon={BookOpen}
+        icon="/logos/notion.svg"
         description={description}
         onSettings={handleOpenSettings}
         onDoubleClick={handleOpenSettings}
