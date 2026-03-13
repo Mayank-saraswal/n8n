@@ -95,9 +95,21 @@ export const loopExecutor: NodeExecutor = async ({
   const results: any[] = []
   const errors: Array<{ index: number; error: string }> = []
 
+  const executorReg = await getExecutorRegistry()
+
   // For each item, run ALL downstream nodes in order
   for (let i = 0; i < iterations; i++) {
     const item = inputArray[i]
+
+    const loopStep = new Proxy(step, {
+      get(target, prop, receiver) {
+        if (prop === 'run') {
+          return (id: string, fn: () => unknown) =>
+            target.run(`loop-i${i}-${id}`, fn)
+        }
+        return Reflect.get(target, prop, receiver)
+      },
+    }) as typeof step
 
     let itemContext: Record<string, unknown> = {
       ...context,
@@ -113,8 +125,6 @@ export const loopExecutor: NodeExecutor = async ({
       if (!downstreamNode) continue
 
       try {
-        // Lazy-load registry each time to avoid circular dep
-        const executorReg = await getExecutorRegistry()
         const executor = executorReg[downstreamNode.type as NodeType]
         if (!executor) continue
 
@@ -122,7 +132,7 @@ export const loopExecutor: NodeExecutor = async ({
           nodeId: downstreamNode.id,
           data: (downstreamNode.data ?? {}) as Record<string, unknown>,
           context: itemContext,
-          step,
+          step: loopStep,
           publish,
           userId,
           workflowNodes,
