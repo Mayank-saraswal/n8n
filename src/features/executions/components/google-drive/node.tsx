@@ -2,7 +2,7 @@
 import { useReactFlow, type Node, type NodeProps } from "@xyflow/react"
 import { memo, useState } from "react"
 import { BaseExecutionNode } from "../base-execution-node"
-import { HardDriveIcon } from "lucide-react"
+
 import { GoogleDriveFormValues, GoogleDriveDialog } from "./dialog"
 import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-node-status"
 import { fetchGoogleDriveRealtimeToken } from "./actions"
@@ -79,8 +79,8 @@ export const GoogleDriveNode = memo(
           name="Google Drive"
           id={props.id}
           status={nodeStatus}
-          icon={HardDriveIcon}
-          description={description}
+          icon="/logos/google-drive.svg"
+            description={description}
           onSettings={handleOpenSettings}
           onDoubleClick={handleOpenSettings}
         />
