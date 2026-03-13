@@ -25,6 +25,7 @@ import { SetVariableNode } from "@/features/executions/components/set-variable/n
 import { GoogleSheetsNode } from "@/features/executions/components/google-sheets/node";
 import { GoogleDriveNode } from "@/features/executions/components/google-drive/node";
 import { CodeNode } from "@/features/executions/components/code/node";
+import { LoopNode } from "@/features/executions/components/loop/node";
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -52,6 +53,7 @@ export const nodeComponents = {
     [NodeType.GOOGLE_SHEETS]: GoogleSheetsNode,
     [NodeType.GOOGLE_DRIVE]: GoogleDriveNode,
     [NodeType.CODE]: CodeNode,
+    [NodeType.LOOP]: LoopNode,
     //change later
 
 
