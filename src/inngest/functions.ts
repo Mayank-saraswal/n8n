@@ -26,6 +26,7 @@ import { scheduleTriggerChannel } from "./channels/schedule-trigger";
 import { setVariableChannel } from "./channels/set-variable";
 import { googleSheetsChannel } from "./channels/google-sheets";
 import { googleDriveChannel } from "./channels/google-drive";
+import { whatsappChannel } from "./channels/whatsapp"
 import { codeChannel } from "./channels/code";
 import { loopChannel } from "./channels/loop";
 
@@ -77,6 +78,7 @@ export const executeWorkflow = inngest.createFunction(
       googleSheetsChannel(),
       googleDriveChannel(),
       codeChannel(),
+      whatsappChannel()
       loopChannel()
 
     ]

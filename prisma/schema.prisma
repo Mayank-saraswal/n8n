@@ -95,6 +95,7 @@ model workflow {
   googleSheetsNodes GoogleSheetsNode[]
   googleDriveNodes  GoogleDriveNode[]
   codeNodes         CodeNode[]
+  whatsAppNodes     WhatsAppNode[]
   loopNodes         LoopNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -126,6 +127,7 @@ enum NodeType {
   GOOGLE_SHEETS
   GOOGLE_DRIVE
   CODE
+  WHATSAPP
   LOOP
 }
 
@@ -195,6 +197,7 @@ enum CredentialType {
   GMAIL
   GOOGLE_SHEETS
   GOOGLE_DRIVE
+  WHATSAPP
 }
 
 model Node {
@@ -384,6 +387,31 @@ model CodeNode {
   @@index([nodeId])
 }
 
+enum WhatsAppOperation {
+  SEND_TEXT
+  SEND_TEMPLATE
+  SEND_IMAGE
+  SEND_DOCUMENT
+  SEND_REACTION
+}
+
+model WhatsAppNode {
+  id             String             @id @default(cuid())
+  nodeId         String             @unique
+  workflowId     String
+  credentialId   String?
+  operation      WhatsAppOperation  @default(SEND_TEXT)
+  to             String             @default("")
+  body           String             @default("") @db.Text
+  templateName   String             @default("")
+  templateLang   String             @default("en_US")
+  templateParams String             @default("[]")
+  mediaUrl       String             @default("")
+  mediaCaption   String             @default("")
+  reactionEmoji  String             @default("")
+  reactionMsgId  String             @default("")
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 model LoopNode {
   id            String   @id @default(cuid())
   nodeId        String   @unique

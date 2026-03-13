@@ -23,6 +23,7 @@ import { gmailExecutor } from "../components/gmail/executor";
 import { setVariableExecutor } from "../components/set-variable/executor";
 import { googleSheetsExecutor } from "../components/google-sheets/executor";
 import { googleDriveExecutor } from "../components/google-drive/executor";
+import { whatsappExecutor } from "../components/whatsapp/executor";
 import { codeExecutor } from "../components/code/executor";
 import { loopExecutor } from "../components/loop/executor";
 
@@ -52,6 +53,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.GOOGLE_SHEETS]: googleSheetsExecutor,
     [NodeType.GOOGLE_DRIVE]: googleDriveExecutor,
     [NodeType.CODE]: codeExecutor,
+    [NodeType.WHATSAPP]: whatsappExecutor,
     [NodeType.LOOP]: loopExecutor,
 
 }
