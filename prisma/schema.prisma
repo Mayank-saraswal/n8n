@@ -396,22 +396,25 @@ enum WhatsAppOperation {
 }
 
 model WhatsAppNode {
-  id             String             @id @default(cuid())
-  nodeId         String             @unique
+  id             String            @id @default(cuid())
+  nodeId         String            @unique
   workflowId     String
   credentialId   String?
-  operation      WhatsAppOperation  @default(SEND_TEXT)
-  to             String             @default("")
-  body           String             @default("") @db.Text
-  templateName   String             @default("")
-  templateLang   String             @default("en_US")
-  templateParams String             @default("[]")
-  mediaUrl       String             @default("")
-  mediaCaption   String             @default("")
-  reactionEmoji  String             @default("")
-  reactionMsgId  String             @default("")
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  operation      WhatsAppOperation @default(SEND_TEXT)
+  to             String            @default("")
+  body           String            @default("") @db.Text
+  templateName   String            @default("")
+  templateLang   String            @default("en_US")
+  templateParams String            @default("[]")
+  mediaUrl       String            @default("")
+  mediaCaption   String            @default("")
+  reactionEmoji  String            @default("")
+  reactionMsgId  String            @default("")
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  workflow       workflow          @relation(fields: [workflowId], references: [id])
+}
+
 model LoopNode {
   id            String   @id @default(cuid())
   nodeId        String   @unique

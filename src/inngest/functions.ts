@@ -78,7 +78,7 @@ export const executeWorkflow = inngest.createFunction(
       googleSheetsChannel(),
       googleDriveChannel(),
       codeChannel(),
-      whatsappChannel()
+      whatsappChannel(),
       loopChannel()
 
     ]
