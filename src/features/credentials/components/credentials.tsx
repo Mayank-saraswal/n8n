@@ -142,6 +142,7 @@ const credentialsLogos: Record<CredentialType, string> = {
   [CredentialType.GMAIL]: "/logos/gmail.svg",
   [CredentialType.GOOGLE_SHEETS]: "/logos/google-sheets.svg",
   [CredentialType.GOOGLE_DRIVE]: "/logos/google-drive.svg",
+  [CredentialType.WHATSAPP]: "/logos/whatsapp.svg",
 }
 
 export const CredentialsItem = ({
