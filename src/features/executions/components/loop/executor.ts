@@ -84,11 +84,6 @@ export const loopExecutor: NodeExecutor = async ({
   }
 
   // Get executor registry (lazy to avoid circular import)
-  const registry = await step.run(`loop-${nodeId}-load-registry`, async () => {
-    // We can't actually serialize registry, so just return a flag
-    return true
-  })
-
   const nodeMap = new Map(
     (workflowNodes ?? []).map((n) => [n.id, n])
   )
@@ -123,21 +118,16 @@ export const loopExecutor: NodeExecutor = async ({
         const executor = executorReg[downstreamNode.type as NodeType]
         if (!executor) continue
 
-        const output = await step.run(
-          `loop-${nodeId}-i${i}-${downstreamNode.id}`,
-          async () => {
-            return executor({
-              nodeId: downstreamNode.id,
-              data: (downstreamNode.data ?? {}) as Record<string, unknown>,
-              context: itemContext,
-              step,
-              publish,
-              userId,
-              workflowNodes,
-              workflowConnections,
-            })
-          }
-        )
+        const output = await executor({
+          nodeId: downstreamNode.id,
+          data: (downstreamNode.data ?? {}) as Record<string, unknown>,
+          context: itemContext,
+          step,
+          publish,
+          userId,
+          workflowNodes,
+          workflowConnections,
+        })
 
         // Merge output into itemContext for the next downstream node
         itemContext = { ...itemContext, ...(output as object) }
