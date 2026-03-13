@@ -24,6 +24,8 @@ const formSchema = z.object({
     value: z.string().min(1, "Api key  is required"),
     gmailEmail: z.string().optional(),
     gmailAppPassword: z.string().optional(),
+    whatsappAccessToken: z.string().optional(),
+    whatsappPhoneNumberId: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.type === CredentialType.GMAIL) {
         if (!data.gmailEmail) {
@@ -38,6 +40,22 @@ const formSchema = z.object({
                 code: z.ZodIssueCode.custom,
                 message: "App Password is required",
                 path: ["gmailAppPassword"],
+            })
+        }
+    }
+    if (data.type === CredentialType.WHATSAPP) {
+        if (!data.whatsappAccessToken) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Access Token is required",
+                path: ["whatsappAccessToken"],
+            })
+        }
+        if (!data.whatsappPhoneNumberId) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Phone Number ID is required",
+                path: ["whatsappPhoneNumberId"],
             })
         }
     }
@@ -125,21 +143,43 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const { handleError, modal } = useUpgradeModal();
 
     const isEdit = !!initialData?.id;
+
+    // Parse WhatsApp JSON value into individual fields for editing
+    const whatsappDefaults = (() => {
+        if (initialData?.type === CredentialType.WHATSAPP && initialData.value) {
+            try {
+                const parsed = JSON.parse(initialData.value);
+                return {
+                    whatsappAccessToken: parsed.accessToken ?? "",
+                    whatsappPhoneNumberId: parsed.phoneNumberId ?? "",
+                };
+            } catch {
+                return { whatsappAccessToken: "", whatsappPhoneNumberId: "" };
+            }
+        }
+        return { whatsappAccessToken: "", whatsappPhoneNumberId: "" };
+    })();
+
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
-        defaultValues: initialData || {
-            name: "",
-            type: CredentialType.OPENAI,
-            value: "",
-            gmailEmail: "",
-            gmailAppPassword: "",
-        }
+        defaultValues: initialData
+            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults }
+            : {
+                name: "",
+                type: CredentialType.OPENAI,
+                value: "",
+                gmailEmail: "",
+                gmailAppPassword: "",
+                whatsappAccessToken: "",
+                whatsappPhoneNumberId: "",
+            }
     })
 
     const watchType = form.watch("type")
     const isGmail = watchType === CredentialType.GMAIL
     const isGoogleSheets = watchType === CredentialType.GOOGLE_SHEETS
     const isGoogleDrive = watchType === CredentialType.GOOGLE_DRIVE
+    const isWhatsApp = watchType === CredentialType.WHATSAPP
 
     const onSubmit = async (values: FormValues) => {
         let submitValues = { ...values }
@@ -152,7 +192,15 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             })
         }
 
-        const { gmailEmail, gmailAppPassword, ...payload } = submitValues
+        // For WhatsApp, encode accessToken + phoneNumberId as JSON in the value field
+        if (values.type === CredentialType.WHATSAPP) {
+            submitValues.value = JSON.stringify({
+                accessToken: values.whatsappAccessToken,
+                phoneNumberId: values.whatsappPhoneNumberId,
+            })
+        }
+
+        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, ...payload } = submitValues
 
         if (isEdit && initialData?.id) {
             await updateCredential.mutate({
@@ -215,13 +263,15 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                         <Select
                                             onValueChange={(val) => {
                                                 field.onChange(val)
-                                                // Set a placeholder value for Gmail so validation passes
+                                                // Set a placeholder value for Gmail/WhatsApp so validation passes
                                                 if (val === CredentialType.GMAIL) {
                                                     form.setValue("value", "gmail-credential")
+                                                } else if (val === CredentialType.WHATSAPP) {
+                                                    form.setValue("value", "whatsapp-credential")
                                                 } else if (val === CredentialType.GOOGLE_SHEETS || val === CredentialType.GOOGLE_DRIVE) {
                                                     form.setValue("value", "")
                                                 } else {
-                                                    if (form.getValues("value") === "gmail-credential") {
+                                                    if (form.getValues("value") === "gmail-credential" || form.getValues("value") === "whatsapp-credential") {
                                                         form.setValue("value", "")
                                                     }
                                                 }
@@ -290,6 +340,57 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                             </FormItem>
                                         )}
                                     />
+                                </>
+                            ) : isWhatsApp ? (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="whatsappAccessToken"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Access Token</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" placeholder="EAABx... (from Meta Developer Console)" {...field} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Find this in Meta for Developers → WhatsApp → API Setup
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="whatsappPhoneNumberId"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Phone Number ID</FormLabel>
+                                                <FormControl>
+                                                    <Input type="text" placeholder="1234567890" {...field} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Find this in Meta for Developers → WhatsApp → API Setup
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-2">ℹ️ How to get WhatsApp credentials</p>
+                                        <ol className="list-decimal list-inside space-y-1">
+                                            <li>Go to{" "}
+                                                <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="underline">
+                                                    developers.facebook.com
+                                                </a>
+                                            </li>
+                                            <li>Create or open your WhatsApp app</li>
+                                            <li>Go to WhatsApp → API Setup</li>
+                                            <li>Copy the &quot;Temporary access token&quot; or generate a permanent token</li>
+                                            <li>Copy the &quot;Phone number ID&quot;</li>
+                                        </ol>
+                                    </div>
                                 </>
                             ) : isGoogleSheets || isGoogleDrive ? (
                                 <FormField
