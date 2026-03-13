@@ -2,7 +2,6 @@
 import { useReactFlow, type Node, type NodeProps } from "@xyflow/react"
 import { memo, useState } from "react"
 import { BaseExecutionNode } from "../base-execution-node"
-import { MessageCircle } from "lucide-react"
 import { WhatsAppFormValues, WhatsAppDialog } from "./dialog"
 import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-node-status"
 import { fetchWhatsAppRealtimeToken } from "./actions"
@@ -92,7 +91,7 @@ export const WhatsAppNode = memo((props: NodeProps<WhatsAppNodeType>) => {
         name="WhatsApp"
         id={props.id}
         status={nodeStatus}
-        icon={MessageCircle}
+        icon={"/logos/whatsapp.svg"}
         description={description}
         onSettings={handleOpenSettings}
         onDoubleClick={handleOpenSettings}
