@@ -38,8 +38,5 @@ CREATE INDEX "WhatsAppNode_workflowId_idx" ON "WhatsAppNode"("workflowId");
 -- CreateIndex
 CREATE INDEX "WhatsAppNode_nodeId_idx" ON "WhatsAppNode"("nodeId");
 
--- CreateIndex
-CREATE INDEX "WhatsAppNode_credentialId_idx" ON "WhatsAppNode"("credentialId");
-
 -- AddForeignKey
 ALTER TABLE "WhatsAppNode" ADD CONSTRAINT "WhatsAppNode_workflowId_fkey" FOREIGN KEY ("workflowId") REFERENCES "workflow"("id") ON DELETE CASCADE ON UPDATE CASCADE;
