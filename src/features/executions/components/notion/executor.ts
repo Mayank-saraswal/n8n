@@ -143,7 +143,7 @@ export const notionExecutor: NodeExecutor<NotionData> = async ({
       const resolved = resolveTemplate(config.filterJson, context)
       filterObj = JSON.parse(resolved)
     } catch {
-      // keep empty
+      console.warn(`[Notion] Failed to parse filterJson for node ${nodeId}`)
     }
 
     let sortsArr: unknown[] = []
@@ -151,7 +151,7 @@ export const notionExecutor: NodeExecutor<NotionData> = async ({
       const resolved = resolveTemplate(config.sortsJson, context)
       sortsArr = JSON.parse(resolved)
     } catch {
-      // keep empty
+      console.warn(`[Notion] Failed to parse sortsJson for node ${nodeId}`)
     }
 
     let propertiesObj: Record<string, unknown> = {}
@@ -159,7 +159,7 @@ export const notionExecutor: NodeExecutor<NotionData> = async ({
       const resolved = resolveTemplate(config.propertiesJson, context)
       propertiesObj = JSON.parse(resolved)
     } catch {
-      // keep empty
+      console.warn(`[Notion] Failed to parse propertiesJson for node ${nodeId}`)
     }
 
     let data: Record<string, unknown>
