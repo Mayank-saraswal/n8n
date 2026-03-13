@@ -47,4 +47,3 @@ next-env.d.ts
 
 docker*
 .dockerignore
-node_modules/
