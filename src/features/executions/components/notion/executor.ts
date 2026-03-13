@@ -301,6 +301,7 @@ export const notionExecutor: NodeExecutor<NotionData> = async ({
         }
         if (searchQuery) body.query = searchQuery
         if (Object.keys(filterObj).length > 0) body.filter = filterObj
+        // Notion Search API only supports a single sort object, not an array
         if (sortsArr.length > 0) body.sort = sortsArr[0]
         if (startCursor) body.start_cursor = startCursor
         data = await notionRequest("POST", "/search", creds.apiKey, body)

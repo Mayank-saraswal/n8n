@@ -152,6 +152,14 @@ const FILTER_OPS: NotionOp[] = [
   "SEARCH",
 ]
 
+// Operations with paginated results
+const PAGINATED_OPS: NotionOp[] = [
+  "QUERY_DATABASE",
+  "GET_BLOCK_CHILDREN",
+  "SEARCH",
+  "GET_USERS",
+]
+
 export const NotionDialog = ({
   open,
   onOpenChange,
@@ -506,9 +514,7 @@ export const NotionDialog = ({
             )}
 
             {/* Page size — for paginated results */}
-            {["QUERY_DATABASE", "GET_BLOCK_CHILDREN", "SEARCH", "GET_USERS"].includes(
-              operation
-            ) && (
+            {PAGINATED_OPS.includes(operation) && (
               <div className="space-y-2">
                 <Label>Page Size</Label>
                 <Input
@@ -524,9 +530,7 @@ export const NotionDialog = ({
             )}
 
             {/* Start cursor — for pagination */}
-            {["QUERY_DATABASE", "GET_BLOCK_CHILDREN", "SEARCH", "GET_USERS"].includes(
-              operation
-            ) && (
+            {PAGINATED_OPS.includes(operation) && (
               <div className="space-y-2">
                 <Label>Start Cursor (optional)</Label>
                 <Input
