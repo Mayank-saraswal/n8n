@@ -7,6 +7,7 @@ import { useCreateCredential, useUpdateCredential, useSuspennseCredential } from
 import { useUpgradeModal } from "@/hooks/use-upgrade-modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useMemo } from "react";
 
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -145,7 +146,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const isEdit = !!initialData?.id;
 
     // Parse WhatsApp JSON value into individual fields for editing
-    const whatsappDefaults = (() => {
+    const whatsappDefaults = useMemo(() => {
         if (initialData?.type === CredentialType.WHATSAPP && initialData.value) {
             try {
                 const parsed = JSON.parse(initialData.value);
@@ -158,7 +159,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             }
         }
         return { whatsappAccessToken: "", whatsappPhoneNumberId: "" };
-    })();
+    }, [initialData]);
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -271,8 +272,13 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                 } else if (val === CredentialType.GOOGLE_SHEETS || val === CredentialType.GOOGLE_DRIVE) {
                                                     form.setValue("value", "")
                                                 } else {
-                                                    if (form.getValues("value") === "gmail-credential" || form.getValues("value") === "whatsapp-credential") {
-                                                        form.setValue("value", "")
+                                                    const currentValue = form.getValues("value")
+                                                    if (
+                                                      currentValue === "gmail-credential" ||
+                                                      currentValue === "whatsapp-credential" ||
+                                                      currentValue.startsWith("{")
+                                                    ) {
+                                                      form.setValue("value", "")
                                                     }
                                                 }
                                             }}
