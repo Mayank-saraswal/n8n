@@ -99,6 +99,11 @@ const credentialTypeOptions = [
         label: "Google Drive",
         logo: "/logos/google-drive.svg"
     },
+    {
+        value: CredentialType.WHATSAPP,
+        label: "WhatsApp",
+        logo: "/logos/whatsapp.svg"
+    },
 
 ]
 

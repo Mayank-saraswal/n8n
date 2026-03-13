@@ -183,7 +183,7 @@ const executionNodes: NodeTypeOptions[] = [
         type:NodeType.WHATSAPP,
         label:"WhatsApp",
         description:"Send WhatsApp messages via Meta API",
-        icon:MessageCircleIcon,
+        icon:"/logos/whatsapp.svg",
     },
     {
         type:NodeType.LOOP,
