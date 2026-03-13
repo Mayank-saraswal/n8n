@@ -177,16 +177,33 @@ export const LoopDialog = ({
             </div>
 
             {/* Output Variables */}
-            <div className="rounded-lg border bg-muted/50 p-3 space-y-1">
+            <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
               <p className="text-xs font-medium text-muted-foreground">
-                Output variables:
+                ℹ️ How Loop works:
+              </p>
+              <p className="text-xs text-muted-foreground">
+                For each item in the array, all connected downstream nodes
+                are executed with that item as context.
+              </p>
+              <p className="text-xs text-muted-foreground italic">
+                Example: 100 Sheets rows → Loop → Gmail = Gmail sends 100 emails, one per row.
+              </p>
+              <p className="text-xs font-medium text-muted-foreground mt-2">
+                Variables per iteration:
               </p>
               <div className="text-xs text-muted-foreground font-mono space-y-0.5">
-                <p>{"{{loop.count}}"} — total items processed</p>
-                <p>{"{{loop.results}}"} — array of all item contexts</p>
-                <p>{`{{${itemVariable}}}`} — current item value</p>
+                <p>{`{{${itemVariable}}}`} — current array item</p>
                 <p>{"{{itemIndex}}"} — current index (0-based)</p>
-                <p>{"{{itemTotal}}"} — total count</p>
+                <p>{"{{itemTotal}}"} — total iterations</p>
+              </div>
+              <p className="text-xs font-medium text-muted-foreground mt-2">
+                After all iterations:
+              </p>
+              <div className="text-xs text-muted-foreground font-mono space-y-0.5">
+                <p>{"{{loop.count}}"} — items processed</p>
+                <p>{"{{loop.successCount}}"} — successful iterations</p>
+                <p>{"{{loop.errorCount}}"} — failed iterations</p>
+                <p>{"{{loop.errors}}"} — array of {"{{index, error}}"} for failures</p>
               </div>
             </div>
 

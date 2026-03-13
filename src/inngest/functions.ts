@@ -135,9 +135,29 @@ export const executeWorkflow = inngest.createFunction(
     // Track nodes to skip due to IF_ELSE branching
     const skippedNodes = new Set<string>();
 
+    // Track nodes already executed by Loop node (per-item downstream execution)
+    const executedByLoop = new Set<string>();
+
+    // Prepare workflow graph info to pass to executors (for Loop node)
+    const workflowNodes = preparedWorkflow.sortedNodes.map((n) => ({
+      id: n.id,
+      type: n.type,
+      data: n.data as Record<string, unknown>,
+    }));
+    const workflowConnections = preparedWorkflow.connections.map((c) => ({
+      id: c.id,
+      fromNodeId: c.fromNodeId,
+      toNodeId: c.toNodeId,
+      fromOutput: c.fromOutput,
+      toInput: c.toInput,
+    }));
+
     for (const node of preparedWorkflow.sortedNodes) {
       // Skip nodes on non-taken branches
       if (skippedNodes.has(node.id)) continue;
+
+      // Skip nodes already executed by Loop node
+      if (executedByLoop.has(node.id)) continue;
 
       const executor = getExecutor(node.type as NodeType);
       context = await executor({
@@ -146,7 +166,9 @@ export const executeWorkflow = inngest.createFunction(
         userId,
         context,
         step,
-        publish
+        publish,
+        workflowNodes,
+        workflowConnections,
       })
 
       // Handle IF_ELSE branching: skip nodes on the non-taken branch
@@ -169,6 +191,19 @@ export const executeWorkflow = inngest.createFunction(
               .map((c) => c.toNodeId);
             toSkip.push(...downstream);
           }
+        }
+      }
+
+      // Handle Loop node: mark downstream nodes as already executed
+      if (node.type === NodeType.LOOP) {
+        const loopHandled = context._executedByLoop;
+        if (Array.isArray(loopHandled)) {
+          for (const id of loopHandled) {
+            executedByLoop.add(id as string);
+          }
+          // Clean up the internal flag from context
+          const { _executedByLoop, ...cleanContext } = context;
+          context = cleanContext;
         }
       }
     }
