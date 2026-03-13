@@ -1,64 +1,74 @@
-"use client"
-import{useReactFlow, type Node , type NodeProps } from "@xyflow/react"
-import { memo , useState } from "react"
-import { BaseExecutionNode } from "../base-execution-node"  
-import { GlobeIcon } from "lucide-react"
-import { HttpRequestFormValues, HttpRequestDialog } from "./dialog"
-import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-node-status"
-import { HTTP_REQUEST_CHANNEL_NAME, httpRequestChannel } from "@/inngest/channels/http-request"
-import { fetchHttpRequestRealtimeToken } from "./actions"
+"use client";
+import { type Node, type NodeProps, useReactFlow } from "@xyflow/react";
+import { GlobeIcon } from "lucide-react";
+import { memo, useState } from "react";
+import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-node-status";
+import { HTTP_REQUEST_CHANNEL_NAME } from "@/inngest/channels/http-request";
+import { BaseExecutionNode } from "../base-execution-node";
+import { fetchHttpRequestRealtimeToken } from "./actions";
+import { HttpRequestDialog, type HttpRequestFormValues } from "./dialog";
 
-type HttpRequestNodeData ={
-    variableName?:string,
-    endpoint?:string,
-    method?:"GET" | "POST" | "PUT" | "DELETE" | "PATCH"
-    body?:string
-    
-}
+type HttpRequestNodeData = {
+  variableName?: string;
+  endpoint?: string;
+  method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
+  body?: string;
+  contentType?: "json" | "form-urlencoded" | "form-data" | "raw";
+  headers?: { key: string; value: string }[];
+  queryParameters?: { key: string; value: string }[];
+  authType?: "none" | "basicAuth" | "bearerToken" | "headerAuth";
+  basicAuthUser?: string;
+  basicAuthPassword?: string;
+  bearerToken?: string;
+  headerAuthName?: string;
+  headerAuthValue?: string;
+  timeout?: number;
+  followRedirects?: boolean;
+  responseFormat?: "auto" | "json" | "text";
+};
 
 type HttpRequestNodeType = Node<HttpRequestNodeData>;
-export const HttpRequestNode = memo((props:NodeProps<HttpRequestNodeType>)=>{
-    const [dialogOpen , setDialogOpen] = useState(false)
-    const {setNodes} = useReactFlow()
+export const HttpRequestNode = memo((props: NodeProps<HttpRequestNodeType>) => {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const { setNodes } = useReactFlow();
 
-    
-
-    const nodeStatus = useNodeStatus({
-        nodeId: props.id,
-        channel:HTTP_REQUEST_CHANNEL_NAME,
-        topic:"status",
-        refreshToken : fetchHttpRequestRealtimeToken
-    })
-    const handleOpenSettings = ()=>setDialogOpen(true)
-    const handleSubmit =(values:HttpRequestFormValues) =>{
-    setNodes((nodes)=>nodes.map((node)=>{
-        if(node.id === props.id) {
-            return {
-                ...node,
-                data:{
-                    ...node.data,
-                    ...values
-                }
-            }
+  const nodeStatus = useNodeStatus({
+    nodeId: props.id,
+    channel: HTTP_REQUEST_CHANNEL_NAME,
+    topic: "status",
+    refreshToken: fetchHttpRequestRealtimeToken,
+  });
+  const handleOpenSettings = () => setDialogOpen(true);
+  const handleSubmit = (values: HttpRequestFormValues) => {
+    setNodes((nodes) =>
+      nodes.map((node) => {
+        if (node.id === props.id) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              ...values,
+            },
+          };
         }
-        return node
-    }))
-            
-    }
-    const nodeData = props.data 
-    const description = nodeData?.endpoint
-    ?`${nodeData.method || "GET"} :${nodeData.endpoint}`:"Not configured"
-    
-    return(
-        <>
-        <HttpRequestDialog 
+        return node;
+      }),
+    );
+  };
+  const nodeData = props.data;
+  const description = nodeData?.endpoint
+    ? `${nodeData.method || "GET"}: ${nodeData.endpoint}`
+    : "Not configured";
+
+  return (
+    <>
+      <HttpRequestDialog
         onSubmit={handleSubmit}
-        
-        open =  {dialogOpen}
-        onOpenChange={setDialogOpen} 
-        defaultValues={nodeData}   
-        />
-        <BaseExecutionNode
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        defaultValues={nodeData}
+      />
+      <BaseExecutionNode
         {...props}
         name="HTTP Request"
         id={props.id}
@@ -66,12 +76,10 @@ export const HttpRequestNode = memo((props:NodeProps<HttpRequestNodeType>)=>{
         icon={GlobeIcon}
         description={description}
         onSettings={handleOpenSettings}
-        onDoubleClick = {handleOpenSettings}
-        
-        />
-        </>
-    )
-})
+        onDoubleClick={handleOpenSettings}
+      />
+    </>
+  );
+});
 
-HttpRequestNode.displayName = "HttpRequestNode"
-
+HttpRequestNode.displayName = "HttpRequestNode";
