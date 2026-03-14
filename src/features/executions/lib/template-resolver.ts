@@ -40,7 +40,7 @@ hbs.registerHelper("eq", (a: unknown, b: unknown) => {
 
 // {{ne a b}} — inequality check
 hbs.registerHelper("ne", (a: unknown, b: unknown) => {
-  if (isOptionsHash(b)) return true
+  if (isOptionsHash(b)) return false
   return a !== b
 })
 
@@ -69,6 +69,7 @@ hbs.registerHelper("lte", (a: unknown, b: unknown) => {
 })
 
 // {{not value}} — logical NOT
+// When called without an argument, value is the options hash → return true (same as !undefined)
 hbs.registerHelper("not", (value: unknown) => {
   if (isOptionsHash(value)) return true
   return !value
@@ -100,7 +101,8 @@ hbs.registerHelper("lowercase", (str: unknown) => {
 hbs.registerHelper("truncate", (str: unknown, len: unknown) => {
   if (isOptionsHash(str)) return ""
   if (typeof str !== "string") return str
-  const max = typeof len === "number" ? len : DEFAULT_TRUNCATE_LENGTH
+  const max =
+    !isOptionsHash(len) && typeof len === "number" ? len : DEFAULT_TRUNCATE_LENGTH
   return str.length > max ? str.slice(0, max) + "…" : str
 })
 
@@ -166,6 +168,8 @@ export function resolveTemplate(template: string, context: unknown): string {
     if (templateCache.size >= MAX_CACHE_SIZE) {
       templateCache.clear()
     }
+    // noEscape: true — templates produce raw output (used for API payloads,
+    // AI prompts, webhook bodies, etc., NOT rendered as HTML)
     compiled = hbs.compile(template, { noEscape: true })
     templateCache.set(template, compiled)
   }
