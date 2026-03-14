@@ -7,7 +7,7 @@ import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-n
 import { fetchRazorpayRealtimeToken } from "./actions"
 import { RAZORPAY_CHANNEL_NAME } from "@/inngest/channels/razorpay"
 import { useParams } from "next/navigation"
-import { CreditCardIcon } from "lucide-react"
+
 
 type RazorpayNodeData = {
   credentialId?: string
@@ -101,7 +101,7 @@ export const RazorpayNode = memo((props: NodeProps<RazorpayNodeType>) => {
         name="Razorpay"
         id={props.id}
         status={nodeStatus}
-        icon={CreditCardIcon}
+        icon="/logos/razorpay.svg"
         description={description}
         onSettings={handleOpenSettings}
         onDoubleClick={handleOpenSettings}

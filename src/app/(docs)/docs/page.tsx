@@ -1,7 +1,6 @@
 import {
   Bot,
   Code,
-  CreditCard,
   FileText,
   Globe,
   Mail,
@@ -32,7 +31,7 @@ const quickCards = [
 ];
 
 const popularNodes = [
-  { title: "Razorpay", href: "/docs/nodes/razorpay", icon: CreditCard },
+  { title: "Razorpay", href: "/docs/nodes/razorpay", logo: "/logos/razorpay.svg" },
   { title: "WhatsApp", href: "/docs/nodes/whatsapp", icon: MessageCircle },
   { title: "Notion", href: "/docs/nodes/notion", icon: FileText },
   { title: "HTTP Request", href: "/docs/nodes/http-request", icon: Globe },
@@ -153,7 +152,11 @@ export default function DocsHomePage() {
             href={n.href}
             className="group flex flex-col items-center gap-2 rounded-lg border border-border p-4 text-center transition-colors hover:border-orange/40 hover:bg-orange-subtle"
           >
-            <n.icon className="size-6 text-muted-foreground group-hover:text-orange" />
+            {n.logo ? (
+                 <img src={n.logo} alt={n.title} className="size-6 object-contain rounded-sm opacity-50 group-hover:opacity-100 transition-opacity" />
+            ) : n.icon ? (
+                 <n.icon className="size-6 text-muted-foreground group-hover:text-orange" />
+            ) : null}
             <span className="text-sm font-medium text-foreground group-hover:text-orange">
               {n.title}
             </span>

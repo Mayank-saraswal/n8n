@@ -2,7 +2,6 @@ import {
   Bot,
   Clock,
   Code,
-  CreditCard,
   FileText,
   GitBranch,
   Globe,
@@ -435,7 +434,7 @@ export default function NodesOverviewPage() {
           desc="Complete Razorpay API — orders, payments, refunds, subscriptions, invoices, payment links, payouts."
           credential="RAZORPAY"
           operations="28 operations"
-          icon={CreditCard}
+          logo="/logos/razorpay.svg"
         />
         <NodeCard
           id="notion-overview"
