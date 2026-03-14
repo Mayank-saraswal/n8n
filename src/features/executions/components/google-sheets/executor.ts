@@ -214,17 +214,48 @@ export const googleSheetsExecutor: NodeExecutor<GoogleSheetsData> = async ({
             let values: string[][]
             if (config.rowValues && config.rowValues.trim()) {
               const resolved = resolveTemplate(config.rowValues, context)
-              let parsed: string[] | string[][]
+              let parsed: unknown
               try {
-                parsed = JSON.parse(resolved) as string[] | string[][]
+                parsed = JSON.parse(resolved)
               } catch {
                 throw new NonRetriableError(
-                  "Google Sheets APPEND_ROW: 'rowValues' contains invalid JSON."
+                  "Google Sheets APPEND_ROW: 'rowValues' is not valid JSON. " +
+                    'Expected object like {"Name":"John","Email":"john@example.com"} ' +
+                    'or array like ["John","john@example.com"]'
                 )
               }
-              values = Array.isArray(parsed[0])
-                ? (parsed as string[][])
-                : [parsed as string[]]
+
+              if (Array.isArray(parsed)) {
+                // User passed a flat array — use as-is or as nested array
+                values = Array.isArray(parsed[0])
+                  ? (parsed as string[][])
+                  : [(parsed as unknown[]).map(String)]
+              } else if (typeof parsed === "object" && parsed !== null) {
+                // User passed an object like {Name:"John", Email:"..."} — map to ordered array
+                // Read the header row first to get column order
+                const headerRes = await sheetsRequest(
+                  "GET",
+                  `/${spreadsheetId}/values/${encodeURIComponent(`${sheetName}!1:1`)}`,
+                  accessToken
+                )
+                const headers =
+                  (
+                    (headerRes.values as string[][] | undefined)?.[0]
+                  ) ?? []
+                if (headers.length === 0) {
+                  throw new NonRetriableError(
+                    "Google Sheets APPEND_ROW: Sheet has no header row to map columns. " +
+                      "Enable 'Has Header Row' or pass values as a plain array."
+                  )
+                }
+                const obj = parsed as Record<string, unknown>
+                const row = headers.map((h) => String(obj[h] ?? ""))
+                values = [row]
+              } else {
+                throw new NonRetriableError(
+                  "Google Sheets APPEND_ROW: 'rowValues' must be a JSON object or array."
+                )
+              }
             } else {
               const rowData = config.rowData as Array<{
                 column: string
@@ -259,20 +290,62 @@ export const googleSheetsExecutor: NodeExecutor<GoogleSheetsData> = async ({
                 "Google Sheets UPDATE_ROW: 'rowNumber' is required."
               )
             const resolved = resolveTemplate(config.updateValues, context)
-            let parsed: string[]
+            let parsed: unknown
             try {
-              parsed = JSON.parse(resolved) as string[]
+              parsed = JSON.parse(resolved)
             } catch {
               throw new NonRetriableError(
-                "Google Sheets UPDATE_ROW: 'updateValues' contains invalid JSON."
+                "Google Sheets UPDATE_ROW: 'updateValues' is not valid JSON. " +
+                  'Expected object like {"Status":"Sent"} ' +
+                  'or array like ["val1","val2"]'
               )
             }
+
+            let rowValues: string[]
+            if (Array.isArray(parsed)) {
+              rowValues = (parsed as unknown[]).map(String)
+            } else if (typeof parsed === "object" && parsed !== null) {
+              // Read headers and existing row to merge changes
+              const headerRes = await sheetsRequest(
+                "GET",
+                `/${spreadsheetId}/values/${encodeURIComponent(`${sheetName}!1:1`)}`,
+                accessToken
+              )
+              const headers =
+                (
+                  (headerRes.values as string[][] | undefined)?.[0]
+                ) ?? []
+              if (headers.length === 0) {
+                throw new NonRetriableError(
+                  "Google Sheets UPDATE_ROW: Sheet has no header row to map columns."
+                )
+              }
+              // Read current row data to preserve unmodified columns
+              const existingRes = await sheetsRequest(
+                "GET",
+                `/${spreadsheetId}/values/${encodeURIComponent(`${sheetName}!${rowNum}:${rowNum}`)}`,
+                accessToken
+              )
+              const existingRow =
+                (
+                  (existingRes.values as string[][] | undefined)?.[0]
+                ) ?? []
+              const obj = parsed as Record<string, unknown>
+              rowValues = headers.map((h, i) =>
+                h in obj ? String(obj[h]) : (existingRow[i] ?? "")
+              )
+            } else {
+              throw new NonRetriableError(
+                "Google Sheets UPDATE_ROW: 'updateValues' must be a JSON object or array."
+              )
+            }
+
             const updateRange = `${sheetName}!A${rowNum}`
             const data = await sheetsRequest(
               "PUT",
               `/${spreadsheetId}/values/${encodeURIComponent(updateRange)}?valueInputOption=${config.valueInputOption}`,
               accessToken,
-              { values: [parsed] }
+              { values: [rowValues] }
             )
             return {
               operation: "UPDATE_ROW",
@@ -550,11 +623,15 @@ export const googleSheetsExecutor: NodeExecutor<GoogleSheetsData> = async ({
 
           // ── CLEAR_RANGE ─────────────────────────────────────────
           case GoogleSheetsOp.CLEAR_RANGE: {
-            const clearRange = resolveTemplate(
+            const resolvedClear = resolveTemplate(
               config.clearRange || config.range || "A:Z",
               context
             )
-            const fullRange = `${sheetName}!${clearRange}`
+            // If user already included the sheet name (contains "!"), use as-is
+            // If not, prefix with sheetName
+            const fullRange = resolvedClear.includes("!")
+              ? resolvedClear
+              : `${sheetName}!${resolvedClear}`
             await sheetsRequest(
               "POST",
               `/${spreadsheetId}/values/${encodeURIComponent(fullRange)}:clear`,

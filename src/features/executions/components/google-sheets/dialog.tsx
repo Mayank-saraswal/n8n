@@ -698,6 +698,9 @@ export const GoogleSheetsDialog = ({
                     value={clearRange}
                     onChange={(e) => setClearRange(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Include sheet name: Sheet1!A2:Z or just A2:Z (sheet name auto-added)
+                  </p>
                 </div>
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-1 dark:border-blue-800 dark:bg-blue-950">
                   <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
