@@ -1,15 +1,9 @@
 import type { NodeExecutor } from "@/features/executions/types";
 import { NonRetriableError } from "inngest";
-import Handlebars from "handlebars";
+import { resolveTemplate } from "@/features/executions/lib/template-resolver";
 import { xChannel } from "@/inngest/channels/x";
 import { decode } from "html-entities";
 import { TwitterApi } from "twitter-api-v2";
-
-Handlebars.registerHelper("json", (context) => {
-    const jsonString = JSON.stringify(context, null, 2);
-    const safeString = new Handlebars.SafeString(jsonString)
-    return safeString
-});
 
 type XData = {
     variableName?: string
@@ -47,7 +41,7 @@ export const xExecutor: NodeExecutor<XData> = async ({
         throw new NonRetriableError("x node: content is missing")
     }
 
-    const rawContent = Handlebars.compile(data.content)(context)
+    const rawContent = resolveTemplate(data.content, context)
     const content = decode(rawContent)
 
     try {

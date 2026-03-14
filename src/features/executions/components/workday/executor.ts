@@ -1,14 +1,8 @@
 import type { NodeExecutor } from "@/features/executions/types";
 import { NonRetriableError } from "inngest";
 import ky, { type Options as KyOptions } from "ky";
-import Handlebars from "handlebars";
+import { resolveTemplate } from "@/features/executions/lib/template-resolver";
 import { workdayChannel } from "@/inngest/channels/workday";
-
-Handlebars.registerHelper("json", (context) => {
-    const jsonString = JSON.stringify(context, null, 2);
-    const safeString = new Handlebars.SafeString(jsonString)
-    return safeString
-});
 
 type WorkdayData = {
     variableName?: string,
@@ -75,7 +69,7 @@ export const workdayExecutor: NodeExecutor<WorkdayData> = async ({
             const operationConfig = OPERATION_MAP[data.operation];
 
             // Handlebars compilation for dynamic inputs
-            const workerId = data.workerId ? Handlebars.compile(data.workerId)(context) : "";
+            const workerId = data.workerId ? resolveTemplate(data.workerId, context) : "";
 
             // Path construction
             let endpointPath: string = operationConfig.path;
@@ -97,7 +91,7 @@ export const workdayExecutor: NodeExecutor<WorkdayData> = async ({
             };
 
             if (["POST", "PUT"].includes(operationConfig.method) && data.jsonBody) {
-                const compiledBody = Handlebars.compile(data.jsonBody)(context);
+                const compiledBody = resolveTemplate(data.jsonBody, context);
                 try {
                     options.json = JSON.parse(compiledBody);
                 } catch (e) {

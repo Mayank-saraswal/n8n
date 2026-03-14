@@ -1,13 +1,8 @@
-import Handlebars from "handlebars";
 import { NonRetriableError } from "inngest";
 import ky, { type Options as KyOptions } from "ky";
 import type { NodeExecutor } from "@/features/executions/types";
+import { resolveTemplate } from "@/features/executions/lib/template-resolver";
 import { httpRequestChannel } from "@/inngest/channels/http-request";
-
-Handlebars.registerHelper("json", (context) => {
-  const jsonString = JSON.stringify(context, null, 2);
-  return new Handlebars.SafeString(jsonString);
-});
 
 type KeyValuePair = { key: string; value: string };
 
@@ -29,13 +24,6 @@ type HttpRequestData = {
   followRedirects?: boolean;
   responseFormat?: "auto" | "json" | "text";
 };
-
-function resolveTemplate(
-  template: string,
-  ctx: Record<string, unknown>,
-): string {
-  return Handlebars.compile(template)(ctx);
-}
 
 function buildAuthHeaders(
   data: HttpRequestData,

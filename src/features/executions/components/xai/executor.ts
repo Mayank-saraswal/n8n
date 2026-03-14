@@ -1,18 +1,11 @@
 import type { NodeExecutor } from "@/features/executions/types";
 import { NonRetriableError } from "inngest";
 import { createXai } from "@ai-sdk/xai";
-import Handlebars from "handlebars";
+import { resolveTemplate } from "@/features/executions/lib/template-resolver";
 import { generateText } from "ai";
 import { xAiChannel } from "@/inngest/channels/xai";
 import prisma from "@/lib/db";
 import { decrypt } from "@/lib/encryption";
-
-
-Handlebars.registerHelper("json", (context) => {
-    const jsonString = JSON.stringify(context, null, 2);
-    const safeString = new Handlebars.SafeString(jsonString)
-    return safeString
-});
 
 type XaiData = {
     variableName?: string
@@ -73,11 +66,11 @@ export const xAiExecutor: NodeExecutor<XaiData> = async ({
 
 
     const systemPrompt = data.systemPrompt
-        ? Handlebars.compile(data.systemPrompt)(context)
+        ? resolveTemplate(data.systemPrompt, context)
         : "You are a helpful assistant"
 
     const userPrompt = data.userPrompt
-        ? Handlebars.compile(data.userPrompt)(context)
+        ? resolveTemplate(data.userPrompt, context)
         : "No prompt provided"
 
     //Fetch credentials 
