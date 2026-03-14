@@ -301,17 +301,51 @@ model IfElseNode {
   @@index([nodeId])
 }
 
+enum GmailOperation {
+  SEND
+  REPLY
+  FORWARD
+  GET_MESSAGE
+  LIST_MESSAGES
+  SEARCH_MESSAGES
+  ADD_LABEL
+  REMOVE_LABEL
+  MARK_READ
+  MARK_UNREAD
+  MOVE_TO_TRASH
+  CREATE_DRAFT
+}
+
 model GmailNode {
-  id           String @id @default(cuid())
+  id           String         @id @default(cuid())
   workflowId   String
-  nodeId       String @unique
+  nodeId       String         @unique
   credentialId String
+
+  operation    GmailOperation @default(SEND)
+  variableName String         @default("gmail")
 
   // Email fields — support template variables like {{body.name}}
   to      String  @default("")
   subject String  @default("")
   body    String  @default("") @db.Text
   isHtml  Boolean @default(false)
+
+  // New fields for extended operations
+  cc              String   @default("")
+  bcc             String   @default("")
+  replyTo         String   @default("")
+  messageId       String   @default("")
+  threadId        String   @default("")
+  searchQuery     String   @default("")
+  maxResults      Int      @default(10)
+  labelIds        String   @default("")
+  includeBody     Boolean  @default(true)
+  includeHeaders  Boolean  @default(false)
+  pageToken       String   @default("")
+  attachmentData  String   @default("") @db.Text
+  attachmentName  String   @default("")
+  attachmentMime  String   @default("application/octet-stream")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

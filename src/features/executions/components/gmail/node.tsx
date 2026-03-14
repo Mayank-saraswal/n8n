@@ -8,13 +8,76 @@ import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-n
 import { fetchGmailRealtimeToken } from "./actions"
 import { GMAIL_CHANNEL_NAME } from "@/inngest/channels/gmail"
 import { useParams } from "next/navigation"
+import { useTRPC } from "@/trpc/client"
+import { useQuery } from "@tanstack/react-query"
 
 type GmailNodeData = {
     credentialId?: string
+    operation?: string
+    variableName?: string
     to?: string
+    cc?: string
+    bcc?: string
     subject?: string
     body?: string
     isHtml?: boolean
+    messageId?: string
+    searchQuery?: string
+    maxResults?: number
+    labelIds?: string
+    [key: string]: unknown
+}
+
+type GmailNodeConfig = {
+    operation?: string
+    to?: string
+    messageId?: string
+    searchQuery?: string
+    maxResults?: number
+    labelIds?: string
+}
+
+function getDescription(config: GmailNodeConfig | null | undefined): string {
+    if (!config) return "Click to configure"
+    switch (config.operation) {
+        case "SEND":
+            return config.to
+                ? `To: ${config.to.slice(0, 28)}`
+                : "Send Email"
+        case "REPLY":
+            return config.messageId
+                ? `Reply to ${config.messageId.slice(0, 15)}`
+                : "Reply to Email"
+        case "FORWARD":
+            return config.to
+                ? `Forward to ${config.to.slice(0, 22)}`
+                : "Forward Email"
+        case "GET_MESSAGE":
+            return "Read email"
+        case "LIST_MESSAGES":
+            return `List ${config.maxResults || 10} emails`
+        case "SEARCH_MESSAGES":
+            return config.searchQuery
+                ? `Search: ${config.searchQuery.slice(0, 25)}`
+                : "Search Emails"
+        case "ADD_LABEL":
+            return config.labelIds
+                ? `Add: ${config.labelIds.slice(0, 20)}`
+                : "Add Label"
+        case "REMOVE_LABEL":
+            return config.labelIds
+                ? `Remove: ${config.labelIds.slice(0, 18)}`
+                : "Remove Label"
+        case "MARK_READ":    return "Mark as read"
+        case "MARK_UNREAD":  return "Mark as unread"
+        case "MOVE_TO_TRASH": return "Move to trash"
+        case "CREATE_DRAFT":
+            return config.to
+                ? `Draft to ${config.to.slice(0, 22)}`
+                : "Create Draft"
+        default:
+            return "Click to configure"
+    }
 }
 
 type GmailNodeType = Node<GmailNodeData>;
@@ -23,6 +86,14 @@ export const GmailNode = memo((props: NodeProps<GmailNodeType>) => {
     const { setNodes } = useReactFlow()
     const params = useParams()
     const workflowId = params.workflowId as string
+    const trpc = useTRPC()
+
+    const { data: dbConfig } = useQuery(
+        trpc.gmail.getByNodeId.queryOptions(
+            { nodeId: props.id },
+            { enabled: !!props.id }
+        )
+    )
 
     const nodeStatus = useNodeStatus({
         nodeId: props.id,
@@ -45,9 +116,8 @@ export const GmailNode = memo((props: NodeProps<GmailNodeType>) => {
             return node
         }))
     }
-    const nodeData = props.data
-    const description = nodeData?.to
-        ? `To: ${nodeData.to.slice(0, 30)}${nodeData.to.length > 30 ? "..." : ""}` : "Not configured"
+
+    const description = getDescription(dbConfig ?? props.data)
 
     return (
         <>
@@ -55,7 +125,7 @@ export const GmailNode = memo((props: NodeProps<GmailNodeType>) => {
                 onSubmit={handleSubmit}
                 open={dialogOpen}
                 onOpenChange={setDialogOpen}
-                defaultValues={nodeData}
+                defaultValues={props.data}
                 nodeId={props.id}
                 workflowId={workflowId}
             />
