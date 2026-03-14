@@ -33,6 +33,7 @@ import { loopChannel } from "./channels/loop";
 import { notionChannel } from "./channels/notion";
 import { razorpayChannel } from "./channels/razorpay";
 import { gmailChannel } from "./channels/gmail";
+import { switchChannel } from "./channels/switch";
 
 
 
@@ -86,7 +87,8 @@ export const executeWorkflow = inngest.createFunction(
       loopChannel(),
       notionChannel(),
       razorpayChannel(),
-      gmailChannel()
+      gmailChannel(),
+      switchChannel()
 
     ]
   },
@@ -202,7 +204,7 @@ export const executeWorkflow = inngest.createFunction(
           })
 
           // Handle IF_ELSE branching: skip nodes on the non-taken branch
-          if (node.type === NodeType.IF_ELSE) {
+          if (node.type === NodeType.IF_ELSE || node.type === NodeType.SWITCH) {
             const branch = (context as Record<string, unknown>).branch as string | undefined;
             if (branch) {
               const nonTakenConnections = preparedWorkflow.connections.filter(
@@ -260,7 +262,7 @@ export const executeWorkflow = inngest.createFunction(
           const node = executableNodes[i]
           const result = results[i]
 
-          if (node.type === NodeType.IF_ELSE) {
+          if (node.type === NodeType.IF_ELSE || node.type === NodeType.SWITCH) {
             const branch = (result as Record<string, unknown>).branch as string | undefined;
             if (branch) {
               const nonTakenConnections = preparedWorkflow.connections.filter(

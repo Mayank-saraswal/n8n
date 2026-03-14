@@ -101,6 +101,7 @@ model workflow {
   razorpayNodes     RazorpayNode[]
   slackNodes        SlackNode[]
   gmailWatchers     GmailWatcher[]
+  switchNodes       SwitchNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -135,6 +136,7 @@ enum NodeType {
   LOOP
   NOTION
   RAZORPAY
+  SWITCH
 }
 
 enum HttpMethod {
@@ -300,6 +302,19 @@ model IfElseNode {
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@index([workflowId])
+  @@index([nodeId])
+}
+
+model SwitchNode {
+  id           String   @id @default(cuid())
+  nodeId       String   @unique
+  workflowId   String
+  variableName String   @default("switch")
+  casesJson    String   @default("[]") @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  workflow     workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
   @@index([nodeId])
 }
 
