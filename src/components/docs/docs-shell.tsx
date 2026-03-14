@@ -30,17 +30,67 @@ const sections: NavSection[] = [
     ],
   },
   {
-    title: "Nodes",
+    title: "All Nodes",
     items: [
       { title: "Overview", href: "/docs/nodes" },
-      { title: "HTTP Request", href: "/docs/nodes/http-request" },
-      { title: "Notion", href: "/docs/nodes/notion" },
+    ],
+  },
+  {
+    title: "Triggers",
+    items: [
+      { title: "Manual Trigger", href: "/docs/nodes#manual-trigger" },
+      { title: "Webhook Trigger", href: "/docs/nodes#webhook-trigger" },
+      { title: "Schedule Trigger", href: "/docs/nodes#schedule-trigger" },
+      { title: "Google Form Trigger", href: "/docs/nodes#google-form-trigger" },
+      { title: "Stripe Trigger", href: "/docs/nodes#stripe-trigger" },
+    ],
+  },
+  {
+    title: "AI Nodes",
+    items: [
+      { title: "Gemini", href: "/docs/nodes#gemini" },
+      { title: "OpenAI", href: "/docs/nodes#openai" },
+      { title: "Anthropic", href: "/docs/nodes#anthropic" },
+      { title: "xAI (Grok)", href: "/docs/nodes#xai" },
+      { title: "DeepSeek", href: "/docs/nodes#deepseek" },
+      { title: "Perplexity", href: "/docs/nodes#perplexity" },
+      { title: "Groq", href: "/docs/nodes#groq" },
+    ],
+  },
+  {
+    title: "Messaging",
+    items: [
       { title: "WhatsApp", href: "/docs/nodes/whatsapp" },
-      { title: "Razorpay", href: "/docs/nodes/razorpay" },
-      { title: "Loop", href: "/docs/nodes/loop" },
-      { title: "Google Sheets", href: "/docs/nodes/google-sheets" },
+      { title: "Discord", href: "/docs/nodes#discord" },
+      { title: "Slack", href: "/docs/nodes#slack" },
+      { title: "Telegram", href: "/docs/nodes#telegram" },
+      { title: "X (Twitter)", href: "/docs/nodes#x-twitter" },
+    ],
+  },
+  {
+    title: "Google Workspace",
+    items: [
       { title: "Gmail", href: "/docs/nodes/gmail" },
+      { title: "Google Sheets", href: "/docs/nodes/google-sheets" },
+      { title: "Google Drive", href: "/docs/nodes#google-drive" },
+    ],
+  },
+  {
+    title: "Payments & SaaS",
+    items: [
+      { title: "Razorpay", href: "/docs/nodes/razorpay" },
+      { title: "Notion", href: "/docs/nodes/notion" },
+      { title: "Workday", href: "/docs/nodes#workday" },
+    ],
+  },
+  {
+    title: "Utility & Logic",
+    items: [
+      { title: "HTTP Request", href: "/docs/nodes/http-request" },
+      { title: "If / Else", href: "/docs/nodes#if-else" },
+      { title: "Set Variable", href: "/docs/nodes#set-variable" },
       { title: "Code", href: "/docs/nodes/code" },
+      { title: "Loop", href: "/docs/nodes/loop" },
     ],
   },
   {
@@ -57,10 +107,6 @@ const sections: NavSection[] = [
       {
         title: "Credential Management",
         href: "/docs/getting-started#credentials",
-      },
-      {
-        title: "Error Handling",
-        href: "/docs/nodes/http-request#error-handling",
       },
     ],
   },

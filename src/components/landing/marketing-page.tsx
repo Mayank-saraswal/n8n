@@ -23,8 +23,8 @@ import { useEffect, useRef, useState } from "react";
 
 const NAV_LINKS = [
   { label: "Features", href: "#features" },
-  { label: "Nodes", href: "#nodes" },
-  { label: "Docs", href: "#docs" },
+  { label: "Nodes", href: "/docs/nodes" },
+  { label: "Docs", href: "/docs" },
   { label: "Pricing", href: "#pricing" },
 ];
 
@@ -334,13 +334,13 @@ function Navbar() {
         {/* Desktop Actions */}
         <div className="hidden items-center gap-4 md:flex">
           <Link
-            href="/sign-in"
+            href="/login"
             className="font-[family-name:var(--font-dm-sans)] text-sm font-medium text-[#525252] hover:text-[#0A0A0A]"
           >
             Sign in
           </Link>
           <Link
-            href="/sign-up"
+            href="/signup"
             className="rounded-lg bg-[#E8470A] px-4 py-2 font-[family-name:var(--font-dm-sans)] text-sm font-medium text-white transition-colors hover:bg-[#c93d09]"
           >
             Get started free
@@ -781,8 +781,8 @@ function HowItWorks() {
   const { ref, visible } = useScrollReveal();
 
   return (
-    <section id="features" ref={ref} className="px-6 py-24 md:py-32">
-      <div className="mx-auto max-w-5xl">
+    <section id="how-it-works" ref={ref} className="px-6 py-24 md:py-32">
+      <div id="features" className="mx-auto max-w-5xl">
         <div
           className={`text-center transition-all duration-700 ${
             visible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"

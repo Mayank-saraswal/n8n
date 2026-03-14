@@ -1,22 +1,9 @@
 import type { NodeExecutor } from "@/features/executions/types";
-import { retry } from "@polar-sh/sdk/lib/retries.js";
 import { NonRetriableError } from "inngest";
-
-
-import Handlebars from "handlebars";
+import { resolveTemplate } from "@/features/executions/lib/template-resolver";
 import { discordChannel } from "@/inngest/channels/discord";
-
-
-
 import { decode } from "html-entities";
 import ky from "ky";
-
-
-Handlebars.registerHelper("json", (context)=> {
-    const jsonString = JSON.stringify(context , null , 2);
-    const safeString= new Handlebars.SafeString(jsonString)
-    return safeString
-});
 
 type DiscordData = {
     variableName?:string
@@ -60,9 +47,9 @@ export const discordExecutor:NodeExecutor<DiscordData > = async({
 
 
 
-    const rawContent = Handlebars.compile(data.content)(context)
+    const rawContent = resolveTemplate(data.content, context)
     const content = decode(rawContent)
-    const username = data.username ? decode(Handlebars.compile(data.username)(context)) : undefined
+    const username = data.username ? decode(resolveTemplate(data.username, context)) : undefined
     //Fetch credentials 
 
 
