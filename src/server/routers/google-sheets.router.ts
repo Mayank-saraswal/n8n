@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init"
 import prisma from "@/lib/db"
 
@@ -29,7 +30,9 @@ export const googleSheetsRouter = createTRPCRouter({
         include: { workflow: { select: { userId: true } } },
       })
       if (!node) return null
-      if (node.workflow.userId !== ctx.auth.user.id) return null
+      if (node.workflow.userId !== ctx.auth.user.id) {
+        throw new TRPCError({ code: "UNAUTHORIZED" })
+      }
       return node
     }),
 

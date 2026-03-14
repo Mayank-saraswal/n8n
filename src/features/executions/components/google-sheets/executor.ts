@@ -623,10 +623,14 @@ export const googleSheetsExecutor: NodeExecutor<GoogleSheetsData> = async ({
 
           // ── CLEAR_RANGE ─────────────────────────────────────────
           case GoogleSheetsOp.CLEAR_RANGE: {
-            const resolvedClear = resolveTemplate(
-              config.clearRange || config.range || "A:Z",
-              context
-            )
+            if (!config.clearRange?.trim()) {
+              throw new NonRetriableError(
+                "Google Sheets CLEAR_RANGE: range is required. " +
+                "Example: 'Sheet1!A2:Z' or 'Sheet1!A:A'. " +
+                "Open node settings and fill in the Range field."
+              )
+            }
+            const resolvedClear = resolveTemplate(config.clearRange, context)
             // If user already included the sheet name (contains "!"), use as-is
             // If not, prefix with sheetName
             const fullRange = resolvedClear.includes("!")
@@ -705,11 +709,16 @@ export const googleSheetsExecutor: NodeExecutor<GoogleSheetsData> = async ({
                   sheetId: number
                   title: string
                   index: number
-                  rowCount?: number
-                  columnCount?: number
+                  gridProperties?: { rowCount?: number; columnCount?: number }
                 }
               }>
-            )?.map((s) => s.properties) ?? []
+            )?.map((s) => ({
+              sheetId: s.properties.sheetId,
+              title: s.properties.title,
+              index: s.properties.index,
+              rowCount: s.properties.gridProperties?.rowCount ?? null,
+              columnCount: s.properties.gridProperties?.columnCount ?? null,
+            })) ?? []
             return {
               operation: "GET_SHEET_INFO",
               title: props?.title ?? "",
