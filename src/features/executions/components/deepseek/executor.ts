@@ -1,23 +1,11 @@
 import type { NodeExecutor } from "@/features/executions/types";
-import { retry } from "@polar-sh/sdk/lib/retries.js";
 import { NonRetriableError } from "inngest";
-import { Variable } from "lucide-react";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import Handlebars from "handlebars";
-import { geminiChannel } from "@/inngest/channels/gemini";
-import { googleGenAIIntegration } from "@sentry/nextjs";
+import { resolveTemplate } from "@/features/executions/lib/template-resolver";
 import { generateText } from "ai";
 import prisma from "@/lib/db";
 import { decrypt } from "@/lib/encryption";
 import { deepseekChannel } from "@/inngest/channels/deepseek";
 import { createDeepSeek } from "@ai-sdk/deepseek";
-
-
-Handlebars.registerHelper("json", (context) => {
-    const jsonString = JSON.stringify(context, null, 2);
-    const safeString = new Handlebars.SafeString(jsonString)
-    return safeString
-});
 
 type DeepseekData = {
     variableName?: string
@@ -78,11 +66,11 @@ export const deepseekExecutor: NodeExecutor<DeepseekData> = async ({
 
 
     const systemPrompt = data.systemPrompt
-        ? Handlebars.compile(data.systemPrompt)(context)
+        ? resolveTemplate(data.systemPrompt, context)
         : "You are a helpful assistant"
 
     const userPrompt = data.userPrompt
-        ? Handlebars.compile(data.userPrompt)(context)
+        ? resolveTemplate(data.userPrompt, context)
         : "No prompt provided"
 
     //Fetch credentials 

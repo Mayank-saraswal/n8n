@@ -1,22 +1,9 @@
 import type { NodeExecutor } from "@/features/executions/types";
-import { retry } from "@polar-sh/sdk/lib/retries.js";
 import { NonRetriableError } from "inngest";
-
-
-import Handlebars from "handlebars";
+import { resolveTemplate } from "@/features/executions/lib/template-resolver";
 import { telegramChannel } from "@/inngest/channels/telegram";
-
-
-
 import { decode } from "html-entities";
 import ky from "ky";
-
-
-Handlebars.registerHelper("json", (context) => {
-    const jsonString = JSON.stringify(context, null, 2);
-    const safeString = new Handlebars.SafeString(jsonString)
-    return safeString
-});
 
 type TelegramData = {
     variableName?: string
@@ -58,7 +45,7 @@ export const telegramExecutor: NodeExecutor<TelegramData> = async ({
 
 
 
-    const rawContent = Handlebars.compile(data.content)(context)
+    const rawContent = resolveTemplate(data.content, context)
     const content = decode(rawContent)
 
     //Fetch credentials 

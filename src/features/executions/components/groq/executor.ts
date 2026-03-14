@@ -1,22 +1,11 @@
 import type { NodeExecutor } from "@/features/executions/types";
-import { retry } from "@polar-sh/sdk/lib/retries.js";
 import { NonRetriableError } from "inngest";
-import { Variable } from "lucide-react";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import Handlebars from "handlebars";
-import {geminiChannel } from "@/inngest/channels/gemini";
-import { googleGenAIIntegration } from "@sentry/nextjs";
+import { resolveTemplate } from "@/features/executions/lib/template-resolver";
+import { groqChannel } from "@/inngest/channels/groq";
 import { generateText } from "ai";
 import prisma from "@/lib/db";
 import { decrypt } from "@/lib/encryption";
-import { groqChannel } from "@/inngest/channels/groq";
 import { createGroq } from '@ai-sdk/groq';
-
-Handlebars.registerHelper("json", (context)=> {
-    const jsonString = JSON.stringify(context , null , 2);
-    const safeString= new Handlebars.SafeString(jsonString)
-    return safeString
-});
 
 type GroqData = {
     variableName?:string
@@ -77,11 +66,11 @@ export const groqExecutor:NodeExecutor<GroqData > = async({
     
  
     const systemPrompt = data.systemPrompt 
-    ? Handlebars.compile(data.systemPrompt)(context)
+    ? resolveTemplate(data.systemPrompt, context)
     :   "You are a helpful assistant" 
 
     const userPrompt = data.userPrompt 
-    ? Handlebars.compile(data.userPrompt)(context)
+    ? resolveTemplate(data.userPrompt, context)
     : "No prompt provided"
 
     //Fetch credentials 

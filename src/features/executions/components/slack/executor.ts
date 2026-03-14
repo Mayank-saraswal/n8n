@@ -1,23 +1,9 @@
 import type { NodeExecutor } from "@/features/executions/types";
-import { retry } from "@polar-sh/sdk/lib/retries.js";
 import { NonRetriableError } from "inngest";
-
-
-import Handlebars from "handlebars";
-import { discordChannel } from "@/inngest/channels/discord";
-
-
-
+import { resolveTemplate } from "@/features/executions/lib/template-resolver";
 import { decode } from "html-entities";
 import ky from "ky";
 import { slackChannel } from "@/inngest/channels/slack";
-
-
-Handlebars.registerHelper("json", (context)=> {
-    const jsonString = JSON.stringify(context , null , 2);
-    const safeString= new Handlebars.SafeString(jsonString)
-    return safeString
-});
 
 type SlackData = {
     variableName?:string
@@ -60,7 +46,7 @@ export const slackExecutor:NodeExecutor<SlackData > = async({
 
 
 
-    const rawContent = Handlebars.compile(data.content)(context)
+    const rawContent = resolveTemplate(data.content, context)
     const content = decode(rawContent)
     //Fetch credentials 
 
