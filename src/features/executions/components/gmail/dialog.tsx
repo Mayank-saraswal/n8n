@@ -46,9 +46,16 @@ export interface GmailFormValues {
   labelIds?: string
   includeBody?: boolean
   includeHeaders?: boolean
+  pageToken?: string
   attachmentData?: string
   attachmentName?: string
   attachmentMime?: string
+  attachmentId?: string
+  attachmentOutputFormat?: string
+  removeLabelIds?: string
+  labelName?: string
+  draftId?: string
+  messageIds?: string
 }
 
 interface GmailDialogProps {
@@ -65,20 +72,28 @@ type GmailOp =
   | "GET_MESSAGE" | "LIST_MESSAGES" | "SEARCH_MESSAGES"
   | "ADD_LABEL" | "REMOVE_LABEL"
   | "MARK_READ" | "MARK_UNREAD" | "MOVE_TO_TRASH"
+  | "GET_ATTACHMENT" | "GET_THREAD" | "LIST_LABELS" | "CREATE_LABEL"
+  | "LIST_DRAFTS" | "SEND_DRAFT"
 
 const OUTPUT_HINTS: Record<string, string[]> = {
-  SEND: ["messageId", "threadId"],
-  REPLY: ["messageId", "threadId"],
-  FORWARD: ["messageId", "threadId"],
-  CREATE_DRAFT: ["draftId", "messageId"],
-  GET_MESSAGE: ["messageId", "from", "subject", "date", "bodyText", "snippet", "isUnread", "attachmentCount"],
-  LIST_MESSAGES: ["messages", "count", "messages.0.from", "messages.0.subject", "nextPageToken"],
-  SEARCH_MESSAGES: ["messages", "count", "messages.0.from", "messages.0.subject", "nextPageToken"],
-  ADD_LABEL: ["messageId", "currentLabels"],
-  REMOVE_LABEL: ["messageId", "currentLabels"],
-  MARK_READ: ["messageId"],
-  MARK_UNREAD: ["messageId"],
-  MOVE_TO_TRASH: ["messageId"],
+  SEND: ["messageId", "threadId", "to", "subject", "sentAt"],
+  REPLY: ["messageId", "threadId", "to", "subject", "repliedTo", "sentAt"],
+  FORWARD: ["messageId", "threadId", "to", "subject", "forwardedFrom", "sentAt"],
+  CREATE_DRAFT: ["draftId", "messageId", "threadId", "to", "subject", "createdAt"],
+  GET_MESSAGE: ["messageId", "threadId", "from", "to", "subject", "date", "snippet", "bodyText", "isUnread", "isStarred", "attachmentCount", "labelIds"],
+  LIST_MESSAGES: ["messages", "count", "nextPageToken", "messages.0.messageId", "messages.0.from", "messages.0.subject", "messages.0.isUnread"],
+  SEARCH_MESSAGES: ["messages", "count", "nextPageToken", "query", "messages.0.messageId", "messages.0.from", "messages.0.subject"],
+  ADD_LABEL: ["messageId", "threadId", "labelIds", "addedLabels"],
+  REMOVE_LABEL: ["messageId", "threadId", "labelIds", "removedLabels"],
+  MARK_READ: ["messageId", "threadId", "labelIds", "markedRead"],
+  MARK_UNREAD: ["messageId", "threadId", "labelIds", "markedUnread"],
+  MOVE_TO_TRASH: ["messageId", "threadId", "labelIds", "trashed"],
+  GET_ATTACHMENT: ["data", "size", "sizeKb", "attachmentId", "messageId"],
+  GET_THREAD: ["threadId", "messageCount", "messages", "conversationText", "firstMessage.from", "lastMessage.subject"],
+  LIST_LABELS: ["labels", "count", "userLabels", "systemLabels"],
+  CREATE_LABEL: ["labelId", "name", "type"],
+  LIST_DRAFTS: ["drafts", "count", "nextPageToken", "drafts.0.draftId"],
+  SEND_DRAFT: ["messageId", "threadId", "draftId", "sentAt"],
 }
 
 export const GmailDialog = ({
@@ -113,6 +128,11 @@ export const GmailDialog = ({
   const [attachmentData, setAttachmentData] = useState(defaultValues.attachmentData || "")
   const [attachmentName, setAttachmentName] = useState(defaultValues.attachmentName || "")
   const [attachmentMime, setAttachmentMime] = useState(defaultValues.attachmentMime || "application/octet-stream")
+  const [pageToken, setPageToken] = useState(defaultValues.pageToken || "")
+  const [attachmentId, setAttachmentId] = useState(defaultValues.attachmentId || "")
+  const [attachmentOutputFormat, setAttachmentOutputFormat] = useState(defaultValues.attachmentOutputFormat || "base64")
+  const [labelName, setLabelName] = useState(defaultValues.labelName || "")
+  const [draftId, setDraftId] = useState(defaultValues.draftId || "")
   const [saved, setSaved] = useState(false)
 
   const { data: credentials, isLoading: isLoadingCredentials } =
@@ -148,6 +168,11 @@ export const GmailDialog = ({
       setAttachmentData(config.attachmentData)
       setAttachmentName(config.attachmentName)
       setAttachmentMime(config.attachmentMime)
+      setPageToken(config.pageToken)
+      setAttachmentId(config.attachmentId)
+      setAttachmentOutputFormat(config.attachmentOutputFormat)
+      setLabelName(config.labelName)
+      setDraftId(config.draftId)
     }
   }, [config])
 
@@ -174,6 +199,11 @@ export const GmailDialog = ({
       setAttachmentData(defaultValues.attachmentData || "")
       setAttachmentName(defaultValues.attachmentName || "")
       setAttachmentMime(defaultValues.attachmentMime || "application/octet-stream")
+      setPageToken(defaultValues.pageToken || "")
+      setAttachmentId(defaultValues.attachmentId || "")
+      setAttachmentOutputFormat(defaultValues.attachmentOutputFormat || "base64")
+      setLabelName(defaultValues.labelName || "")
+      setDraftId(defaultValues.draftId || "")
     }
   }, [open, defaultValues, config])
 
@@ -191,6 +221,18 @@ export const GmailDialog = ({
     })
   )
 
+  const testMutation = useMutation(
+    trpc.gmail.testCredential.mutationOptions({
+      onSuccess: (data) => {
+        if (data.ok) {
+          alert(`Connected as ${data.email}`)
+        } else {
+          alert(`Test failed: ${data.error}`)
+        }
+      },
+    })
+  )
+
   const isValid = !!credentialId.trim()
 
   const handleSave = () => {
@@ -201,8 +243,10 @@ export const GmailDialog = ({
       to, cc, bcc, subject, body, isHtml,
       replyTo, messageId, threadId,
       searchQuery, maxResults, labelIds,
-      includeBody, includeHeaders,
+      includeBody, includeHeaders, pageToken,
       attachmentData, attachmentName, attachmentMime,
+      attachmentId, attachmentOutputFormat,
+      labelName, draftId,
     }
 
     onSubmit(values)
@@ -217,8 +261,10 @@ export const GmailDialog = ({
         to, cc, bcc, subject, body, isHtml,
         replyTo, messageId, threadId,
         searchQuery, maxResults, labelIds,
-        includeBody, includeHeaders,
+        includeBody, includeHeaders, pageToken,
         attachmentData, attachmentName, attachmentMime,
+        attachmentId, attachmentOutputFormat,
+        labelName, draftId,
       })
     }
   }
@@ -259,32 +305,55 @@ export const GmailDialog = ({
             {/* 2. Credential Selector */}
             <div className="space-y-2">
               <Label>Gmail Credential</Label>
-              <Select
-                value={credentialId}
-                onValueChange={setCredentialId}
-                disabled={isLoadingCredentials || !credentials?.length}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select credential..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {credentials?.map((credential) => (
-                    <SelectItem key={credential.id} value={credential.id}>
-                      {credential.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select
+                  value={credentialId}
+                  onValueChange={setCredentialId}
+                  disabled={isLoadingCredentials || !credentials?.length}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select credential..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {credentials?.map((credential) => {
+                      const badgeClass = credential.type === "GMAIL_OAUTH"
+                        ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                        : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+                      return (
+                        <SelectItem key={credential.id} value={credential.id}>
+                          <span className="flex items-center gap-2">
+                            <span className={`inline-block px-1.5 py-0.5 text-[10px] font-medium rounded ${badgeClass}`}>
+                              {credential.type === "GMAIL_OAUTH" ? "OAuth2" : "Legacy"}
+                            </span>
+                            {credential.name}
+                          </span>
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+                {credentialId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => testMutation.mutate({ credentialId })}
+                    disabled={testMutation.isPending}
+                  >
+                    {testMutation.isPending ? <Loader2Icon className="size-3 animate-spin" /> : "Test"}
+                  </Button>
+                )}
+              </div>
               {!credentials?.length && !isLoadingCredentials && (
                 <p className="text-xs text-muted-foreground">
                   No Gmail credentials found.
                 </p>
               )}
               <Link
-                href="/credentials/new"
+                href="/api/auth/gmail"
                 className="text-xs text-primary hover:underline"
               >
-                + Add new Gmail credential
+                + Connect new Gmail account
               </Link>
               {!credentialId && (
                 <p className="text-xs text-destructive">
@@ -312,12 +381,16 @@ export const GmailDialog = ({
                     <SelectItem value="REPLY">Reply to Email</SelectItem>
                     <SelectItem value="FORWARD">Forward Email</SelectItem>
                     <SelectItem value="CREATE_DRAFT">Create Draft</SelectItem>
+                    <SelectItem value="SEND_DRAFT">Send Draft</SelectItem>
+                    <SelectItem value="LIST_DRAFTS">List Drafts</SelectItem>
                   </SelectGroup>
                   <SelectGroup>
                     <SelectLabel>Read &amp; Search</SelectLabel>
                     <SelectItem value="GET_MESSAGE">Get Email</SelectItem>
                     <SelectItem value="LIST_MESSAGES">List Emails</SelectItem>
                     <SelectItem value="SEARCH_MESSAGES">Search Emails</SelectItem>
+                    <SelectItem value="GET_THREAD">Get Thread</SelectItem>
+                    <SelectItem value="GET_ATTACHMENT">Download Attachment</SelectItem>
                   </SelectGroup>
                   <SelectGroup>
                     <SelectLabel>Organize</SelectLabel>
@@ -326,6 +399,11 @@ export const GmailDialog = ({
                     <SelectItem value="MARK_READ">Mark as Read</SelectItem>
                     <SelectItem value="MARK_UNREAD">Mark as Unread</SelectItem>
                     <SelectItem value="MOVE_TO_TRASH">Move to Trash</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Labels</SelectLabel>
+                    <SelectItem value="LIST_LABELS">List Labels</SelectItem>
+                    <SelectItem value="CREATE_LABEL">Create Label</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
@@ -531,6 +609,13 @@ export const GmailDialog = ({
                     Only subject, from, date returned (faster)
                   </p>
                 )}
+                <div className="flex items-center gap-3">
+                  <Switch checked={includeHeaders} onCheckedChange={setIncludeHeaders} />
+                  <Label>Include All Headers</Label>
+                </div>
+                <p className="text-xs text-muted-foreground -mt-3">
+                  Returns From, To, CC, Reply-To, Date, Message-ID
+                </p>
               </>
             )}
 
@@ -567,6 +652,17 @@ export const GmailDialog = ({
                   />
                   <p className="text-xs text-muted-foreground">
                     Optional Gmail query to filter list
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Page Token</Label>
+                  <Input
+                    placeholder="{{prevStep.nextPageToken}}"
+                    value={pageToken}
+                    onChange={(e) => setPageToken(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    For pagination. Leave empty for first page.
                   </p>
                 </div>
               </>
@@ -609,6 +705,17 @@ export const GmailDialog = ({
                 <div className="flex items-center gap-3">
                   <Switch checked={includeBody} onCheckedChange={setIncludeBody} />
                   <Label>Include Full Body</Label>
+                </div>
+                <div className="space-y-2">
+                  <Label>Page Token</Label>
+                  <Input
+                    placeholder="{{prevStep.nextPageToken}}"
+                    value={pageToken}
+                    onChange={(e) => setPageToken(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    For pagination. Leave empty for first page.
+                  </p>
                 </div>
               </>
             )}
@@ -727,6 +834,122 @@ export const GmailDialog = ({
                   <Label>HTML Mode</Label>
                 </div>
               </>
+            )}
+
+            {/* ── GET_ATTACHMENT ── */}
+            {operation === "GET_ATTACHMENT" && (
+              <>
+                <div className="space-y-2">
+                  <Label>Message ID *</Label>
+                  <Input
+                    placeholder="{{gmail.messageId}}"
+                    value={messageId}
+                    onChange={(e) => setMessageId(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Attachment ID *</Label>
+                  <Input
+                    placeholder="{{gmail.attachments.0.attachmentId}}"
+                    value={attachmentId}
+                    onChange={(e) => setAttachmentId(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Output Format</Label>
+                  <Select
+                    value={attachmentOutputFormat}
+                    onValueChange={setAttachmentOutputFormat}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="base64">Base64</SelectItem>
+                      <SelectItem value="text">Text (UTF-8)</SelectItem>
+                      <SelectItem value="dataUrl">Data URL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
+            {/* ── GET_THREAD ── */}
+            {operation === "GET_THREAD" && (
+              <>
+                <div className="space-y-2">
+                  <Label>Thread ID *</Label>
+                  <Input
+                    placeholder="{{gmail.threadId}}"
+                    value={threadId}
+                    onChange={(e) => setThreadId(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Switch checked={includeBody} onCheckedChange={setIncludeBody} />
+                  <Label>Include Full Body</Label>
+                </div>
+              </>
+            )}
+
+            {/* ── LIST_DRAFTS ── */}
+            {operation === "LIST_DRAFTS" && (
+              <>
+                <div className="space-y-2">
+                  <Label>Max Results</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={maxResults}
+                    onChange={(e) => setMaxResults(Math.min(50, Math.max(1, parseInt(e.target.value) || 10)))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Page Token</Label>
+                  <Input
+                    placeholder="{{prevStep.nextPageToken}}"
+                    value={pageToken}
+                    onChange={(e) => setPageToken(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    For pagination. Leave empty for first page.
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* ── SEND_DRAFT ── */}
+            {operation === "SEND_DRAFT" && (
+              <div className="space-y-2">
+                <Label>Draft ID *</Label>
+                <Input
+                  placeholder="{{gmail.draftId}}"
+                  value={draftId}
+                  onChange={(e) => setDraftId(e.target.value)}
+                />
+              </div>
+            )}
+
+            {/* ── LIST_LABELS ── */}
+            {operation === "LIST_LABELS" && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+                <p className="text-xs text-muted-foreground">
+                  Returns all Gmail labels including system labels. No inputs needed.
+                </p>
+              </div>
+            )}
+
+            {/* ── CREATE_LABEL ── */}
+            {operation === "CREATE_LABEL" && (
+              <div className="space-y-2">
+                <Label>Label Name *</Label>
+                <Input
+                  placeholder="Processed"
+                  value={labelName}
+                  onChange={(e) => setLabelName(e.target.value)}
+                />
+              </div>
             )}
 
             {/* 5. Output variables */}
