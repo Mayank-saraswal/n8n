@@ -28,6 +28,8 @@ const formSchema = z.object({
     whatsappAccessToken: z.string().optional(),
     whatsappPhoneNumberId: z.string().optional(),
     notionApiKey: z.string().optional(),
+    razorpayKeyId: z.string().optional(),
+    razorpayKeySecret: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.type === CredentialType.GMAIL) {
         if (!data.gmailEmail) {
@@ -67,6 +69,22 @@ const formSchema = z.object({
                 code: z.ZodIssueCode.custom,
                 message: "Integration Token is required",
                 path: ["notionApiKey"],
+            })
+        }
+    }
+    if (data.type === CredentialType.RAZORPAY) {
+        if (!data.razorpayKeyId) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Key ID is required",
+                path: ["razorpayKeyId"],
+            })
+        }
+        if (!data.razorpayKeySecret) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Key Secret is required",
+                path: ["razorpayKeySecret"],
             })
         }
     }
@@ -138,6 +156,11 @@ const credentialTypeOptions = [
         label: "Notion",
         logo: "/logos/notion.svg"
     },
+    {
+        value: CredentialType.RAZORPAY,
+        label: "Razorpay",
+        logo: "/logos/razorpay.svg"
+    },
 
 ]
 
@@ -189,10 +212,25 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
         return { notionApiKey: "" }
     }, [initialData])
 
+    const razorpayDefaults = useMemo(() => {
+        if (initialData?.type === CredentialType.RAZORPAY && initialData.value) {
+            try {
+                const parsed = JSON.parse(initialData.value)
+                return {
+                    razorpayKeyId: parsed.keyId ?? "",
+                    razorpayKeySecret: parsed.keySecret ?? "",
+                }
+            } catch {
+                return { razorpayKeyId: "", razorpayKeySecret: "" }
+            }
+        }
+        return { razorpayKeyId: "", razorpayKeySecret: "" }
+    }, [initialData])
+
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: initialData
-            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults }
+            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults }
             : {
                 name: "",
                 type: CredentialType.OPENAI,
@@ -202,6 +240,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                 whatsappAccessToken: "",
                 whatsappPhoneNumberId: "",
                 notionApiKey: "",
+                razorpayKeyId: "",
+                razorpayKeySecret: "",
             }
     })
 
@@ -211,6 +251,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const isGoogleDrive = watchType === CredentialType.GOOGLE_DRIVE
     const isWhatsApp = watchType === CredentialType.WHATSAPP
     const isNotion = watchType === CredentialType.NOTION
+    const isRazorpay = watchType === CredentialType.RAZORPAY
 
     const onSubmit = async (values: FormValues) => {
         let submitValues = { ...values }
@@ -238,7 +279,15 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             })
         }
 
-        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, ...payload } = submitValues
+        // For Razorpay, encode keyId + keySecret as JSON in the value field
+        if (values.type === CredentialType.RAZORPAY) {
+            submitValues.value = JSON.stringify({
+                keyId: values.razorpayKeyId,
+                keySecret: values.razorpayKeySecret,
+            })
+        }
+
+        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, ...payload } = submitValues
 
         if (isEdit && initialData?.id) {
             await updateCredential.mutate({
@@ -308,6 +357,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                     form.setValue("value", "whatsapp-credential")
                                                 } else if (val === CredentialType.NOTION) {
                                                     form.setValue("value", "notion-credential")
+                                                } else if (val === CredentialType.RAZORPAY) {
+                                                    form.setValue("value", "razorpay-credential")
                                                 } else if (val === CredentialType.GOOGLE_SHEETS || val === CredentialType.GOOGLE_DRIVE) {
                                                     form.setValue("value", "")
                                                 } else {
@@ -316,6 +367,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                       currentValue === "gmail-credential" ||
                                                       currentValue === "whatsapp-credential" ||
                                                       currentValue === "notion-credential" ||
+                                                      currentValue === "razorpay-credential" ||
                                                       currentValue.startsWith("{")
                                                     ) {
                                                       form.setValue("value", "")
@@ -465,6 +517,52 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                             </FormItem>
                                         )}
                                     />
+                                </>
+                            ) : isRazorpay ? (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="razorpayKeyId"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Key ID</FormLabel>
+                                                <FormControl>
+                                                    <Input type="text" placeholder="rzp_live_xxx or rzp_test_xxx" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="razorpayKeySecret"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Key Secret</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" placeholder="Key Secret" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-2">ℹ️ How to get Razorpay API Keys</p>
+                                        <ol className="list-decimal list-inside space-y-1">
+                                            <li>Go to{" "}
+                                                <a href="https://dashboard.razorpay.com" target="_blank" rel="noopener noreferrer" className="underline">
+                                                    dashboard.razorpay.com
+                                                </a>
+                                            </li>
+                                            <li>Settings → API Keys → Generate Key</li>
+                                            <li>Copy Key ID and Key Secret</li>
+                                        </ol>
+                                        <p className="mt-2 text-xs">
+                                            Use rzp_test_ keys for testing, rzp_live_ for production
+                                        </p>
+                                    </div>
                                 </>
                             ) : isGoogleSheets || isGoogleDrive ? (
                                 <FormField

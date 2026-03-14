@@ -27,6 +27,7 @@ import { whatsappExecutor } from "../components/whatsapp/executor";
 import { codeExecutor } from "../components/code/executor";
 import { loopExecutor } from "../components/loop/executor";
 import { notionExecutor } from "../components/notion/executor";
+import { razorpayExecutor } from "../components/razorpay/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -57,6 +58,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.WHATSAPP]: whatsappExecutor,
     [NodeType.LOOP]: loopExecutor,
     [NodeType.NOTION]: notionExecutor,
+    [NodeType.RAZORPAY]: razorpayExecutor,
 
 }
 
