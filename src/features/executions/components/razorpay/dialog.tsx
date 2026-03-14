@@ -1080,7 +1080,7 @@ export const RazorpayDialog = ({
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value=" ">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="1">Authorized Only</SelectItem>
                     <SelectItem value="0">Unauthorized Only</SelectItem>
                   </SelectContent>

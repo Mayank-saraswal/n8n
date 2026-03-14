@@ -259,7 +259,7 @@ export const razorpayExecutor: NodeExecutor<RazorpayData> = async ({
           if (skipParam) params.set("skip", skipParam)
           if (fromDate) params.set("from", fromDate)
           if (toDate) params.set("to", toDate)
-          if (authorized) params.set("authorized", authorized)
+          if (authorized && authorized !== "all") params.set("authorized", authorized)
           const qs = params.toString()
           const data = await razorpayRequest("GET", `/orders${qs ? `?${qs}` : ""}`, creds.keyId, creds.keySecret)
           outputObject = {
@@ -495,12 +495,10 @@ export const razorpayExecutor: NodeExecutor<RazorpayData> = async ({
           if (startAt) body.start_at = parseInt(startAt)
           if (customerId) body.customer_id = customerId
           if (notes) body.notes = parseNotes(notes)
-          if (config.smsNotify || config.emailNotify) {
-            body.notify_info = {
-              notify_phone: customerContact || undefined,
-              notify_email: customerEmail || undefined,
-            }
-          }
+          const notifyInfo: Record<string, string> = {}
+          if (config.smsNotify && customerContact) notifyInfo.notify_phone = customerContact
+          if (config.emailNotify && customerEmail) notifyInfo.notify_email = customerEmail
+          if (Object.keys(notifyInfo).length > 0) body.notify_info = notifyInfo
           const data = await razorpayRequest("POST", "/subscriptions", creds.keyId, creds.keySecret, body)
           outputObject = {
             subscriptionId: data.id,
