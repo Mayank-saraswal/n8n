@@ -27,6 +27,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CheckIcon, Loader2Icon } from "lucide-react"
 import Link from "next/link"
 import { Separator } from "@/components/ui/separator"
+import { toast } from "sonner"
 
 export interface GmailFormValues {
   credentialId?: string
@@ -225,9 +226,9 @@ export const GmailDialog = ({
     trpc.gmail.testCredential.mutationOptions({
       onSuccess: (data) => {
         if (data.ok) {
-          alert(`Connected as ${data.email}`)
+          toast.success(`Connected as ${data.email}`)
         } else {
-          alert(`Test failed: ${data.error}`)
+          toast.error(`Test failed: ${data.error}`)
         }
       },
     })

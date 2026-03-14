@@ -182,6 +182,7 @@ function escapeHtml(str: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
 }
 
 /* ── Helper: Count attachments recursively ── */

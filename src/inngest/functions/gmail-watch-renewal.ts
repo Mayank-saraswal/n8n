@@ -13,8 +13,9 @@ export const gmailWatchRenewal = inngest.createFunction(
   { cron: "0 6 * * *" }, // runs daily at 6 AM UTC
   async ({ step }) => {
     return await step.run("renew-gmail-watches", async () => {
-      // Find watchers expiring within next 25 hours
-      const expirationThreshold = String(Date.now() + 25 * 60 * 60 * 1000)
+      // Gmail watches expire after 7 days; renew 25 hours before to ensure continuity
+      const RENEWAL_THRESHOLD_MS = 25 * 60 * 60 * 1000
+      const expirationThreshold = String(Date.now() + RENEWAL_THRESHOLD_MS)
       const watchers = await prisma.gmailWatcher.findMany({
         where: {
           active: true,

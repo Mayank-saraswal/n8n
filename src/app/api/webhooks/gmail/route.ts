@@ -1,14 +1,20 @@
 import { NextRequest } from "next/server"
+import { timingSafeEqual } from "crypto"
 import prisma from "@/lib/db"
 import { inngest } from "@/inngest/client"
 
 export const runtime = "nodejs"
 
+function safeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b))
+}
+
 export async function POST(request: NextRequest) {
   // 1. Verify Pub/Sub verification token
-  const token = request.nextUrl.searchParams.get("token")
+  const token = request.nextUrl.searchParams.get("token") ?? ""
   const expectedToken = process.env.GMAIL_PUBSUB_VERIFICATION_TOKEN
-  if (!expectedToken || token !== expectedToken) {
+  if (!expectedToken || !safeCompare(token, expectedToken)) {
     return new Response("Unauthorized", { status: 401 })
   }
 
