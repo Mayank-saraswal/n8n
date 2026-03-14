@@ -104,13 +104,35 @@ export const gmailTriggerHandler = inngest.createFunction(
       })
     })
 
+    // Step 4: Fire workflow execution for each new email
+    const msgs = newMessages as Array<{ id: string; threadId: string }>
+    for (const msg of msgs) {
+      await step.run(`trigger-workflow-${msg.id}`, async () => {
+        await inngest.send({
+          name: "workflow/execute",
+          data: {
+            workflowId,
+            triggerContext: {
+              gmail: {
+                messageId: msg.id,
+                threadId: msg.threadId,
+                email,
+                historyId,
+                triggeredAt: new Date().toISOString(),
+              },
+            },
+          },
+        })
+      })
+    }
+
     return {
       triggered: true,
       workflowId,
       nodeId,
       email,
-      messageCount: newMessages.length,
-      messageIds: newMessages.map((m) => m.id),
+      messageCount: msgs.length,
+      messageIds: msgs.map((m) => m.id),
     }
   }
 )
