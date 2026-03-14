@@ -159,6 +159,9 @@ export const executeWorkflow = inngest.createFunction(
       toInput: c.toInput,
     }));
 
+    // Hoist: build a lookup closure once per workflow
+    const resolveExecutor = (type: NodeType) => getExecutor(type)
+
     // Build execution levels — nodes in the same level run in parallel
     const executionLevels = buildExecutionLevels(
       preparedWorkflow.sortedNodes,
@@ -184,7 +187,7 @@ export const executeWorkflow = inngest.createFunction(
           if (skippedNodes.has(node.id)) continue
           if (executedByLoop.has(node.id)) continue
 
-          const executor = getExecutor(node.type as NodeType)
+          const executor = resolveExecutor(node.type as NodeType)
           context = await executor({
             data: node.data as Record<string, unknown>,
             nodeId: node.id,
@@ -236,7 +239,7 @@ export const executeWorkflow = inngest.createFunction(
 
         const results = await Promise.all(
           executableNodes.map((node) => {
-            const executor = getExecutor(node.type as NodeType)
+            const executor = resolveExecutor(node.type as NodeType)
             return executor({
               data: node.data as Record<string, unknown>,
               nodeId: node.id,
@@ -250,7 +253,7 @@ export const executeWorkflow = inngest.createFunction(
           })
         )
 
-        // Handle IF_ELSE branching for any parallel IF_ELSE nodes
+        // Handle IF_ELSE branching and Loop cleanup for parallel results
         for (let i = 0; i < executableNodes.length; i++) {
           const node = executableNodes[i]
           const result = results[i]
@@ -273,10 +276,25 @@ export const executeWorkflow = inngest.createFunction(
               }
             }
           }
+
+          if (node.type === NodeType.LOOP) {
+            const loopHandled = (result as Record<string, unknown>)._executedByLoop;
+            if (Array.isArray(loopHandled)) {
+              for (const id of loopHandled) {
+                executedByLoop.add(id as string);
+              }
+            }
+          }
         }
 
         // Merge all parallel outputs into context for the next level
         context = mergeParallelResults(contextSnapshot, results)
+
+        // Clean up the internal _executedByLoop flag from merged context
+        if (context._executedByLoop) {
+          const { _executedByLoop, ...cleanContext } = context;
+          context = cleanContext;
+        }
       }
     }
 
