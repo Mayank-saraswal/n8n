@@ -139,7 +139,7 @@ export const gmailRouter = createTRPCRouter({
         select: { userId: true },
       })
       if (!workflow || workflow.userId !== ctx.auth.user.id) {
-        throw new Error("Unauthorized")
+        throw new TRPCError({ code: "UNAUTHORIZED" })
       }
       const data = buildGmailData(input)
       return prisma.gmailNode.upsert({
@@ -157,7 +157,7 @@ export const gmailRouter = createTRPCRouter({
         include: { workflow: { select: { userId: true } } },
       })
       if (!node || node.workflow.userId !== ctx.auth.user.id) {
-        throw new Error("Unauthorized")
+        throw new TRPCError({ code: "UNAUTHORIZED" })
       }
       return prisma.gmailNode.delete({ where: { nodeId: input.nodeId } })
     }),
