@@ -196,6 +196,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Notion",
         description:"Interact with Notion databases, pages, and blocks",
         icon:"/logos/notion.svg"
+    },
+    {
+        type:NodeType.RAZORPAY,
+        label:"Razorpay",
+        description:"Create orders, payments, refunds via Razorpay",
+        icon:"/logos/razorpay.svg"
     }
 
 ]

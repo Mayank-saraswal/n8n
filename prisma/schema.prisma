@@ -98,6 +98,7 @@ model workflow {
   whatsAppNodes     WhatsAppNode[]
   loopNodes         LoopNode[]
   notionNodes       NotionNode[]
+  razorpayNodes     RazorpayNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -131,6 +132,7 @@ enum NodeType {
   WHATSAPP
   LOOP
   NOTION
+  RAZORPAY
 }
 
 enum HttpMethod {
@@ -201,6 +203,7 @@ enum CredentialType {
   GOOGLE_DRIVE
   WHATSAPP
   NOTION
+  RAZORPAY
 }
 
 model Node {
@@ -466,6 +469,42 @@ model NotionNode {
   startCursor    String          @default("")
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+enum RazorpayOperation {
+  CREATE_ORDER
+  FETCH_ORDER
+  CREATE_REFUND
+  FETCH_PAYMENT
+  FETCH_REFUND
+  CREATE_CUSTOMER
+  FETCH_CUSTOMER
+}
+
+model RazorpayNode {
+  id            String             @id @default(cuid())
+  nodeId        String             @unique
+  workflowId    String
+  credentialId  String?
+  operation     RazorpayOperation  @default(CREATE_ORDER)
+  amount        String             @default("")
+  currency      String             @default("INR")
+  description   String             @default("")
+  receipt       String             @default("")
+  customerId    String             @default("")
+  paymentId     String             @default("")
+  orderId       String             @default("")
+  refundAmount  String             @default("")
+  customerName  String             @default("")
+  customerEmail String             @default("")
+  customerPhone String             @default("")
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
