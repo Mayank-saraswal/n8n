@@ -24,6 +24,7 @@ type SlackData = { nodeId?: string }
 
 /* ── Helpers ── */
 
+// Slack webhook messages are truncated as a safety measure; the API limit is 40,000 chars
 const MAX_WEBHOOK_MESSAGE_LENGTH = 2000
 
 function getSlackErrorHint(errorCode: string): string {
