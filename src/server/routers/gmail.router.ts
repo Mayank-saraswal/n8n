@@ -11,6 +11,37 @@ import {
 
 const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me"
 
+function buildGmailData(input: {
+  credentialId: string
+  operation: GmailOperation
+  variableName: string
+  to: string; subject: string; body: string; isHtml: boolean
+  cc: string; bcc: string; replyTo: string
+  messageId: string; threadId: string; searchQuery: string
+  maxResults: number; labelIds: string
+  includeBody: boolean; includeHeaders: boolean; pageToken: string
+  attachmentData: string; attachmentName: string; attachmentMime: string
+  attachmentId: string; attachmentOutputFormat: string
+  removeLabelIds: string; labelName: string; draftId: string; messageIds: string
+}) {
+  return {
+    credentialId: input.credentialId,
+    operation: input.operation,
+    variableName: input.variableName,
+    to: input.to, subject: input.subject, body: input.body, isHtml: input.isHtml,
+    cc: input.cc, bcc: input.bcc, replyTo: input.replyTo,
+    messageId: input.messageId, threadId: input.threadId, searchQuery: input.searchQuery,
+    maxResults: input.maxResults, labelIds: input.labelIds,
+    includeBody: input.includeBody, includeHeaders: input.includeHeaders,
+    pageToken: input.pageToken,
+    attachmentData: input.attachmentData, attachmentName: input.attachmentName,
+    attachmentMime: input.attachmentMime,
+    attachmentId: input.attachmentId, attachmentOutputFormat: input.attachmentOutputFormat,
+    removeLabelIds: input.removeLabelIds, labelName: input.labelName,
+    draftId: input.draftId, messageIds: input.messageIds,
+  }
+}
+
 export const gmailRouter = createTRPCRouter({
   getCredentials: protectedProcedure.query(async ({ ctx }) => {
     const credentials = await prisma.credential.findMany({
@@ -146,68 +177,11 @@ export const gmailRouter = createTRPCRouter({
       if (!workflow || workflow.userId !== ctx.auth.user.id) {
         throw new Error("Unauthorized")
       }
+      const data = buildGmailData(input)
       return prisma.gmailNode.upsert({
         where: { nodeId: input.nodeId },
-        create: {
-          workflowId: input.workflowId,
-          nodeId: input.nodeId,
-          credentialId: input.credentialId,
-          operation: input.operation,
-          variableName: input.variableName,
-          to: input.to,
-          subject: input.subject,
-          body: input.body,
-          isHtml: input.isHtml,
-          cc: input.cc,
-          bcc: input.bcc,
-          replyTo: input.replyTo,
-          messageId: input.messageId,
-          threadId: input.threadId,
-          searchQuery: input.searchQuery,
-          maxResults: input.maxResults,
-          labelIds: input.labelIds,
-          includeBody: input.includeBody,
-          includeHeaders: input.includeHeaders,
-          pageToken: input.pageToken,
-          attachmentData: input.attachmentData,
-          attachmentName: input.attachmentName,
-          attachmentMime: input.attachmentMime,
-          attachmentId: input.attachmentId,
-          attachmentOutputFormat: input.attachmentOutputFormat,
-          removeLabelIds: input.removeLabelIds,
-          labelName: input.labelName,
-          draftId: input.draftId,
-          messageIds: input.messageIds,
-        },
-        update: {
-          credentialId: input.credentialId,
-          operation: input.operation,
-          variableName: input.variableName,
-          to: input.to,
-          subject: input.subject,
-          body: input.body,
-          isHtml: input.isHtml,
-          cc: input.cc,
-          bcc: input.bcc,
-          replyTo: input.replyTo,
-          messageId: input.messageId,
-          threadId: input.threadId,
-          searchQuery: input.searchQuery,
-          maxResults: input.maxResults,
-          labelIds: input.labelIds,
-          includeBody: input.includeBody,
-          includeHeaders: input.includeHeaders,
-          pageToken: input.pageToken,
-          attachmentData: input.attachmentData,
-          attachmentName: input.attachmentName,
-          attachmentMime: input.attachmentMime,
-          attachmentId: input.attachmentId,
-          attachmentOutputFormat: input.attachmentOutputFormat,
-          removeLabelIds: input.removeLabelIds,
-          labelName: input.labelName,
-          draftId: input.draftId,
-          messageIds: input.messageIds,
-        },
+        create: { workflowId: input.workflowId, nodeId: input.nodeId, ...data },
+        update: data,
       })
     }),
 
@@ -222,5 +196,155 @@ export const gmailRouter = createTRPCRouter({
         throw new Error("Unauthorized")
       }
       return prisma.gmailNode.delete({ where: { nodeId: input.nodeId } })
+    }),
+
+  activateWatch: protectedProcedure
+    .input(
+      z.object({
+        workflowId: z.string(),
+        nodeId: z.string(),
+        credentialId: z.string(),
+        filterQuery: z.string().default(""),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const credential = await prisma.credential.findUnique({
+        where: { id: input.credentialId, userId: ctx.auth.user.id },
+      })
+      if (!credential) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Credential not found" })
+      }
+
+      // Get access token
+      const raw = decrypt(credential.value)
+      let parsed: Record<string, unknown>
+      try { parsed = JSON.parse(raw) } catch { parsed = { refreshToken: raw } }
+      const refreshToken = parsed.refreshToken as string | undefined
+      if (!refreshToken) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Missing refreshToken" })
+      }
+
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: GOOGLE_GMAIL_CLIENT_ID,
+          client_secret: GOOGLE_GMAIL_CLIENT_SECRET,
+          refresh_token: refreshToken,
+          grant_type: "refresh_token",
+        }),
+      })
+      if (!tokenRes.ok) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Token refresh failed" })
+      }
+      const tokenData = (await tokenRes.json()) as { access_token: string }
+
+      // Get email address
+      const profileRes = await fetch(`${GMAIL_API}/profile`, {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      })
+      const profile = profileRes.ok
+        ? ((await profileRes.json()) as { emailAddress?: string })
+        : { emailAddress: "" }
+      const email = profile.emailAddress ?? ""
+
+      // Register Gmail watch
+      const topicName = process.env.GMAIL_PUBSUB_TOPIC_NAME ?? ""
+      if (!topicName) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "GMAIL_PUBSUB_TOPIC_NAME not configured" })
+      }
+
+      const watchRes = await fetch(`${GMAIL_API}/watch`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          topicName,
+          labelIds: ["INBOX"],
+          labelFilterBehavior: "INCLUDE",
+        }),
+      })
+      if (!watchRes.ok) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Gmail watch registration failed: ${watchRes.status}`,
+        })
+      }
+      const watchData = (await watchRes.json()) as { historyId: string; expiration: string }
+
+      return prisma.gmailWatcher.upsert({
+        where: { nodeId: input.nodeId },
+        create: {
+          workflowId: input.workflowId,
+          nodeId: input.nodeId,
+          credentialId: input.credentialId,
+          email,
+          active: true,
+          lastHistoryId: watchData.historyId,
+          expiration: watchData.expiration,
+          filterQuery: input.filterQuery,
+        },
+        update: {
+          active: true,
+          credentialId: input.credentialId,
+          email,
+          lastHistoryId: watchData.historyId,
+          expiration: watchData.expiration,
+          filterQuery: input.filterQuery,
+        },
+      })
+    }),
+
+  deactivateWatch: protectedProcedure
+    .input(z.object({ nodeId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const watcher = await prisma.gmailWatcher.findUnique({
+        where: { nodeId: input.nodeId },
+        include: { workflow: { select: { userId: true } } },
+      })
+      if (!watcher || watcher.workflow.userId !== ctx.auth.user.id) {
+        throw new TRPCError({ code: "UNAUTHORIZED" })
+      }
+
+      // Try to stop the watch
+      try {
+        const credential = await prisma.credential.findUnique({
+          where: { id: watcher.credentialId },
+        })
+        if (credential) {
+          const raw = decrypt(credential.value)
+          let parsed: Record<string, unknown>
+          try { parsed = JSON.parse(raw) } catch { parsed = { refreshToken: raw } }
+          const refreshToken = parsed.refreshToken as string | undefined
+          if (refreshToken) {
+            const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                client_id: GOOGLE_GMAIL_CLIENT_ID,
+                client_secret: GOOGLE_GMAIL_CLIENT_SECRET,
+                refresh_token: refreshToken,
+                grant_type: "refresh_token",
+              }),
+            })
+            if (tokenRes.ok) {
+              const tokenData = (await tokenRes.json()) as { access_token: string }
+              await fetch(`${GMAIL_API}/stop`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${tokenData.access_token}` },
+              })
+            }
+          }
+        }
+      } catch {
+        // Best effort to stop watch
+      }
+
+      return prisma.gmailWatcher.update({
+        where: { id: watcher.id },
+        data: { active: false },
+      })
     }),
 })
