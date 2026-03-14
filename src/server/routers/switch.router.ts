@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init"
 import prisma from "@/lib/db"
 
@@ -24,7 +25,17 @@ export const switchRouter = createTRPCRouter({
         workflowId: z.string(),
         nodeId: z.string(),
         variableName: z.string().max(200).default("switch"),
-        casesJson: z.string().max(50000).default("[]"),
+        casesJson: z.string().max(50000).default("[]").refine(
+          (val) => {
+            try {
+              const parsed = JSON.parse(val)
+              return Array.isArray(parsed) && parsed.length <= 20
+            } catch {
+              return false
+            }
+          },
+          { message: "Maximum 20 cases per Switch node. Use nested Switch nodes for more complex routing." }
+        ),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -33,7 +44,7 @@ export const switchRouter = createTRPCRouter({
         select: { userId: true },
       })
       if (!workflow || workflow.userId !== ctx.auth.user.id) {
-        throw new Error("Unauthorized")
+        throw new TRPCError({ code: "UNAUTHORIZED" })
       }
       return prisma.switchNode.upsert({
         where: { nodeId: input.nodeId },
@@ -58,7 +69,7 @@ export const switchRouter = createTRPCRouter({
         include: { workflow: { select: { userId: true } } },
       })
       if (!node || node.workflow.userId !== ctx.auth.user.id) {
-        throw new Error("Unauthorized")
+        throw new TRPCError({ code: "UNAUTHORIZED" })
       }
       return prisma.switchNode.delete({ where: { nodeId: input.nodeId } })
     }),

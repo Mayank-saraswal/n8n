@@ -31,7 +31,9 @@ interface SwitchCase {
 
 function createEmptyCase(index: number): SwitchCase {
   return {
-    id: `case_${index}`,
+    id: typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `case_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     name: `Case ${index + 1}`,
     conditionsJson: JSON.stringify(createDefaultConfig()),
   }
@@ -46,7 +48,7 @@ export function SwitchDialog({ open, onOpenChange, nodeId, workflowId }: SwitchD
   const [saved, setSaved] = useState(false)
   const [activeCaseIndex, setActiveCaseIndex] = useState(0)
 
-  const { data: config } = useQuery(
+  const { data: config, isLoading } = useQuery(
     trpc.switch.getByNodeId.queryOptions(
       { nodeId },
       { enabled: !!nodeId && open }
@@ -66,6 +68,15 @@ export function SwitchDialog({ open, onOpenChange, nodeId, workflowId }: SwitchD
       }
     }
   }, [config])
+
+  // Reset to defaults when dialog opens for a node with no saved config
+  useEffect(() => {
+    if (open && !isLoading && !config) {
+      setCases([createEmptyCase(0)])
+      setVariableName("switch")
+      setActiveCaseIndex(0)
+    }
+  }, [open, isLoading, config])
 
   const upsertMutation = useMutation(
     trpc.switch.upsert.mutationOptions({

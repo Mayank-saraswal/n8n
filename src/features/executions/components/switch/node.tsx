@@ -146,7 +146,7 @@ export const SwitchNode = memo((props: NodeProps) => {
         // Distribute handles evenly along the right side
         const topPercent = totalBranches === 1
           ? 50
-          : 20 + (i * 60) / (totalBranches - 1)
+          : 15 + (i / (totalBranches - 1)) * 70
         return (
           <Handle
             key={branch.id}

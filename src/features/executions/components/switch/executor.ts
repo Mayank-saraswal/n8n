@@ -35,9 +35,32 @@ export const switchExecutor: NodeExecutor = async ({
     )
   }
 
-  // Step 2: Prepare (keep 3-step pattern)
-  await step.run(`switch-${nodeId}-prepare`, async () => {
-    return { ready: true }
+  // Step 2: Validate casesJson before execution
+  // This step preserves the 3-step idempotency pattern.
+  // If step-3-execute fails and retries, steps 1 and 2 are not re-run.
+  await step.run(`switch-${nodeId}-validate`, async () => {
+    let cases: unknown[]
+    try {
+      cases = JSON.parse(config.casesJson || "[]")
+    } catch {
+      throw new NonRetriableError(
+        "Switch node: casesJson is corrupted. Re-open and re-save the node."
+      )
+    }
+    if (!Array.isArray(cases)) {
+      throw new NonRetriableError("Switch node: casesJson must be an array.")
+    }
+    if (cases.length === 0) {
+      throw new NonRetriableError(
+        "Switch node has no cases configured. Open settings and add at least one case."
+      )
+    }
+    if (cases.length > 20) {
+      throw new NonRetriableError(
+        `Switch node has ${cases.length} cases. Maximum is 20.`
+      )
+    }
+    return { casesCount: cases.length }
   })
 
   // Step 3: Evaluate cases in order, return first match

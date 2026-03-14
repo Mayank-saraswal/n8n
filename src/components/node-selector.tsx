@@ -151,6 +151,12 @@ const executionNodes: NodeTypeOptions[] = [
         icon:GitBranchIcon
     },
     {
+        type:NodeType.SWITCH,
+        label:"Switch",
+        description:"Route to one of N branches based on conditions",
+        icon:GitForkIcon
+    },
+    {
         type:NodeType.GMAIL,
         label:"Gmail",
         description:"Send an email via Gmail",
@@ -202,12 +208,6 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Razorpay",
         description:"Orders, payments, refunds, subscriptions",
         icon:"/logos/razorpay.svg"
-    },
-    {
-        type:NodeType.SWITCH,
-        label:"Switch",
-        description:"Route to one of N branches based on conditions",
-        icon:GitForkIcon
     }
 
 ]
