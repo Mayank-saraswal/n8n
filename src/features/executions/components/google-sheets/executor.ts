@@ -393,7 +393,13 @@ export const googleSheetsExecutor: NodeExecutor<GoogleSheetsData> = async ({
                 "Google Sheets UPDATE_ROWS_BY_QUERY: 'updateValues' contains invalid JSON."
               )
             }
-            let updatedCount = 0
+            // Collect all matching rows and build batch payload
+            const batchData: Array<{
+              range: string
+              majorDimension: "ROWS"
+              values: string[][]
+            }> = []
+            const updatedRowNumbers: number[] = []
 
             for (let i = 1; i < allRows.length; i++) {
               if (allRows[i][colIndex] === matchVal) {
@@ -402,20 +408,43 @@ export const googleSheetsExecutor: NodeExecutor<GoogleSheetsData> = async ({
                   const ki = headers.indexOf(key)
                   if (ki !== -1) newRow[ki] = val
                 }
-                const rowRange = `${sheetName}!A${i + 1}`
-                await sheetsRequest(
-                  "PUT",
-                  `/${spreadsheetId}/values/${encodeURIComponent(rowRange)}?valueInputOption=${config.valueInputOption}`,
-                  accessToken,
-                  { values: [newRow] }
-                )
-                updatedCount++
+                batchData.push({
+                  range: `${sheetName}!A${i + 1}`,
+                  majorDimension: "ROWS",
+                  values: [newRow],
+                })
+                updatedRowNumbers.push(i + 1)
               }
             }
+
+            if (batchData.length === 0) {
+              return {
+                operation: "UPDATE_ROWS_BY_QUERY",
+                success: true,
+                updatedRows: 0,
+                updatedRowNumbers: [],
+                message: `No rows found where ${matchCol} = "${matchVal}"`,
+              }
+            }
+
+            // Single batchUpdate API call instead of N sequential PUTs
+            await sheetsRequest(
+              "POST",
+              `/${spreadsheetId}/values:batchUpdate`,
+              accessToken,
+              {
+                valueInputOption: config.valueInputOption || "USER_ENTERED",
+                data: batchData,
+              }
+            )
+
             return {
               operation: "UPDATE_ROWS_BY_QUERY",
               success: true,
-              updatedRows: updatedCount,
+              updatedRows: batchData.length,
+              updatedRowNumbers,
+              matchColumn: matchCol,
+              matchValue: matchVal,
             }
           }
 
