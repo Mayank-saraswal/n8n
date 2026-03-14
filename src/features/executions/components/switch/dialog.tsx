@@ -11,20 +11,10 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { useTRPC } from "@/trpc/client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CheckIcon, Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react"
-import { OPERATORS } from "@/features/triggers/components/if-else/operators"
-import type { Condition, ConditionGroup, ConditionsConfig } from "@/features/triggers/components/if-else/evaluate-conditions"
+import { ConditionsBuilder, createDefaultConfig } from "@/features/triggers/components/if-else/conditions-builder"
 
 interface SwitchDialogProps {
   open: boolean
@@ -37,18 +27,6 @@ interface SwitchCase {
   id: string
   name: string
   conditionsJson: string
-}
-
-function createEmptyCondition(): Condition {
-  return { id: crypto.randomUUID(), leftValue: "", operator: "equals", rightValue: "" }
-}
-
-function createEmptyGroup(): ConditionGroup {
-  return { combinator: "AND", conditions: [createEmptyCondition()] }
-}
-
-function createDefaultConfig(): ConditionsConfig {
-  return { combinator: "AND", groups: [createEmptyGroup()] }
 }
 
 function createEmptyCase(index: number): SwitchCase {
@@ -127,79 +105,11 @@ export function SwitchDialog({ open, onOpenChange, nodeId, workflowId }: SwitchD
     setCases((prev) => prev.map((c, i) => (i === index ? { ...c, name } : c)))
   }
 
-  // Condition management within a case
-  const getConditionsConfig = (caseIndex: number): ConditionsConfig => {
-    try {
-      return JSON.parse(cases[caseIndex].conditionsJson || "{}") as ConditionsConfig
-    } catch {
-      return createDefaultConfig()
-    }
-  }
-
-  const setConditionsConfig = (caseIndex: number, config: ConditionsConfig) => {
+  const updateCaseConditions = (index: number, conditionsJson: string) => {
     setCases((prev) =>
-      prev.map((c, i) =>
-        i === caseIndex ? { ...c, conditionsJson: JSON.stringify(config) } : c
-      )
+      prev.map((c, i) => (i === index ? { ...c, conditionsJson } : c))
     )
   }
-
-  const addCondition = (caseIndex: number, groupIndex: number) => {
-    const config = getConditionsConfig(caseIndex)
-    config.groups[groupIndex].conditions.push(createEmptyCondition())
-    setConditionsConfig(caseIndex, { ...config })
-  }
-
-  const removeCondition = (caseIndex: number, groupIndex: number, condIndex: number) => {
-    const config = getConditionsConfig(caseIndex)
-    config.groups[groupIndex].conditions = config.groups[groupIndex].conditions.filter(
-      (_, i) => i !== condIndex
-    )
-    if (config.groups[groupIndex].conditions.length === 0) {
-      config.groups = config.groups.filter((_, i) => i !== groupIndex)
-    }
-    if (config.groups.length === 0) {
-      config.groups = [createEmptyGroup()]
-    }
-    setConditionsConfig(caseIndex, { ...config })
-  }
-
-  const updateCondition = (
-    caseIndex: number,
-    groupIndex: number,
-    condIndex: number,
-    field: keyof Condition,
-    value: string
-  ) => {
-    const config = getConditionsConfig(caseIndex)
-    config.groups[groupIndex].conditions[condIndex] = {
-      ...config.groups[groupIndex].conditions[condIndex],
-      [field]: value,
-    }
-    setConditionsConfig(caseIndex, { ...config })
-  }
-
-  const addGroup = (caseIndex: number) => {
-    const config = getConditionsConfig(caseIndex)
-    config.groups.push(createEmptyGroup())
-    setConditionsConfig(caseIndex, { ...config })
-  }
-
-  const setGroupCombinator = (caseIndex: number, groupIndex: number, combinator: "AND" | "OR") => {
-    const config = getConditionsConfig(caseIndex)
-    config.groups[groupIndex].combinator = combinator
-    setConditionsConfig(caseIndex, { ...config })
-  }
-
-  const setRootCombinator = (caseIndex: number, combinator: "AND" | "OR") => {
-    const config = getConditionsConfig(caseIndex)
-    config.combinator = combinator
-    setConditionsConfig(caseIndex, { ...config })
-  }
-
-  const activeConfig = cases[activeCaseIndex]
-    ? getConditionsConfig(activeCaseIndex)
-    : createDefaultConfig()
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -276,126 +186,11 @@ export function SwitchDialog({ open, onOpenChange, nodeId, workflowId }: SwitchD
                 )}
               </div>
 
-              {/* Root combinator */}
-              {activeConfig.groups.length > 1 && (
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs">Between groups:</Label>
-                  <Select
-                    value={activeConfig.combinator}
-                    onValueChange={(v) => setRootCombinator(activeCaseIndex, v as "AND" | "OR")}
-                  >
-                    <SelectTrigger className="w-24 h-7 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="AND">AND</SelectItem>
-                      <SelectItem value="OR">OR</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Condition groups */}
-              {activeConfig.groups.map((group, gi) => (
-                <div key={gi} className="border rounded-md p-2 space-y-2 bg-background">
-                  {gi > 0 && (
-                    <div className="text-center text-xs text-muted-foreground font-medium uppercase">
-                      {activeConfig.combinator}
-                    </div>
-                  )}
-
-                  {group.conditions.length > 1 && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <Label className="text-[10px]">Within group:</Label>
-                      <Select
-                        value={group.combinator}
-                        onValueChange={(v) => setGroupCombinator(activeCaseIndex, gi, v as "AND" | "OR")}
-                      >
-                        <SelectTrigger className="w-20 h-6 text-[10px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="AND">AND</SelectItem>
-                          <SelectItem value="OR">OR</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {group.conditions.map((cond, ci) => {
-                    const opDef = OPERATORS.find((o) => o.value === cond.operator)
-                    return (
-                      <div key={cond.id} className="flex items-center gap-1.5">
-                        {ci > 0 && (
-                          <span className="text-[10px] text-muted-foreground w-8 text-center">
-                            {group.combinator}
-                          </span>
-                        )}
-                        <Input
-                          value={cond.leftValue}
-                          onChange={(e) => updateCondition(activeCaseIndex, gi, ci, "leftValue", e.target.value)}
-                          placeholder="{{variable}}"
-                          className="h-7 text-xs flex-1"
-                        />
-                        <Select
-                          value={cond.operator}
-                          onValueChange={(v) => updateCondition(activeCaseIndex, gi, ci, "operator", v)}
-                        >
-                          <SelectTrigger className="w-32 h-7 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectLabel>Operators</SelectLabel>
-                              {OPERATORS.map((op) => (
-                                <SelectItem key={op.value} value={op.value}>
-                                  {op.label}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                        {(!opDef || opDef.requiresRightValue) && (
-                          <Input
-                            value={cond.rightValue}
-                            onChange={(e) => updateCondition(activeCaseIndex, gi, ci, "rightValue", e.target.value)}
-                            placeholder="value"
-                            className="h-7 text-xs flex-1"
-                          />
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => removeCondition(activeCaseIndex, gi, ci)}
-                        >
-                          <Trash2Icon size={12} />
-                        </Button>
-                      </div>
-                    )
-                  })}
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs"
-                    onClick={() => addCondition(activeCaseIndex, gi)}
-                  >
-                    <PlusIcon size={12} className="mr-1" />
-                    Add Condition
-                  </Button>
-                </div>
-              ))}
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => addGroup(activeCaseIndex)}
-              >
-                <PlusIcon size={12} className="mr-1" />
-                Add Group
-              </Button>
+              {/* Shared ConditionsBuilder */}
+              <ConditionsBuilder
+                value={cases[activeCaseIndex].conditionsJson}
+                onChange={(json) => updateCaseConditions(activeCaseIndex, json)}
+              />
             </div>
           )}
 
@@ -405,6 +200,16 @@ export function SwitchDialog({ open, onOpenChange, nodeId, workflowId }: SwitchD
               <strong>Fallback:</strong> If no case matches, execution flows through the Fallback branch.
               No configuration needed.
             </p>
+          </div>
+
+          {/* Output variables */}
+          <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
+            <h4 className="text-xs font-medium">Output variables</h4>
+            {["branch", "matchedCase", "matchedName", "totalCases"].map((field) => (
+              <p key={field} className="text-[11px] font-mono text-muted-foreground">
+                {`{{${variableName || "switch"}.${field}}}`}
+              </p>
+            ))}
           </div>
 
           {/* Save button */}

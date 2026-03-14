@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useState } from "react"
+import { memo, useMemo, useState } from "react"
 import { Handle, Position } from "@xyflow/react"
 import type { NodeProps } from "@xyflow/react"
 import { GitFork } from "lucide-react"
@@ -50,17 +50,16 @@ export const SwitchNode = memo((props: NodeProps) => {
     )
   )
 
-  let cases: SwitchCase[] = []
-  let isConfigured = false
-
-  if (config?.casesJson) {
+  const cases = useMemo(() => {
     try {
-      cases = JSON.parse(config.casesJson)
-      isConfigured = cases.length > 0
+      const parsed = JSON.parse(config?.casesJson || "[]") as SwitchCase[]
+      return parsed
     } catch {
-      // invalid JSON
+      return []
     }
-  }
+  }, [config?.casesJson])
+
+  const isConfigured = cases.length > 0
 
   // Always add fallback as the last branch
   const allBranches = [
