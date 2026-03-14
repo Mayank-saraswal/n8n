@@ -30,7 +30,7 @@ export const ifElseRouter = createTRPCRouter({
         field: z.string().max(500),
         operator: IfElseOperatorSchema,
         value: z.string().max(1000),
-        conditionsJson: z.string().max(50000).optional(),
+        conditionsJson: z.string().max(50000).default(""),
       })
     )
     .mutation(async ({ input, ctx }) => {
