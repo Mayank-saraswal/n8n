@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init"
 import prisma from "@/lib/db"
+import { TRPCError } from "@trpc/server"
 
 export const razorpayRouter = createTRPCRouter({
   getByNodeId: protectedProcedure
@@ -11,7 +12,9 @@ export const razorpayRouter = createTRPCRouter({
         include: { workflow: { select: { userId: true } } },
       })
       if (!node) return null
-      if (node.workflow.userId !== ctx.auth.user.id) return null
+      if (node.workflow.userId !== ctx.auth.user.id) {
+        throw new TRPCError({ code: "UNAUTHORIZED" })
+      }
       return node
     }),
 
@@ -22,26 +25,65 @@ export const razorpayRouter = createTRPCRouter({
         workflowId: z.string(),
         credentialId: z.string().optional(),
         operation: z.enum([
-          "CREATE_ORDER",
-          "FETCH_ORDER",
-          "CREATE_REFUND",
-          "FETCH_PAYMENT",
-          "FETCH_REFUND",
-          "CREATE_CUSTOMER",
-          "FETCH_CUSTOMER",
+          "ORDER_CREATE", "ORDER_FETCH", "ORDER_FETCH_PAYMENTS", "ORDER_LIST",
+          "PAYMENT_FETCH", "PAYMENT_CAPTURE", "PAYMENT_LIST", "PAYMENT_UPDATE",
+          "REFUND_CREATE", "REFUND_FETCH", "REFUND_LIST",
+          "CUSTOMER_CREATE", "CUSTOMER_FETCH", "CUSTOMER_UPDATE",
+          "SUBSCRIPTION_CREATE", "SUBSCRIPTION_FETCH", "SUBSCRIPTION_CANCEL",
+          "INVOICE_CREATE", "INVOICE_FETCH", "INVOICE_SEND", "INVOICE_CANCEL",
+          "PAYMENT_LINK_CREATE", "PAYMENT_LINK_FETCH", "PAYMENT_LINK_UPDATE", "PAYMENT_LINK_CANCEL",
+          "PAYOUT_CREATE", "PAYOUT_FETCH",
+          "VERIFY_PAYMENT_SIGNATURE",
         ]),
+        variableName: z.string().default("razorpay"),
         amount: z.string().default(""),
         currency: z.string().default("INR"),
         description: z.string().default(""),
         receipt: z.string().default(""),
-        customerId: z.string().default(""),
-        paymentId: z.string().default(""),
+        notes: z.string().default(""),
+        partialPayment: z.boolean().default(false),
         orderId: z.string().default(""),
+        paymentId: z.string().default(""),
+        captureAmount: z.string().default(""),
         refundAmount: z.string().default(""),
+        refundSpeed: z.string().default("normal"),
         refundId: z.string().default(""),
+        customerId: z.string().default(""),
         customerName: z.string().default(""),
         customerEmail: z.string().default(""),
-        customerPhone: z.string().default(""),
+        customerContact: z.string().default(""),
+        failExisting: z.boolean().default(false),
+        planId: z.string().default(""),
+        totalCount: z.string().default(""),
+        quantity: z.string().default("1"),
+        startAt: z.string().default(""),
+        subscriptionId: z.string().default(""),
+        cancelAtCycleEnd: z.boolean().default(false),
+        invoiceType: z.string().default("invoice"),
+        lineItems: z.string().default(""),
+        expireBy: z.string().default(""),
+        smsNotify: z.boolean().default(true),
+        emailNotify: z.boolean().default(true),
+        invoiceId: z.string().default(""),
+        paymentLinkId: z.string().default(""),
+        referenceId: z.string().default(""),
+        reminderEnable: z.boolean().default(true),
+        callbackUrl: z.string().default(""),
+        callbackMethod: z.string().default(""),
+        accountNumber: z.string().default(""),
+        fundAccountId: z.string().default(""),
+        payoutMode: z.string().default(""),
+        payoutPurpose: z.string().default("payout"),
+        narration: z.string().default(""),
+        queueIfLowBalance: z.boolean().default(false),
+        payoutId: z.string().default(""),
+        signature: z.string().default(""),
+        throwOnInvalid: z.boolean().default(true),
+        count: z.string().default(""),
+        skip: z.string().default(""),
+        fromDate: z.string().default(""),
+        toDate: z.string().default(""),
+        authorized: z.string().default(""),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -50,44 +92,21 @@ export const razorpayRouter = createTRPCRouter({
         where: { id: input.workflowId },
         select: { userId: true },
       })
-      if (!workflow || workflow.userId !== userId)
-        throw new Error("Unauthorized")
+      if (!workflow || workflow.userId !== userId) {
+        throw new TRPCError({ code: "UNAUTHORIZED" })
+      }
+
+      const { nodeId, workflowId, ...fields } = input
 
       return prisma.razorpayNode.upsert({
-        where: { nodeId: input.nodeId },
+        where: { nodeId },
         create: {
-          nodeId: input.nodeId,
-          workflowId: input.workflowId,
-          credentialId: input.credentialId,
-          operation: input.operation,
-          amount: input.amount,
-          currency: input.currency,
-          description: input.description,
-          receipt: input.receipt,
-          customerId: input.customerId,
-          paymentId: input.paymentId,
-          orderId: input.orderId,
-          refundAmount: input.refundAmount,
-          refundId: input.refundId,
-          customerName: input.customerName,
-          customerEmail: input.customerEmail,
-          customerPhone: input.customerPhone,
+          nodeId,
+          workflowId,
+          ...fields,
         },
         update: {
-          credentialId: input.credentialId,
-          operation: input.operation,
-          amount: input.amount,
-          currency: input.currency,
-          description: input.description,
-          receipt: input.receipt,
-          customerId: input.customerId,
-          paymentId: input.paymentId,
-          orderId: input.orderId,
-          refundAmount: input.refundAmount,
-          refundId: input.refundId,
-          customerName: input.customerName,
-          customerEmail: input.customerEmail,
-          customerPhone: input.customerPhone,
+          ...fields,
         },
       })
     }),
@@ -99,8 +118,9 @@ export const razorpayRouter = createTRPCRouter({
         where: { nodeId: input.nodeId },
         include: { workflow: { select: { userId: true } } },
       })
-      if (!node || node.workflow.userId !== ctx.auth.user.id)
-        throw new Error("Unauthorized")
+      if (!node || node.workflow.userId !== ctx.auth.user.id) {
+        throw new TRPCError({ code: "UNAUTHORIZED" })
+      }
       return prisma.razorpayNode.delete({
         where: { nodeId: input.nodeId },
       })

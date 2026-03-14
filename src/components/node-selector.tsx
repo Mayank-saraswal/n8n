@@ -1,7 +1,7 @@
 "use client"
 import { createId} from "@paralleldrive/cuid2"
 import { useReactFlow } from "@xyflow/react"
-import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, SlidersHorizontalIcon, TableIcon, CodeIcon, RepeatIcon} from "lucide-react"
+import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, SlidersHorizontalIcon, TableIcon, CodeIcon, RepeatIcon, CreditCardIcon} from "lucide-react"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { 
@@ -200,8 +200,8 @@ const executionNodes: NodeTypeOptions[] = [
     {
         type:NodeType.RAZORPAY,
         label:"Razorpay",
-        description:"Create orders, payments, refunds via Razorpay",
-        icon:"/logos/razorpay.svg"
+        description:"Orders, payments, refunds, subscriptions",
+        icon:CreditCardIcon
     }
 
 ]

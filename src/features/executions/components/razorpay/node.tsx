@@ -7,34 +7,46 @@ import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-n
 import { fetchRazorpayRealtimeToken } from "./actions"
 import { RAZORPAY_CHANNEL_NAME } from "@/inngest/channels/razorpay"
 import { useParams } from "next/navigation"
+import { CreditCardIcon } from "lucide-react"
 
 type RazorpayNodeData = {
   credentialId?: string
   operation?: string
-  amount?: string
-  currency?: string
-  description?: string
-  receipt?: string
-  customerId?: string
-  paymentId?: string
-  orderId?: string
-  refundAmount?: string
-  refundId?: string
-  customerName?: string
-  customerEmail?: string
-  customerPhone?: string
+  variableName?: string
+  [key: string]: unknown
 }
 
 type RazorpayNodeType = Node<RazorpayNodeData>
 
 const operationLabels: Record<string, string> = {
-  CREATE_ORDER: "Create Order",
-  FETCH_ORDER: "Fetch Order",
-  CREATE_REFUND: "Create Refund",
-  FETCH_PAYMENT: "Fetch Payment",
-  FETCH_REFUND: "Fetch Refund",
-  CREATE_CUSTOMER: "Create Customer",
-  FETCH_CUSTOMER: "Fetch Customer",
+  ORDER_CREATE: "Create Order",
+  ORDER_FETCH: "Fetch Order",
+  ORDER_FETCH_PAYMENTS: "Fetch Order Payments",
+  ORDER_LIST: "List Orders",
+  PAYMENT_FETCH: "Fetch Payment",
+  PAYMENT_CAPTURE: "Capture Payment",
+  PAYMENT_LIST: "List Payments",
+  PAYMENT_UPDATE: "Update Payment",
+  REFUND_CREATE: "Create Refund",
+  REFUND_FETCH: "Fetch Refund",
+  REFUND_LIST: "List Refunds",
+  CUSTOMER_CREATE: "Create Customer",
+  CUSTOMER_FETCH: "Fetch Customer",
+  CUSTOMER_UPDATE: "Update Customer",
+  SUBSCRIPTION_CREATE: "Create Subscription",
+  SUBSCRIPTION_FETCH: "Fetch Subscription",
+  SUBSCRIPTION_CANCEL: "Cancel Subscription",
+  INVOICE_CREATE: "Create Invoice",
+  INVOICE_FETCH: "Fetch Invoice",
+  INVOICE_SEND: "Send Invoice",
+  INVOICE_CANCEL: "Cancel Invoice",
+  PAYMENT_LINK_CREATE: "Create Payment Link",
+  PAYMENT_LINK_FETCH: "Fetch Payment Link",
+  PAYMENT_LINK_UPDATE: "Update Payment Link",
+  PAYMENT_LINK_CANCEL: "Cancel Payment Link",
+  PAYOUT_CREATE: "Create Payout",
+  PAYOUT_FETCH: "Fetch Payout",
+  VERIFY_PAYMENT_SIGNATURE: "Verify Signature",
 }
 
 export const RazorpayNode = memo((props: NodeProps<RazorpayNodeType>) => {
@@ -70,15 +82,9 @@ export const RazorpayNode = memo((props: NodeProps<RazorpayNodeType>) => {
 
   const nodeData = props.data
   const opLabel = nodeData?.operation
-    ? operationLabels[nodeData.operation] ?? nodeData.operation
+    ? operationLabels[nodeData.operation] ?? nodeData.operation.replace(/_/g, " ")
     : ""
-  const amountSuffix = nodeData?.amount
-    ? ` ₹${(Number(nodeData.amount) / 100).toFixed(2)}`
-    : ""
-  const description =
-    opLabel
-      ? `${opLabel}${amountSuffix}`
-      : "Click to configure"
+  const description = opLabel ? opLabel : "Click to configure"
 
   return (
     <>
@@ -95,7 +101,7 @@ export const RazorpayNode = memo((props: NodeProps<RazorpayNodeType>) => {
         name="Razorpay"
         id={props.id}
         status={nodeStatus}
-        icon={"/logos/razorpay.svg"}
+        icon={CreditCardIcon}
         description={description}
         onSettings={handleOpenSettings}
         onDoubleClick={handleOpenSettings}

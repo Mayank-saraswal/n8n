@@ -477,35 +477,93 @@ model NotionNode {
 }
 
 enum RazorpayOperation {
-  CREATE_ORDER
-  FETCH_ORDER
-  CREATE_REFUND
-  FETCH_PAYMENT
-  FETCH_REFUND
-  CREATE_CUSTOMER
-  FETCH_CUSTOMER
+  ORDER_CREATE
+  ORDER_FETCH
+  ORDER_FETCH_PAYMENTS
+  ORDER_LIST
+  PAYMENT_FETCH
+  PAYMENT_CAPTURE
+  PAYMENT_LIST
+  PAYMENT_UPDATE
+  REFUND_CREATE
+  REFUND_FETCH
+  REFUND_LIST
+  CUSTOMER_CREATE
+  CUSTOMER_FETCH
+  CUSTOMER_UPDATE
+  SUBSCRIPTION_CREATE
+  SUBSCRIPTION_FETCH
+  SUBSCRIPTION_CANCEL
+  INVOICE_CREATE
+  INVOICE_FETCH
+  INVOICE_SEND
+  INVOICE_CANCEL
+  PAYMENT_LINK_CREATE
+  PAYMENT_LINK_FETCH
+  PAYMENT_LINK_UPDATE
+  PAYMENT_LINK_CANCEL
+  PAYOUT_CREATE
+  PAYOUT_FETCH
+  VERIFY_PAYMENT_SIGNATURE
 }
 
 model RazorpayNode {
-  id            String             @id @default(cuid())
-  nodeId        String             @unique
-  workflowId    String
-  credentialId  String?
-  operation     RazorpayOperation  @default(CREATE_ORDER)
-  amount        String             @default("")
-  currency      String             @default("INR")
-  description   String             @default("")
-  receipt       String             @default("")
-  customerId    String             @default("")
-  paymentId     String             @default("")
-  orderId       String             @default("")
-  refundAmount  String             @default("")
-  refundId      String             @default("")
-  customerName  String             @default("")
-  customerEmail String             @default("")
-  customerPhone String             @default("")
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  id                String             @id @default(cuid())
+  nodeId            String             @unique
+  workflowId        String
+  credentialId      String?
+  operation         RazorpayOperation  @default(ORDER_CREATE)
+  variableName      String             @default("razorpay")
+  amount            String             @default("")
+  currency          String             @default("INR")
+  description       String             @default("")
+  receipt           String             @default("")
+  notes             String             @default("")
+  partialPayment    Boolean            @default(false)
+  orderId           String             @default("")
+  paymentId         String             @default("")
+  captureAmount     String             @default("")
+  refundAmount      String             @default("")
+  refundSpeed       String             @default("normal")
+  refundId          String             @default("")
+  customerId        String             @default("")
+  customerName      String             @default("")
+  customerEmail     String             @default("")
+  customerContact   String             @default("")
+  failExisting      Boolean            @default(false)
+  planId            String             @default("")
+  totalCount        String             @default("")
+  quantity          String             @default("1")
+  startAt           String             @default("")
+  subscriptionId    String             @default("")
+  cancelAtCycleEnd  Boolean            @default(false)
+  invoiceType       String             @default("invoice")
+  lineItems         String             @default("")
+  expireBy          String             @default("")
+  smsNotify         Boolean            @default(true)
+  emailNotify       Boolean            @default(true)
+  invoiceId         String             @default("")
+  paymentLinkId     String             @default("")
+  referenceId       String             @default("")
+  reminderEnable    Boolean            @default(true)
+  callbackUrl       String             @default("")
+  callbackMethod    String             @default("")
+  accountNumber     String             @default("")
+  fundAccountId     String             @default("")
+  payoutMode        String             @default("")
+  payoutPurpose     String             @default("payout")
+  narration         String             @default("")
+  queueIfLowBalance Boolean           @default(false)
+  payoutId          String             @default("")
+  signature         String             @default("")
+  throwOnInvalid    Boolean            @default(true)
+  count             String             @default("")
+  skip              String             @default("")
+  fromDate          String             @default("")
+  toDate            String             @default("")
+  authorized        String             @default("")
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
