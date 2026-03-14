@@ -1,6 +1,10 @@
 import type { NodeExecutor } from "@/features/executions/types"
 import prisma from "@/lib/db"
 import { IfElseOperator } from "@/generated/prisma"
+import {
+  evaluateConditions,
+  parseConditionsJson,
+} from "./evaluate-conditions"
 
 /**
  * Resolves a dot-notation path against a nested object.
@@ -27,7 +31,8 @@ function toNumber(val: unknown): number {
 }
 
 /**
- * Core condition evaluator. Matches n8n's IF node behavior.
+ * Core condition evaluator for legacy single-condition mode.
+ * Matches n8n's IF node behavior.
  */
 export function evaluateCondition(
   inputData: unknown,
@@ -105,11 +110,22 @@ export const ifElseExecutor: NodeExecutor = async ({ nodeId, context, step }) =>
     return {
       ...context,
       branch: "false",
-      result: false,
-      error: "No condition configured. Open the node settings to configure.",
     }
   }
 
+  // Use compound conditions if conditionsJson is set, otherwise fall back to legacy single-condition
+  const conditionsConfig = parseConditionsJson(config.conditionsJson)
+
+  if (conditionsConfig) {
+    const ctx = (typeof context === "object" && context !== null ? context : {}) as Record<string, unknown>
+    const result = evaluateConditions(conditionsConfig, ctx)
+    return {
+      ...context,
+      branch: result ? "true" : "false",
+    }
+  }
+
+  // Legacy single-condition path
   const result = evaluateCondition(
     context,
     config.field,
@@ -120,12 +136,5 @@ export const ifElseExecutor: NodeExecutor = async ({ nodeId, context, step }) =>
   return {
     ...context,
     branch: result ? "true" : "false",
-    result,
-    condition: {
-      field: config.field,
-      operator: config.operator,
-      value: config.value,
-      resolvedField: resolvePath(context, config.field),
-    },
   }
 }
