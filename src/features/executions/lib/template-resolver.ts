@@ -134,6 +134,155 @@ hbs.registerHelper("length", (value: unknown) => {
   return 0
 })
 
+// {{jsonInline value}} — compact JSON (no pretty-print)
+hbs.registerHelper("jsonInline", (value: unknown) => {
+  if (value == null || isOptionsHash(value)) return "null"
+  return new hbs.SafeString(JSON.stringify(value))
+})
+
+// {{trim str}} — remove leading/trailing whitespace
+hbs.registerHelper("trim", (str: unknown) => {
+  if (isOptionsHash(str) || str == null) return ""
+  return String(str).trim()
+})
+
+// {{base64 value}} — base64-encode a string
+hbs.registerHelper("base64", (value: unknown) => {
+  if (isOptionsHash(value) || value == null) return ""
+  return Buffer.from(String(value)).toString("base64")
+})
+
+// {{urlEncode value}} — percent-encode a string
+hbs.registerHelper("urlEncode", (value: unknown) => {
+  if (isOptionsHash(value) || value == null) return ""
+  return encodeURIComponent(String(value))
+})
+
+// {{join arr separator}} — join array elements
+hbs.registerHelper("join", (value: unknown, separator: unknown) => {
+  if (isOptionsHash(value)) return ""
+  if (!Array.isArray(value)) return String(value ?? "")
+  const sep = !isOptionsHash(separator) && typeof separator === "string"
+    ? separator : ","
+  return value.map(String).join(sep)
+})
+
+// {{first arr}} — first element of an array
+hbs.registerHelper("first", (arr: unknown) => {
+  if (isOptionsHash(arr) || !Array.isArray(arr) || arr.length === 0) return ""
+  return arr[0]
+})
+
+// {{last arr}} — last element of an array
+hbs.registerHelper("last", (arr: unknown) => {
+  if (isOptionsHash(arr) || !Array.isArray(arr) || arr.length === 0) return ""
+  return arr[arr.length - 1]
+})
+
+// {{includes arr value}} — check if array includes a value
+hbs.registerHelper("includes", (arr: unknown, value: unknown) => {
+  if (isOptionsHash(arr) || !Array.isArray(arr)) return false
+  return arr.includes(value)
+})
+
+// {{coalesce a b ...}} — return first non-null/empty value
+hbs.registerHelper("coalesce", (...args: unknown[]) => {
+  const values = args.filter((a) => !isOptionsHash(a))
+  for (const v of values) {
+    if (v !== null && v !== undefined && v !== "") return v
+  }
+  return ""
+})
+
+// {{and a b}} — logical AND
+hbs.registerHelper("and", (a: unknown, b: unknown) => {
+  if (isOptionsHash(b)) return !!a
+  return !!a && !!b
+})
+
+// {{or a b}} — logical OR
+hbs.registerHelper("or", (a: unknown, b: unknown) => {
+  if (isOptionsHash(b)) return !!a
+  return !!a || !!b
+})
+
+// {{add a b}} — addition
+hbs.registerHelper("add", (a: unknown, b: unknown) => {
+  if (isOptionsHash(b)) return Number(a)
+  return Number(a) + Number(b)
+})
+
+// {{subtract a b}} — subtraction
+hbs.registerHelper("subtract", (a: unknown, b: unknown) => {
+  if (isOptionsHash(b)) return Number(a)
+  return Number(a) - Number(b)
+})
+
+// {{multiply a b}} — multiplication
+hbs.registerHelper("multiply", (a: unknown, b: unknown) => {
+  if (isOptionsHash(b)) return 0
+  return Number(a) * Number(b)
+})
+
+// {{divide a b}} — division (safe: returns 0 on divide-by-zero)
+hbs.registerHelper("divide", (a: unknown, b: unknown) => {
+  if (isOptionsHash(b)) return 0
+  const divisor = Number(b)
+  return divisor === 0 ? 0 : Number(a) / divisor
+})
+
+// {{paiseToRupees amount}} — convert paise to rupees (e.g. 1000 → "10.00")
+hbs.registerHelper("paiseToRupees", (amount: unknown) => {
+  if (isOptionsHash(amount)) return "0"
+  const num = Number(amount)
+  return isNaN(num) ? "0" : (num / 100).toFixed(2)
+})
+
+// {{formatCurrency amount}} — format as Indian Rupees
+hbs.registerHelper("formatCurrency", (amount: unknown) => {
+  if (isOptionsHash(amount)) return "₹0"
+  const num = Number(amount)
+  if (isNaN(num)) return "₹0"
+  return `₹${num.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
+})
+
+// {{formatDate value format}} — format a date
+hbs.registerHelper("formatDate", (value: unknown, format: unknown) => {
+  if (isOptionsHash(value) || value == null) return ""
+  let date: Date
+  const num = Number(value)
+  if (!isNaN(num) && num > 0) {
+    // > 1e10 distinguishes millisecond timestamps from second timestamps
+    date = new Date(num > 1e10 ? num : num * 1000)
+  } else {
+    date = new Date(String(value))
+  }
+  if (isNaN(date.getTime())) return String(value)
+  const fmt = !isOptionsHash(format) && typeof format === "string"
+    ? format : "YYYY-MM-DD"
+  const pad = (n: number) => String(n).padStart(2, "0")
+  const months = ["Jan","Feb","Mar","Apr","May","Jun",
+                  "Jul","Aug","Sep","Oct","Nov","Dec"]
+  return fmt
+    .replace("YYYY", String(date.getFullYear()))
+    .replace("YY",   String(date.getFullYear()).slice(-2))
+    .replace("MMM",  months[date.getMonth()])
+    .replace("MM",   pad(date.getMonth() + 1))
+    .replace("DD",   pad(date.getDate()))
+    .replace("HH",   pad(date.getHours()))
+    .replace("mm",   pad(date.getMinutes()))
+    .replace("ss",   pad(date.getSeconds()))
+})
+
+// {{timestamp}} — current Unix timestamp in seconds
+hbs.registerHelper("timestamp", () => Math.floor(Date.now() / 1000))
+
+// {{isoDate}} — current date as ISO 8601 string
+hbs.registerHelper("isoDate", () => new Date().toISOString())
+
 // ─── Core resolver ────────────────────────────────────────────────────────
 
 /**
@@ -166,7 +315,8 @@ export function resolveTemplate(template: string, context: unknown): string {
   let compiled = templateCache.get(template)
   if (!compiled) {
     if (templateCache.size >= MAX_CACHE_SIZE) {
-      templateCache.clear()
+      const firstKey = templateCache.keys().next().value
+      if (firstKey !== undefined) templateCache.delete(firstKey)
     }
     // noEscape: true — templates produce raw output (used for API payloads,
     // AI prompts, webhook bodies, etc., NOT rendered as HTML)
@@ -179,7 +329,62 @@ export function resolveTemplate(template: string, context: unknown): string {
       ? context
       : {}
 
-  return compiled(ctx)
+  try {
+    const result = compiled(ctx)
+    if (result === undefined || result === null) return ""
+    const str = String(result)
+    if (str === "undefined" || str === "null") return ""
+    return str
+  } catch {
+    return template
+  }
+}
+
+/**
+ * Resolves a Handlebars template and parses the result as JSON.
+ * Throws with a descriptive error if the result is empty or invalid JSON.
+ */
+export function resolveTemplateJson<T>(
+  template: string,
+  context: unknown,
+  fieldName: string
+): T {
+  const resolved = resolveTemplate(template, context)
+  if (!resolved.trim()) {
+    throw new Error(
+      `${fieldName} is empty after template resolution. ` +
+      `Please provide valid JSON.`
+    )
+  }
+  try {
+    return JSON.parse(resolved) as T
+  } catch {
+    throw new Error(
+      `${fieldName} contains invalid JSON. ` +
+      `Received: ${resolved.slice(0, 300)}`
+    )
+  }
+}
+
+/**
+ * Resolves a Handlebars template and parses the result as JSON.
+ * Returns null if the template is empty, trivial, or produces invalid JSON.
+ */
+export function resolveTemplateJsonOptional<T>(
+  template: string,
+  context: unknown
+): T | null {
+  if (!template?.trim()) return null
+  const t = template.trim()
+  if (t === "{}" || t === "[]" || t === "null") return null
+  const resolved = resolveTemplate(template, context)
+  const r = resolved.trim()
+  if (!r || r === "{}" || r === "[]" || r === "null") return null
+  try {
+    return JSON.parse(r) as T
+  } catch {
+    return null
+  }
 }
 
 /**
