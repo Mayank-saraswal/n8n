@@ -5,6 +5,7 @@ import prisma from "@/lib/db";
 import { topologicalSort } from "./utils";
 import { ExecutionStatus, NodeType } from "@/generated/prisma";
 import { getExecutor } from "@/features/executions/lib/executor-registry";
+import { buildExecutionLevels, mergeParallelResults } from "@/features/executions/lib/build-execution-levels";
 import { httpRequestChannel } from "./channels/http-request";
 import { manualTriggerChannel } from "./channels/manual-trigger";
 import { googleformTriggerChannel } from "./channels/google-form-trigger";
@@ -158,59 +159,124 @@ export const executeWorkflow = inngest.createFunction(
       toInput: c.toInput,
     }));
 
-    for (const node of preparedWorkflow.sortedNodes) {
-      // Skip nodes on non-taken branches
-      if (skippedNodes.has(node.id)) continue;
+    // Build execution levels — nodes in the same level run in parallel
+    const executionLevels = buildExecutionLevels(
+      preparedWorkflow.sortedNodes,
+      preparedWorkflow.connections
+    )
 
-      // Skip nodes already executed by Loop node
-      if (executedByLoop.has(node.id)) continue;
+    for (const level of executionLevels) {
+      // Filter out nodes that should be skipped
+      const executableNodes = level.filter(
+        (node) =>
+          !skippedNodes.has(node.id) && !executedByLoop.has(node.id)
+      )
 
-      const executor = getExecutor(node.type as NodeType);
-      context = await executor({
-        data: node.data as Record<string, unknown>,
-        nodeId: node.id,
-        userId,
-        context,
-        step,
-        publish,
-        workflowNodes,
-        workflowConnections,
-      })
+      if (executableNodes.length === 0) continue
 
-      // Handle IF_ELSE branching: skip nodes on the non-taken branch
-      if (node.type === NodeType.IF_ELSE) {
-        const branch = (context as Record<string, unknown>).branch as string | undefined;
-        if (branch) {
-          // Find connections from this node that DON'T match the taken branch
-          const nonTakenConnections = preparedWorkflow.connections.filter(
-            (c) => c.fromNodeId === node.id && c.fromOutput !== `source-${branch}`
-          );
-          // Recursively skip all nodes reachable only through non-taken branches
-          const toSkip = nonTakenConnections.map((c) => c.toNodeId);
-          while (toSkip.length > 0) {
-            const nodeIdToSkip = toSkip.pop()!;
-            if (skippedNodes.has(nodeIdToSkip)) continue;
-            skippedNodes.add(nodeIdToSkip);
-            // Also skip downstream nodes of skipped nodes
-            const downstream = preparedWorkflow.connections
-              .filter((c) => c.fromNodeId === nodeIdToSkip)
-              .map((c) => c.toNodeId);
-            toSkip.push(...downstream);
+      if (
+        executableNodes.length === 1 ||
+        executableNodes.some((n) => n.type === NodeType.LOOP)
+      ) {
+        // ── Sequential path: single node or level contains Loop ──
+        for (const node of executableNodes) {
+          // Re-check skip sets (a prior node in this level may have updated them)
+          if (skippedNodes.has(node.id)) continue
+          if (executedByLoop.has(node.id)) continue
+
+          const executor = getExecutor(node.type as NodeType)
+          context = await executor({
+            data: node.data as Record<string, unknown>,
+            nodeId: node.id,
+            userId,
+            context,
+            step,
+            publish,
+            workflowNodes,
+            workflowConnections,
+          })
+
+          // Handle IF_ELSE branching: skip nodes on the non-taken branch
+          if (node.type === NodeType.IF_ELSE) {
+            const branch = (context as Record<string, unknown>).branch as string | undefined;
+            if (branch) {
+              const nonTakenConnections = preparedWorkflow.connections.filter(
+                (c) => c.fromNodeId === node.id && c.fromOutput !== `source-${branch}`
+              );
+              const toSkip = nonTakenConnections.map((c) => c.toNodeId);
+              while (toSkip.length > 0) {
+                const nodeIdToSkip = toSkip.pop()!;
+                if (skippedNodes.has(nodeIdToSkip)) continue;
+                skippedNodes.add(nodeIdToSkip);
+                const downstream = preparedWorkflow.connections
+                  .filter((c) => c.fromNodeId === nodeIdToSkip)
+                  .map((c) => c.toNodeId);
+                toSkip.push(...downstream);
+              }
+            }
+          }
+
+          // Handle Loop node: mark downstream nodes as already executed
+          if (node.type === NodeType.LOOP) {
+            const loopHandled = context._executedByLoop;
+            if (Array.isArray(loopHandled)) {
+              for (const id of loopHandled) {
+                executedByLoop.add(id as string);
+              }
+              const { _executedByLoop, ...cleanContext } = context;
+              context = cleanContext;
+            }
           }
         }
-      }
+      } else {
+        // ── Parallel path: multiple independent nodes ──
+        // Each node receives the SAME input context (snapshot before this level)
+        // Their outputs are merged after all complete
+        const contextSnapshot = { ...context }
 
-      // Handle Loop node: mark downstream nodes as already executed
-      if (node.type === NodeType.LOOP) {
-        const loopHandled = context._executedByLoop;
-        if (Array.isArray(loopHandled)) {
-          for (const id of loopHandled) {
-            executedByLoop.add(id as string);
+        const results = await Promise.all(
+          executableNodes.map((node) => {
+            const executor = getExecutor(node.type as NodeType)
+            return executor({
+              data: node.data as Record<string, unknown>,
+              nodeId: node.id,
+              userId,
+              context: contextSnapshot,
+              step,
+              publish,
+              workflowNodes,
+              workflowConnections,
+            })
+          })
+        )
+
+        // Handle IF_ELSE branching for any parallel IF_ELSE nodes
+        for (let i = 0; i < executableNodes.length; i++) {
+          const node = executableNodes[i]
+          const result = results[i]
+
+          if (node.type === NodeType.IF_ELSE) {
+            const branch = (result as Record<string, unknown>).branch as string | undefined;
+            if (branch) {
+              const nonTakenConnections = preparedWorkflow.connections.filter(
+                (c) => c.fromNodeId === node.id && c.fromOutput !== `source-${branch}`
+              );
+              const toSkip = nonTakenConnections.map((c) => c.toNodeId);
+              while (toSkip.length > 0) {
+                const nodeIdToSkip = toSkip.pop()!;
+                if (skippedNodes.has(nodeIdToSkip)) continue;
+                skippedNodes.add(nodeIdToSkip);
+                const downstream = preparedWorkflow.connections
+                  .filter((c) => c.fromNodeId === nodeIdToSkip)
+                  .map((c) => c.toNodeId);
+                toSkip.push(...downstream);
+              }
+            }
           }
-          // Clean up the internal flag from context
-          const { _executedByLoop, ...cleanContext } = context;
-          context = cleanContext;
         }
+
+        // Merge all parallel outputs into context for the next level
+        context = mergeParallelResults(contextSnapshot, results)
       }
     }
 
