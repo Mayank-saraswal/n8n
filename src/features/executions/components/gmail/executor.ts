@@ -174,6 +174,16 @@ function extractBodyFromPayload(
   return { text, html }
 }
 
+/* ── Helper: Escape HTML special characters ── */
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
 /* ── Helper: Count attachments recursively ── */
 
 function countAttachments(payload: Record<string, unknown> | undefined): number {
@@ -518,9 +528,9 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
 
           let fwdBody: string
           if (config.isHtml) {
-            const noteHtml = body ? `<div>${body}</div>` : ""
-            const contentHtml = origHtml || origText.replace(/\n/g, "<br>")
-            fwdBody = `${noteHtml}<div style="border-left:2px solid #ccc;padding-left:12px"><p><b>From:</b> ${origFrom}<br><b>Date:</b> ${origDate}<br><b>Subject:</b> ${origSubject}</p><div>${contentHtml}</div></div>`
+            const noteHtml = body ? `<div>${escapeHtml(body)}</div>` : ""
+            const contentHtml = origHtml || escapeHtml(origText).replace(/\n/g, "<br>")
+            fwdBody = `${noteHtml}<div style="border-left:2px solid #ccc;padding-left:12px"><p><b>From:</b> ${escapeHtml(origFrom)}<br><b>Date:</b> ${escapeHtml(origDate)}<br><b>Subject:</b> ${escapeHtml(origSubject)}</p><div>${contentHtml}</div></div>`
           } else {
             const note = body ? `${body}\n\n` : ""
             const origContent = origText || origHtml || ""
@@ -844,7 +854,7 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
 
         /* ── GET_ATTACHMENT ── */
         case GmailOperation.GET_ATTACHMENT: {
-          const attMsgId = resolveTemplate(config.attachmentId ? config.messageId : config.messageId, context)
+          const attMsgId = resolveTemplate(config.messageId, context)
           const attId = resolveTemplate(config.attachmentId, context)
           if (!attMsgId.trim()) {
             throw new NonRetriableError("Gmail GET_ATTACHMENT: messageId is required.")
