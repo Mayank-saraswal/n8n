@@ -353,7 +353,7 @@ export function Breadcrumb({
 }) {
   return (
     <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
-      <Link href="/docs" className="hover:text-orange transition-colors">
+      <Link href="/docs" className="transition-colors hover:text-orange">
         Docs
       </Link>
       {items.map((item) => (
@@ -362,7 +362,7 @@ export function Breadcrumb({
           {item.href ? (
             <Link
               href={item.href}
-              className="hover:text-orange transition-colors"
+              className="transition-colors hover:text-orange"
             >
               {item.label}
             </Link>
