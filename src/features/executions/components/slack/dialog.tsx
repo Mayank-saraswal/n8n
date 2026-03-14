@@ -22,7 +22,7 @@ import {
 import { useTRPC } from "@/trpc/client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useCredentialsByType } from "@/features/credentials/hooks/use-credentials"
-import { CredentialType } from "@/generated/prisma"
+import { CredentialType, SlackOperation } from "@/generated/prisma"
 import { CheckIcon, Loader2Icon } from "lucide-react"
 import Link from "next/link"
 import { Separator } from "@/components/ui/separator"
@@ -54,35 +54,9 @@ interface SlackDialogProps {
   workflowId?: string
 }
 
-type SlackOp =
-  | "MESSAGE_SEND_WEBHOOK"
-  | "MESSAGE_SEND"
-  | "MESSAGE_UPDATE"
-  | "MESSAGE_DELETE"
-  | "MESSAGE_GET_PERMALINK"
-  | "MESSAGE_SEARCH"
-  | "CHANNEL_CREATE"
-  | "CHANNEL_ARCHIVE"
-  | "CHANNEL_UNARCHIVE"
-  | "CHANNEL_INVITE"
-  | "CHANNEL_KICK"
-  | "CHANNEL_SET_TOPIC"
-  | "CHANNEL_SET_PURPOSE"
-  | "CHANNEL_HISTORY"
-  | "CHANNEL_INFO"
-  | "CHANNEL_LIST"
-  | "CHANNEL_RENAME"
-  | "USER_INFO"
-  | "USER_LIST"
-  | "USER_GET_PRESENCE"
-  | "REACTION_ADD"
-  | "REACTION_REMOVE"
-  | "REACTION_GET"
-  | "FILE_UPLOAD"
-  | "FILE_LIST"
-  | "FILE_INFO"
-  | "FILE_DELETE"
-  | "CONVERSATION_OPEN"
+type SlackOp = `${SlackOperation}`
+
+const DEFAULT_OPERATION: SlackOp = "MESSAGE_SEND_WEBHOOK"
 
 const OPERATION_LABELS: Record<SlackOp, string> = {
   MESSAGE_SEND_WEBHOOK: "Send Message (Webhook)",
@@ -238,7 +212,7 @@ export const SlackDialog = ({
     defaultValues.credentialId || ""
   )
   const [operation, setOperation] = useState<SlackOp>(
-    (defaultValues.operation as SlackOp) || "MESSAGE_SEND_WEBHOOK"
+    (defaultValues.operation as SlackOp) || DEFAULT_OPERATION
   )
   const [variableName, setVariableName] = useState(
     defaultValues.variableName || "slack"
@@ -302,7 +276,7 @@ export const SlackDialog = ({
   useEffect(() => {
     if (open && !config) {
       setCredentialId(defaultValues.credentialId || "")
-      setOperation((defaultValues.operation as SlackOp) || "MESSAGE_SEND_WEBHOOK")
+      setOperation((defaultValues.operation as SlackOp) || DEFAULT_OPERATION)
       setVariableName(defaultValues.variableName || "slack")
       setChannel(defaultValues.channel || "")
       setMessage(defaultValues.message || "")

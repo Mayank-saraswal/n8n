@@ -22,6 +22,8 @@ type SlackData = {
   nodeId?: string
 }
 
+const MAX_WEBHOOK_MESSAGE_LENGTH = 2000
+
 async function slackRequest(
   method: "GET" | "POST",
   endpoint: string,
@@ -179,7 +181,7 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
               `Slack webhook error: HTTP ${resp.status}`
             )
           }
-          apiResult = { ok: true, message: message.slice(0, 2000) }
+          apiResult = { ok: true, message: message.slice(0, MAX_WEBHOOK_MESSAGE_LENGTH) }
           break
         }
 
