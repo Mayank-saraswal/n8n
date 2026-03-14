@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/db"
 import { encrypt } from "@/lib/encryption"
-
-const GOOGLE_GMAIL_CLIENT_ID = process.env.GOOGLE_GMAIL_CLIENT_ID!
-const GOOGLE_GMAIL_CLIENT_SECRET = process.env.GOOGLE_GMAIL_CLIENT_SECRET!
-const NEXTAUTH_URL = process.env.NEXTAUTH_URL!
+import {
+  GOOGLE_GMAIL_CLIENT_ID,
+  GOOGLE_GMAIL_CLIENT_SECRET,
+  NEXTAUTH_URL,
+} from "@/lib/env"
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code")

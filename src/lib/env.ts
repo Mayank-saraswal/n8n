@@ -1,6 +1,6 @@
 function requireEnv(key: string): string {
   const v = process.env[key]
-  if (!v)
+  if (!v || v.trim() === "")
     throw new Error(
       `Missing env: ${key}. Set in .env.local or Vercel project settings.`
     )

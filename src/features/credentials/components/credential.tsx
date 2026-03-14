@@ -508,7 +508,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                 <>
                                     <div className="rounded-md border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200">
                                         <p className="font-medium mb-1">⚠️ App Password is deprecated</p>
-                                        <p>Reconnect with OAuth2 to use all 12 Gmail operations. Select &quot;Gmail OAuth&quot; as the type above.</p>
+                                        <p>Reconnect with OAuth2 to use all Gmail operations. Select &quot;Gmail OAuth&quot; as the type above.</p>
                                     </div>
 
                                     <FormField

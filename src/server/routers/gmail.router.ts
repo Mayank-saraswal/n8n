@@ -4,6 +4,10 @@ import prisma from "@/lib/db"
 import { GmailOperation } from "@/generated/prisma"
 import { TRPCError } from "@trpc/server"
 import { decrypt } from "@/lib/encryption"
+import {
+  GOOGLE_GMAIL_CLIENT_ID,
+  GOOGLE_GMAIL_CLIENT_SECRET,
+} from "@/lib/env"
 
 const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me"
 
@@ -50,8 +54,8 @@ export const gmailRouter = createTRPCRouter({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            client_id: process.env.GOOGLE_GMAIL_CLIENT_ID,
-            client_secret: process.env.GOOGLE_GMAIL_CLIENT_SECRET,
+            client_id: GOOGLE_GMAIL_CLIENT_ID,
+            client_secret: GOOGLE_GMAIL_CLIENT_SECRET,
             refresh_token: refreshToken,
             grant_type: "refresh_token",
           }),

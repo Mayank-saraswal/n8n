@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
 import crypto from "crypto"
-
-const GOOGLE_GMAIL_CLIENT_ID = process.env.GOOGLE_GMAIL_CLIENT_ID!
-const NEXTAUTH_URL = process.env.NEXTAUTH_URL!
+import {
+  GOOGLE_GMAIL_CLIENT_ID,
+  NEXTAUTH_URL,
+} from "@/lib/env"
 
 const SCOPES = [
   "https://www.googleapis.com/auth/gmail.send",
