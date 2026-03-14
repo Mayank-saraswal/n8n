@@ -579,7 +579,11 @@ enum SlackOperation {
   MESSAGE_UPDATE
   MESSAGE_DELETE
   MESSAGE_GET_PERMALINK
+  MESSAGE_SCHEDULE
+  // legacy — kept for backward compat
   MESSAGE_SEARCH
+  CHANNEL_GET
+  CHANNEL_LIST
   CHANNEL_CREATE
   CHANNEL_ARCHIVE
   CHANNEL_UNARCHIVE
@@ -587,44 +591,69 @@ enum SlackOperation {
   CHANNEL_KICK
   CHANNEL_SET_TOPIC
   CHANNEL_SET_PURPOSE
+  // legacy — kept for backward compat
   CHANNEL_HISTORY
   CHANNEL_INFO
-  CHANNEL_LIST
   CHANNEL_RENAME
-  USER_INFO
+  USER_GET
+  USER_GET_BY_EMAIL
   USER_LIST
+  USER_SET_STATUS
+  // legacy — kept for backward compat
+  USER_INFO
   USER_GET_PRESENCE
   REACTION_ADD
   REACTION_REMOVE
   REACTION_GET
   FILE_UPLOAD
+  FILE_GET
+  FILE_DELETE
+  // legacy — kept for backward compat
   FILE_LIST
   FILE_INFO
-  FILE_DELETE
   CONVERSATION_OPEN
 }
 
 model SlackNode {
-  id             String         @id @default(cuid())
-  nodeId         String         @unique
-  workflowId     String
-  credentialId   String?
-  operation      SlackOperation @default(MESSAGE_SEND_WEBHOOK)
-  variableName   String         @default("slack")
-  channel        String         @default("")
-  message        String         @default("") @db.Text
-  threadTs       String         @default("")
-  messageTs      String         @default("")
-  searchQuery    String         @default("")
-  channelName    String         @default("")
-  channelTopic   String         @default("")
-  channelPurpose String         @default("")
-  userId         String         @default("")
-  emoji          String         @default("")
-  fileComment    String         @default("")
-  webhookUrl     String         @default("")
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id               String         @id @default(cuid())
+  nodeId           String         @unique
+  workflowId       String
+  credentialId     String?
+  operation        SlackOperation @default(MESSAGE_SEND_WEBHOOK)
+  variableName     String         @default("slack")
+  channel          String         @default("")
+  message          String         @default("") @db.Text
+  threadTs         String         @default("")
+  messageTs        String         @default("")
+  searchQuery      String         @default("")
+  channelName      String         @default("")
+  channelTopic     String         @default("")
+  channelPurpose   String         @default("")
+  userId           String         @default("")
+  emoji            String         @default("")
+  fileComment      String         @default("")
+  webhookUrl       String         @default("")
+  blockKit         String         @default("") @db.Text
+  botName          String         @default("")
+  iconEmoji        String         @default("")
+  unfurlLinks      Boolean        @default(true)
+  channelTypes     String         @default("public_channel,private_channel")
+  limit            Int            @default(100)
+  excludeArchived  Boolean        @default(true)
+  isPrivate        Boolean        @default(false)
+  filename         String         @default("")
+  fileType         String         @default("")
+  title            String         @default("")
+  initialComment   String         @default("")
+  email            String         @default("")
+  statusText       String         @default("")
+  statusEmoji      String         @default("")
+  statusExpiration String         @default("")
+  sendAt           String         @default("")
+  content          String         @default("") @db.Text
+  fileId           String         @default("")
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 

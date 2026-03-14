@@ -30,6 +30,9 @@ const formSchema = z.object({
     notionApiKey: z.string().optional(),
     razorpayKeyId: z.string().optional(),
     razorpayKeySecret: z.string().optional(),
+    slackAuthType: z.enum(["bot_token", "webhook"]).optional(),
+    slackBotToken: z.string().optional(),
+    slackWebhookUrl: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.type === CredentialType.GMAIL) {
         if (!data.gmailEmail) {
@@ -85,6 +88,22 @@ const formSchema = z.object({
                 code: z.ZodIssueCode.custom,
                 message: "Key Secret is required",
                 path: ["razorpayKeySecret"],
+            })
+        }
+    }
+    if (data.type === CredentialType.SLACK) {
+        if (data.slackAuthType === "bot_token" && !data.slackBotToken) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Bot Token is required",
+                path: ["slackBotToken"],
+            })
+        }
+        if (data.slackAuthType === "webhook" && !data.slackWebhookUrl) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Webhook URL is required",
+                path: ["slackWebhookUrl"],
             })
         }
     }
@@ -232,10 +251,35 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
         return { razorpayKeyId: "", razorpayKeySecret: "" }
     }, [initialData])
 
+    const slackDefaults = useMemo(() => {
+        if (initialData?.type === CredentialType.SLACK && initialData.value) {
+            try {
+                const parsed = JSON.parse(initialData.value)
+                if (parsed.type === "bot_token") {
+                    return {
+                        slackAuthType: "bot_token" as const,
+                        slackBotToken: parsed.token ?? "",
+                        slackWebhookUrl: "",
+                    }
+                }
+                if (parsed.type === "webhook") {
+                    return {
+                        slackAuthType: "webhook" as const,
+                        slackBotToken: "",
+                        slackWebhookUrl: parsed.webhookUrl ?? "",
+                    }
+                }
+            } catch {
+                // fall through
+            }
+        }
+        return { slackAuthType: "bot_token" as const, slackBotToken: "", slackWebhookUrl: "" }
+    }, [initialData])
+
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: initialData
-            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults }
+            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...slackDefaults }
             : {
                 name: "",
                 type: CredentialType.OPENAI,
@@ -247,6 +291,9 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                 notionApiKey: "",
                 razorpayKeyId: "",
                 razorpayKeySecret: "",
+                slackAuthType: "bot_token",
+                slackBotToken: "",
+                slackWebhookUrl: "",
             }
     })
 
@@ -257,6 +304,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const isWhatsApp = watchType === CredentialType.WHATSAPP
     const isNotion = watchType === CredentialType.NOTION
     const isRazorpay = watchType === CredentialType.RAZORPAY
+    const isSlack = watchType === CredentialType.SLACK
+    const watchSlackAuthType = form.watch("slackAuthType")
 
     const onSubmit = async (values: FormValues) => {
         let submitValues = { ...values }
@@ -292,7 +341,22 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             })
         }
 
-        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, ...payload } = submitValues
+        // For Slack, encode based on auth type
+        if (values.type === CredentialType.SLACK) {
+            if (values.slackAuthType === "bot_token") {
+                submitValues.value = JSON.stringify({
+                    type: "bot_token",
+                    token: values.slackBotToken,
+                })
+            } else {
+                submitValues.value = JSON.stringify({
+                    type: "webhook",
+                    webhookUrl: values.slackWebhookUrl,
+                })
+            }
+        }
+
+        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, slackAuthType, slackBotToken, slackWebhookUrl, ...payload } = submitValues
 
         if (isEdit && initialData?.id) {
             await updateCredential.mutate({
@@ -364,6 +428,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                     form.setValue("value", "notion-credential")
                                                 } else if (val === CredentialType.RAZORPAY) {
                                                     form.setValue("value", "razorpay-credential")
+                                                } else if (val === CredentialType.SLACK) {
+                                                    form.setValue("value", "slack-credential")
                                                 } else if (val === CredentialType.GOOGLE_SHEETS || val === CredentialType.GOOGLE_DRIVE) {
                                                     form.setValue("value", "")
                                                 } else {
@@ -373,6 +439,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                       currentValue === "whatsapp-credential" ||
                                                       currentValue === "notion-credential" ||
                                                       currentValue === "razorpay-credential" ||
+                                                      currentValue === "slack-credential" ||
                                                       currentValue.startsWith("{")
                                                     ) {
                                                       form.setValue("value", "")
@@ -568,6 +635,100 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                             Use rzp_test_ keys for testing, rzp_live_ for production
                                         </p>
                                     </div>
+                                </>
+                            ) : isSlack ? (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="slackAuthType"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Auth Type</FormLabel>
+                                                <Select
+                                                    onValueChange={field.onChange}
+                                                    defaultValue={field.value}
+                                                >
+                                                    <FormControl>
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Select auth type" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="bot_token">Bot Token</SelectItem>
+                                                        <SelectItem value="webhook">Incoming Webhook</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    {watchSlackAuthType === "bot_token" ? (
+                                        <>
+                                            <FormField
+                                                control={form.control}
+                                                name="slackBotToken"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Bot Token</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="password" placeholder="xoxb-..." {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                                <p className="font-medium mb-2">ℹ️ How to get a Slack Bot Token</p>
+                                                <ol className="list-decimal list-inside space-y-1">
+                                                    <li>Go to{" "}
+                                                        <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" className="underline">
+                                                            api.slack.com/apps
+                                                        </a>
+                                                    </li>
+                                                    <li>Create New App → From scratch</li>
+                                                    <li>OAuth &amp; Permissions → Add Bot Token Scopes:
+                                                        channels:read, channels:write, chat:write,
+                                                        files:write, reactions:write, users:read,
+                                                        groups:read, im:read
+                                                    </li>
+                                                    <li>Install to Workspace</li>
+                                                    <li>Copy Bot User OAuth Token (xoxb-...)</li>
+                                                </ol>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FormField
+                                                control={form.control}
+                                                name="slackWebhookUrl"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Webhook URL</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="text" placeholder="https://hooks.slack.com/..." {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                                <p className="font-medium mb-2">ℹ️ How to get a Slack Webhook URL</p>
+                                                <ol className="list-decimal list-inside space-y-1">
+                                                    <li>Go to{" "}
+                                                        <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" className="underline">
+                                                            api.slack.com/apps
+                                                        </a>
+                                                    </li>
+                                                    <li>Incoming Webhooks → Activate</li>
+                                                    <li>Add New Webhook to Workspace</li>
+                                                    <li>Copy Webhook URL</li>
+                                                </ol>
+                                            </div>
+                                        </>
+                                    )}
                                 </>
                             ) : isGoogleSheets || isGoogleDrive ? (
                                 <FormField

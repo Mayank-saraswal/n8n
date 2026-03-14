@@ -8,55 +8,53 @@ import { fetchSlackRealtimeToken } from "./actions"
 import { SLACK_CHANNEL_NAME } from "@/inngest/channels/slack"
 import { useParams } from "next/navigation"
 
-type SlackNodeData = {
-  credentialId?: string
-  operation?: string
-  variableName?: string
-  channel?: string
-  message?: string
-  threadTs?: string
-  messageTs?: string
-  searchQuery?: string
-  channelName?: string
-  channelTopic?: string
-  channelPurpose?: string
-  userId?: string
-  emoji?: string
-  fileComment?: string
-  webhookUrl?: string
+type SlackNodeData = SlackFormValues & {
+  [key: string]: unknown
 }
 
 type SlackNodeType = Node<SlackNodeData>
 
-const operationLabels: Record<string, string> = {
-  MESSAGE_SEND_WEBHOOK: "Send Message (Webhook)",
-  MESSAGE_SEND: "Send Message",
-  MESSAGE_UPDATE: "Update Message",
-  MESSAGE_DELETE: "Delete Message",
-  MESSAGE_GET_PERMALINK: "Get Permalink",
-  MESSAGE_SEARCH: "Search Messages",
-  CHANNEL_CREATE: "Create Channel",
-  CHANNEL_ARCHIVE: "Archive Channel",
-  CHANNEL_UNARCHIVE: "Unarchive Channel",
-  CHANNEL_INVITE: "Invite to Channel",
-  CHANNEL_KICK: "Remove from Channel",
-  CHANNEL_SET_TOPIC: "Set Topic",
-  CHANNEL_SET_PURPOSE: "Set Purpose",
-  CHANNEL_HISTORY: "Channel History",
-  CHANNEL_INFO: "Channel Info",
-  CHANNEL_LIST: "List Channels",
-  CHANNEL_RENAME: "Rename Channel",
-  USER_INFO: "User Info",
-  USER_LIST: "List Users",
-  USER_GET_PRESENCE: "User Presence",
-  REACTION_ADD: "Add Reaction",
-  REACTION_REMOVE: "Remove Reaction",
-  REACTION_GET: "Get Reactions",
-  FILE_UPLOAD: "Upload File",
-  FILE_LIST: "List Files",
-  FILE_INFO: "File Info",
-  FILE_DELETE: "Delete File",
-  CONVERSATION_OPEN: "Open Conversation",
+function getDescription(data: SlackNodeData): string {
+  if (!data?.operation) return "Click to configure"
+
+  switch (data.operation) {
+    case "MESSAGE_SEND": {
+      const ch = data.channel || ""
+      const display = ch.length > 20 ? ch.slice(0, 20) : ch
+      return display ? `Send to ${display}` : "Send Message"
+    }
+    case "MESSAGE_SEND_WEBHOOK":
+      return "Webhook message"
+    case "MESSAGE_UPDATE":
+      return "Edit message"
+    case "MESSAGE_DELETE":
+      return "Delete message"
+    case "MESSAGE_SCHEDULE":
+      return "Scheduled message"
+    case "CHANNEL_CREATE": {
+      const name = data.channelName || ""
+      return name ? `Create #${name}` : "Create Channel"
+    }
+    case "CHANNEL_LIST":
+      return "List channels"
+    case "CHANNEL_INVITE":
+      return "Invite to channel"
+    case "USER_GET":
+      return "Get user"
+    case "USER_GET_BY_EMAIL":
+      return "Get by email"
+    case "FILE_UPLOAD": {
+      const fn = data.filename || "file"
+      return `Upload ${fn}`
+    }
+    case "REACTION_ADD": {
+      const em = data.emoji || ""
+      return em ? `React :${em}:` : "Add Reaction"
+    }
+    default: {
+      return data.operation.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase())
+    }
+  }
 }
 
 export const SlackNode = memo((props: NodeProps<SlackNodeType>) => {
@@ -90,14 +88,7 @@ export const SlackNode = memo((props: NodeProps<SlackNodeType>) => {
     )
   }
 
-  const nodeData = props.data
-  const opLabel = nodeData?.operation
-    ? operationLabels[nodeData.operation] ?? nodeData.operation
-    : ""
-  const channelSuffix = nodeData?.channel ? ` #${nodeData.channel}` : ""
-  const description = opLabel
-    ? `${opLabel}${channelSuffix}`
-    : "Click to configure"
+  const description = getDescription(props.data)
 
   return (
     <>
@@ -105,7 +96,7 @@ export const SlackNode = memo((props: NodeProps<SlackNodeType>) => {
         onSubmit={handleSubmit}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        defaultValues={nodeData}
+        defaultValues={props.data}
         nodeId={props.id}
         workflowId={workflowId}
       />

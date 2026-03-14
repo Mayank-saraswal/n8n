@@ -6,6 +6,8 @@ import { resolveTemplate } from "@/features/executions/lib/template-resolver"
 import { slackChannel } from "@/inngest/channels/slack"
 import { SlackOperation } from "@/generated/prisma"
 
+/* ── Credential types ── */
+
 interface SlackBotCredential {
   type: "bot_token"
   token: string
@@ -18,11 +20,61 @@ interface SlackWebhookCredential {
 
 type SlackCredential = SlackBotCredential | SlackWebhookCredential
 
-type SlackData = {
-  nodeId?: string
-}
+type SlackData = { nodeId?: string }
+
+/* ── Helpers ── */
 
 const MAX_WEBHOOK_MESSAGE_LENGTH = 2000
+
+function getSlackErrorHint(errorCode: string): string {
+  const hints: Record<string, string> = {
+    channel_not_found: "Channel not found. Check the channel ID or name.",
+    not_in_channel: "Bot is not in this channel. Invite the bot first with /invite @botname.",
+    invalid_auth: "Invalid Slack token. Check your credential's bot token.",
+    missing_scope: "Bot token is missing required scopes. Update scopes in your Slack app settings.",
+    not_authed: "No authentication token provided. Add a Slack credential.",
+    account_inactive: "Token has been revoked. Generate a new bot token.",
+    no_text: "Message text is required.",
+    msg_too_long: "Message exceeds Slack's 40,000 character limit.",
+    too_many_attachments: "Too many attachments. Maximum is 100.",
+    channel_is_archived: "Channel is archived. Unarchive it first.",
+    name_taken: "Channel name is already taken. Choose a different name.",
+    user_not_found: "User not found. Check the user ID.",
+    already_reacted: "You have already reacted with this emoji.",
+    no_reaction: "No reaction found to remove.",
+    file_not_found: "File not found. Check the file ID.",
+    restricted_action: "This action is restricted by workspace admin settings.",
+    is_archived: "Channel is archived.",
+    already_archived: "Channel is already archived.",
+    not_archived: "Channel is not archived.",
+    cant_archive_general: "Cannot archive the #general channel.",
+    user_not_in_channel: "User is not in this channel.",
+    already_in_channel: "User is already in this channel.",
+    cant_kick_self: "Bot cannot remove itself from a channel.",
+    invalid_timestamp: "Invalid message timestamp. Use the ts value from a previous message.",
+    time_in_past: "Scheduled time must be in the future.",
+    time_too_far: "Scheduled time is too far in the future. Maximum is 120 days.",
+  }
+  return hints[errorCode] ?? `Slack API error: ${errorCode}`
+}
+
+function parseBlocks(blockKit: string): unknown[] | undefined {
+  if (!blockKit.trim()) return undefined
+  try {
+    const parsed = JSON.parse(blockKit)
+    if (!Array.isArray(parsed)) {
+      throw new NonRetriableError(
+        "Block Kit JSON must be an array of block objects. See https://api.slack.com/block-kit"
+      )
+    }
+    return parsed
+  } catch (e) {
+    if (e instanceof NonRetriableError) throw e
+    throw new NonRetriableError(
+      `Invalid Block Kit JSON: ${(e as Error).message}. Must be valid JSON array.`
+    )
+  }
+}
 
 async function slackRequest(
   method: "GET" | "POST",
@@ -51,13 +103,40 @@ async function slackRequest(
   const data = (await response.json()) as Record<string, unknown>
 
   if (data.ok === false) {
-    throw new NonRetriableError(
-      `Slack API error: ${(data.error as string) ?? "unknown_error"}`
-    )
+    const errorCode = (data.error as string) ?? "unknown_error"
+    throw new NonRetriableError(getSlackErrorHint(errorCode))
   }
 
   return data
 }
+
+async function slackFormDataRequest(
+  endpoint: string,
+  token: string,
+  formData: FormData
+): Promise<Record<string, unknown>> {
+  const url = `https://slack.com/api/${endpoint}`
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  })
+
+  if (!response.ok) {
+    throw new NonRetriableError(
+      `Slack API HTTP error: ${response.status} ${response.statusText}`
+    )
+  }
+
+  const data = (await response.json()) as Record<string, unknown>
+  if (data.ok === false) {
+    const errorCode = (data.error as string) ?? "unknown_error"
+    throw new NonRetriableError(getSlackErrorHint(errorCode))
+  }
+  return data
+}
+
+/* ── Executor ── */
 
 export const slackExecutor: NodeExecutor<SlackData> = async ({
   nodeId,
@@ -66,12 +145,7 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
   publish,
   userId,
 }) => {
-  await publish(
-    slackChannel().status({
-      nodeId,
-      status: "loading",
-    })
-  )
+  await publish(slackChannel().status({ nodeId, status: "loading" }))
 
   // Step 1: Load config from DB
   const config = await step.run(`slack-${nodeId}-load-config`, async () => {
@@ -79,12 +153,7 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
   })
 
   if (!config) {
-    await publish(
-      slackChannel().status({
-        nodeId,
-        status: "error",
-      })
-    )
+    await publish(slackChannel().status({ nodeId, status: "error" }))
     throw new NonRetriableError(
       "Slack node not configured. Open settings to configure."
     )
@@ -96,10 +165,7 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
     async () => {
       if (!config.credentialId) return null
       return prisma.credential.findUnique({
-        where: {
-          id: config.credentialId,
-          userId,
-        },
+        where: { id: config.credentialId, userId },
       })
     }
   )
@@ -111,12 +177,7 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
     try {
       creds = JSON.parse(raw) as SlackCredential
     } catch {
-      await publish(
-        slackChannel().status({
-          nodeId,
-          status: "error",
-        })
-      )
+      await publish(slackChannel().status({ nodeId, status: "error" }))
       throw new NonRetriableError(
         'Invalid Slack credential format. Expected JSON: {"type": "bot_token", "token": "xoxb-..."} or {"type": "webhook", "webhookUrl": "..."}'
       )
@@ -126,12 +187,7 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
   const isWebhookOp = config.operation === SlackOperation.MESSAGE_SEND_WEBHOOK
 
   if (!isWebhookOp && (!creds || creds.type !== "bot_token")) {
-    await publish(
-      slackChannel().status({
-        nodeId,
-        status: "error",
-      })
-    )
+    await publish(slackChannel().status({ nodeId, status: "error" }))
     throw new NonRetriableError(
       "Slack Bot Token credential required for API operations. Add a SLACK credential with type: bot_token."
     )
@@ -145,19 +201,34 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
       const message = resolveTemplate(config.message, context)
       const threadTs = resolveTemplate(config.threadTs, context)
       const messageTs = resolveTemplate(config.messageTs, context)
-      const searchQuery = resolveTemplate(config.searchQuery, context)
       const channelName = resolveTemplate(config.channelName, context)
       const channelTopic = resolveTemplate(config.channelTopic, context)
       const channelPurpose = resolveTemplate(config.channelPurpose, context)
       const slackUserId = resolveTemplate(config.userId, context)
       const emoji = resolveTemplate(config.emoji, context)
-      const fileComment = resolveTemplate(config.fileComment, context)
       const webhookUrl = resolveTemplate(config.webhookUrl, context)
+      const blockKit = resolveTemplate(config.blockKit, context)
+      const botName = resolveTemplate(config.botName, context)
+      const iconEmojiVal = resolveTemplate(config.iconEmoji, context)
+      const filenameVal = resolveTemplate(config.filename, context)
+      const fileTypeVal = resolveTemplate(config.fileType, context)
+      const titleVal = resolveTemplate(config.title, context)
+      const initialCommentVal = resolveTemplate(config.initialComment, context)
+      const emailVal = resolveTemplate(config.email, context)
+      const statusTextVal = resolveTemplate(config.statusText, context)
+      const statusEmojiVal = resolveTemplate(config.statusEmoji, context)
+      const statusExpirationVal = resolveTemplate(config.statusExpiration, context)
+      const sendAtVal = resolveTemplate(config.sendAt, context)
+      const fileIdVal = resolveTemplate(config.fileId, context)
+      const contentVal = resolveTemplate(config.content, context)
+
+      const token = creds?.type === "bot_token" ? creds.token : ""
 
       let apiResult: Record<string, unknown> = {}
 
       switch (config.operation) {
         // ── Message Operations ──
+
         case SlackOperation.MESSAGE_SEND_WEBHOOK: {
           const url =
             creds?.type === "webhook" ? creds.webhookUrl : webhookUrl
@@ -166,22 +237,28 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
               "Slack: webhook URL is required for MESSAGE_SEND_WEBHOOK"
             )
           }
-          if (!message) {
+          const text = message || contentVal
+          if (!text) {
             throw new NonRetriableError(
               "Slack: message content is required for MESSAGE_SEND_WEBHOOK"
             )
           }
+          const webhookBody: Record<string, unknown> = {
+            text: text.slice(0, MAX_WEBHOOK_MESSAGE_LENGTH),
+          }
+          const blocks = parseBlocks(blockKit)
+          if (blocks) webhookBody.blocks = blocks
           const resp = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: message }),
+            body: JSON.stringify(webhookBody),
           })
           if (!resp.ok) {
             throw new NonRetriableError(
               `Slack webhook error: HTTP ${resp.status}`
             )
           }
-          apiResult = { ok: true, message: message.slice(0, MAX_WEBHOOK_MESSAGE_LENGTH) }
+          apiResult = { ok: true, success: true }
           break
         }
 
@@ -190,17 +267,18 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
             throw new NonRetriableError("Slack: channel is required")
           if (!message)
             throw new NonRetriableError("Slack: message is required")
-          const body: Record<string, unknown> = {
-            channel,
-            text: message,
-          }
+          const body: Record<string, unknown> = { channel, text: message }
           if (threadTs) body.thread_ts = threadTs
-          apiResult = await slackRequest(
-            "POST",
-            "chat.postMessage",
-            (creds as SlackBotCredential).token,
-            body
-          )
+          if (botName) body.username = botName
+          if (iconEmojiVal) body.icon_emoji = iconEmojiVal
+          if (config.unfurlLinks === false) body.unfurl_links = false
+          const blocks = parseBlocks(blockKit)
+          if (blocks) body.blocks = blocks
+          const data = await slackRequest("POST", "chat.postMessage", token, body)
+          apiResult = {
+            messageTs: (data.message as Record<string, unknown>)?.ts ?? data.ts,
+            channelId: data.channel,
+          }
           break
         }
 
@@ -208,15 +286,18 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
           if (!channel)
             throw new NonRetriableError("Slack: channel is required")
           if (!messageTs)
-            throw new NonRetriableError("Slack: messageTs is required")
+            throw new NonRetriableError("Slack: message timestamp is required")
           if (!message)
-            throw new NonRetriableError("Slack: message is required")
-          apiResult = await slackRequest(
-            "POST",
-            "chat.update",
-            (creds as SlackBotCredential).token,
-            { channel, ts: messageTs, text: message }
-          )
+            throw new NonRetriableError("Slack: message text is required")
+          const body: Record<string, unknown> = {
+            channel,
+            ts: messageTs,
+            text: message,
+          }
+          const blocks = parseBlocks(blockKit)
+          if (blocks) body.blocks = blocks
+          const data = await slackRequest("POST", "chat.update", token, body)
+          apiResult = { messageTs: data.ts, channel: data.channel }
           break
         }
 
@@ -224,13 +305,12 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
           if (!channel)
             throw new NonRetriableError("Slack: channel is required")
           if (!messageTs)
-            throw new NonRetriableError("Slack: messageTs is required")
-          apiResult = await slackRequest(
-            "POST",
-            "chat.delete",
-            (creds as SlackBotCredential).token,
-            { channel, ts: messageTs }
-          )
+            throw new NonRetriableError("Slack: message timestamp is required")
+          const data = await slackRequest("POST", "chat.delete", token, {
+            channel,
+            ts: messageTs,
+          })
+          apiResult = { messageTs: data.ts, channel: data.channel }
           break
         }
 
@@ -238,60 +318,120 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
           if (!channel)
             throw new NonRetriableError("Slack: channel is required")
           if (!messageTs)
-            throw new NonRetriableError("Slack: messageTs is required")
-          apiResult = await slackRequest(
+            throw new NonRetriableError("Slack: message timestamp is required")
+          const data = await slackRequest(
             "GET",
             `chat.getPermalink?channel=${encodeURIComponent(channel)}&message_ts=${encodeURIComponent(messageTs)}`,
-            (creds as SlackBotCredential).token
+            token
           )
+          apiResult = { permalink: data.permalink, channel, messageTs }
           break
         }
 
-        case SlackOperation.MESSAGE_SEARCH: {
-          if (!searchQuery)
-            throw new NonRetriableError("Slack: searchQuery is required")
-          apiResult = await slackRequest(
-            "GET",
-            `search.messages?query=${encodeURIComponent(searchQuery)}`,
-            (creds as SlackBotCredential).token
+        case SlackOperation.MESSAGE_SCHEDULE: {
+          if (!channel)
+            throw new NonRetriableError("Slack: channel is required")
+          if (!message)
+            throw new NonRetriableError("Slack: message text is required")
+          if (!sendAtVal)
+            throw new NonRetriableError(
+              "Slack: send at (Unix timestamp) is required"
+            )
+          const body: Record<string, unknown> = {
+            channel,
+            text: message,
+            post_at: Number(sendAtVal),
+          }
+          const blocks = parseBlocks(blockKit)
+          if (blocks) body.blocks = blocks
+          const data = await slackRequest(
+            "POST",
+            "chat.scheduleMessage",
+            token,
+            body
           )
+          apiResult = {
+            scheduledMessageId: data.scheduled_message_id,
+            postAt: data.post_at,
+            channel: data.channel,
+          }
           break
         }
 
         // ── Channel Operations ──
+
+        case SlackOperation.CHANNEL_GET: {
+          if (!channel)
+            throw new NonRetriableError("Slack: channel is required")
+          const data = await slackRequest(
+            "GET",
+            `conversations.info?channel=${encodeURIComponent(channel)}`,
+            token
+          )
+          const ch = data.channel as Record<string, unknown> | undefined
+          apiResult = {
+            channelId: ch?.id,
+            name: ch?.name,
+            memberCount: ch?.num_members,
+            topic: (ch?.topic as Record<string, unknown>)?.value,
+            purpose: (ch?.purpose as Record<string, unknown>)?.value,
+          }
+          break
+        }
+
+        case SlackOperation.CHANNEL_LIST: {
+          const params = new URLSearchParams()
+          if (config.channelTypes)
+            params.set("types", config.channelTypes)
+          params.set("limit", String(config.limit || 100))
+          if (config.excludeArchived) params.set("exclude_archived", "true")
+          const data = await slackRequest(
+            "GET",
+            `conversations.list?${params.toString()}`,
+            token
+          )
+          const channels = data.channels as unknown[]
+          apiResult = { channels, count: channels?.length ?? 0 }
+          break
+        }
+
         case SlackOperation.CHANNEL_CREATE: {
           if (!channelName)
-            throw new NonRetriableError("Slack: channelName is required")
-          apiResult = await slackRequest(
+            throw new NonRetriableError("Slack: channel name is required")
+          const body: Record<string, unknown> = { name: channelName }
+          if (config.isPrivate) body.is_private = true
+          const data = await slackRequest(
             "POST",
             "conversations.create",
-            (creds as SlackBotCredential).token,
-            { name: channelName }
+            token,
+            body
           )
+          const ch = data.channel as Record<string, unknown> | undefined
+          apiResult = {
+            channelId: ch?.id,
+            name: ch?.name,
+            memberCount: ch?.num_members ?? 0,
+          }
           break
         }
 
         case SlackOperation.CHANNEL_ARCHIVE: {
           if (!channel)
             throw new NonRetriableError("Slack: channel is required")
-          apiResult = await slackRequest(
-            "POST",
-            "conversations.archive",
-            (creds as SlackBotCredential).token,
-            { channel }
-          )
+          await slackRequest("POST", "conversations.archive", token, {
+            channel,
+          })
+          apiResult = { ok: true, channel }
           break
         }
 
         case SlackOperation.CHANNEL_UNARCHIVE: {
           if (!channel)
             throw new NonRetriableError("Slack: channel is required")
-          apiResult = await slackRequest(
-            "POST",
-            "conversations.unarchive",
-            (creds as SlackBotCredential).token,
-            { channel }
-          )
+          await slackRequest("POST", "conversations.unarchive", token, {
+            channel,
+          })
+          apiResult = { ok: true, channel }
           break
         }
 
@@ -299,13 +439,12 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
           if (!channel)
             throw new NonRetriableError("Slack: channel is required")
           if (!slackUserId)
-            throw new NonRetriableError("Slack: userId is required")
-          apiResult = await slackRequest(
-            "POST",
-            "conversations.invite",
-            (creds as SlackBotCredential).token,
-            { channel, users: slackUserId }
-          )
+            throw new NonRetriableError("Slack: user IDs are required")
+          await slackRequest("POST", "conversations.invite", token, {
+            channel,
+            users: slackUserId,
+          })
+          apiResult = { ok: true, channel, users: slackUserId }
           break
         }
 
@@ -313,131 +452,116 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
           if (!channel)
             throw new NonRetriableError("Slack: channel is required")
           if (!slackUserId)
-            throw new NonRetriableError("Slack: userId is required")
-          apiResult = await slackRequest(
-            "POST",
-            "conversations.kick",
-            (creds as SlackBotCredential).token,
-            { channel, user: slackUserId }
-          )
+            throw new NonRetriableError("Slack: user ID is required")
+          await slackRequest("POST", "conversations.kick", token, {
+            channel,
+            user: slackUserId,
+          })
+          apiResult = { ok: true, channel, user: slackUserId }
           break
         }
 
         case SlackOperation.CHANNEL_SET_TOPIC: {
           if (!channel)
             throw new NonRetriableError("Slack: channel is required")
-          apiResult = await slackRequest(
-            "POST",
-            "conversations.setTopic",
-            (creds as SlackBotCredential).token,
-            { channel, topic: channelTopic }
-          )
+          await slackRequest("POST", "conversations.setTopic", token, {
+            channel,
+            topic: channelTopic,
+          })
+          apiResult = { ok: true, channel, topic: channelTopic }
           break
         }
 
         case SlackOperation.CHANNEL_SET_PURPOSE: {
           if (!channel)
             throw new NonRetriableError("Slack: channel is required")
-          apiResult = await slackRequest(
-            "POST",
-            "conversations.setPurpose",
-            (creds as SlackBotCredential).token,
-            { channel, purpose: channelPurpose }
-          )
-          break
-        }
-
-        case SlackOperation.CHANNEL_HISTORY: {
-          if (!channel)
-            throw new NonRetriableError("Slack: channel is required")
-          apiResult = await slackRequest(
-            "GET",
-            `conversations.history?channel=${encodeURIComponent(channel)}&limit=100`,
-            (creds as SlackBotCredential).token
-          )
-          break
-        }
-
-        case SlackOperation.CHANNEL_INFO: {
-          if (!channel)
-            throw new NonRetriableError("Slack: channel is required")
-          apiResult = await slackRequest(
-            "GET",
-            `conversations.info?channel=${encodeURIComponent(channel)}`,
-            (creds as SlackBotCredential).token
-          )
-          break
-        }
-
-        case SlackOperation.CHANNEL_LIST: {
-          apiResult = await slackRequest(
-            "GET",
-            "conversations.list?limit=200",
-            (creds as SlackBotCredential).token
-          )
-          break
-        }
-
-        case SlackOperation.CHANNEL_RENAME: {
-          if (!channel)
-            throw new NonRetriableError("Slack: channel is required")
-          if (!channelName)
-            throw new NonRetriableError("Slack: channelName is required")
-          apiResult = await slackRequest(
-            "POST",
-            "conversations.rename",
-            (creds as SlackBotCredential).token,
-            { channel, name: channelName }
-          )
+          await slackRequest("POST", "conversations.setPurpose", token, {
+            channel,
+            purpose: channelPurpose,
+          })
+          apiResult = { ok: true, channel, purpose: channelPurpose }
           break
         }
 
         // ── User Operations ──
-        case SlackOperation.USER_INFO: {
+
+        case SlackOperation.USER_GET: {
           if (!slackUserId)
-            throw new NonRetriableError("Slack: userId is required")
-          apiResult = await slackRequest(
+            throw new NonRetriableError("Slack: user ID is required")
+          const data = await slackRequest(
             "GET",
             `users.info?user=${encodeURIComponent(slackUserId)}`,
-            (creds as SlackBotCredential).token
+            token
           )
+          const user = data.user as Record<string, unknown> | undefined
+          const profile = user?.profile as Record<string, unknown> | undefined
+          apiResult = {
+            userId: user?.id,
+            email: profile?.email,
+            displayName: profile?.display_name ?? user?.real_name,
+          }
+          break
+        }
+
+        case SlackOperation.USER_GET_BY_EMAIL: {
+          if (!emailVal)
+            throw new NonRetriableError("Slack: email is required")
+          const data = await slackRequest(
+            "GET",
+            `users.lookupByEmail?email=${encodeURIComponent(emailVal)}`,
+            token
+          )
+          const user = data.user as Record<string, unknown> | undefined
+          const profile = user?.profile as Record<string, unknown> | undefined
+          apiResult = {
+            userId: user?.id,
+            email: profile?.email,
+            displayName: profile?.display_name ?? user?.real_name,
+          }
           break
         }
 
         case SlackOperation.USER_LIST: {
-          apiResult = await slackRequest(
+          const data = await slackRequest(
             "GET",
-            "users.list?limit=200",
-            (creds as SlackBotCredential).token
+            `users.list?limit=${config.limit || 100}`,
+            token
           )
+          const members = data.members as unknown[]
+          apiResult = { users: members, count: members?.length ?? 0 }
           break
         }
 
-        case SlackOperation.USER_GET_PRESENCE: {
-          if (!slackUserId)
-            throw new NonRetriableError("Slack: userId is required")
-          apiResult = await slackRequest(
-            "GET",
-            `users.getPresence?user=${encodeURIComponent(slackUserId)}`,
-            (creds as SlackBotCredential).token
-          )
+        case SlackOperation.USER_SET_STATUS: {
+          if (!statusTextVal)
+            throw new NonRetriableError("Slack: status text is required")
+          const profile: Record<string, unknown> = {
+            status_text: statusTextVal,
+            status_emoji: statusEmojiVal || "",
+            status_expiration: statusExpirationVal
+              ? Number(statusExpirationVal)
+              : 0,
+          }
+          await slackRequest("POST", "users.profile.set", token, { profile })
+          apiResult = { ok: true, statusText: statusTextVal }
           break
         }
 
         // ── Reaction Operations ──
+
         case SlackOperation.REACTION_ADD: {
           if (!channel)
             throw new NonRetriableError("Slack: channel is required")
           if (!messageTs)
-            throw new NonRetriableError("Slack: messageTs is required")
+            throw new NonRetriableError("Slack: message timestamp is required")
           if (!emoji)
             throw new NonRetriableError("Slack: emoji is required")
-          apiResult = await slackRequest(
-            "POST",
-            "reactions.add",
-            (creds as SlackBotCredential).token,
-            { channel, timestamp: messageTs, name: emoji }
-          )
+          await slackRequest("POST", "reactions.add", token, {
+            channel,
+            timestamp: messageTs,
+            name: emoji,
+          })
+          apiResult = { ok: true, emoji, channel, messageTs }
           break
         }
 
@@ -445,15 +569,15 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
           if (!channel)
             throw new NonRetriableError("Slack: channel is required")
           if (!messageTs)
-            throw new NonRetriableError("Slack: messageTs is required")
+            throw new NonRetriableError("Slack: message timestamp is required")
           if (!emoji)
             throw new NonRetriableError("Slack: emoji is required")
-          apiResult = await slackRequest(
-            "POST",
-            "reactions.remove",
-            (creds as SlackBotCredential).token,
-            { channel, timestamp: messageTs, name: emoji }
-          )
+          await slackRequest("POST", "reactions.remove", token, {
+            channel,
+            timestamp: messageTs,
+            name: emoji,
+          })
+          apiResult = { ok: true, emoji, channel, messageTs }
           break
         }
 
@@ -461,90 +585,79 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
           if (!channel)
             throw new NonRetriableError("Slack: channel is required")
           if (!messageTs)
-            throw new NonRetriableError("Slack: messageTs is required")
-          apiResult = await slackRequest(
+            throw new NonRetriableError("Slack: message timestamp is required")
+          const data = await slackRequest(
             "GET",
             `reactions.get?channel=${encodeURIComponent(channel)}&timestamp=${encodeURIComponent(messageTs)}`,
-            (creds as SlackBotCredential).token
+            token
           )
+          const msg = data.message as Record<string, unknown> | undefined
+          apiResult = { reactions: msg?.reactions ?? [] }
           break
         }
 
         // ── File Operations ──
+
         case SlackOperation.FILE_UPLOAD: {
           if (!channel)
             throw new NonRetriableError("Slack: channel is required")
-          if (!message)
+          const fileContent = contentVal || message
+          if (!fileContent)
             throw new NonRetriableError(
-              "Slack: message (file content) is required"
+              "Slack: file content is required for FILE_UPLOAD"
             )
-          apiResult = await slackRequest(
-            "POST",
-            "files.uploadV2",
-            (creds as SlackBotCredential).token,
-            {
-              channel_id: channel,
-              content: message,
-              title: fileComment || "Uploaded file",
-            }
+          if (!filenameVal)
+            throw new NonRetriableError("Slack: filename is required")
+          const formData = new FormData()
+          formData.append("channels", channel)
+          formData.append(
+            "content",
+            new Blob([fileContent], { type: "text/plain" }),
+            filenameVal
           )
+          if (filenameVal) formData.append("filename", filenameVal)
+          if (fileTypeVal) formData.append("filetype", fileTypeVal)
+          if (titleVal) formData.append("title", titleVal)
+          if (initialCommentVal)
+            formData.append("initial_comment", initialCommentVal)
+          const data = await slackFormDataRequest(
+            "files.upload",
+            token,
+            formData
+          )
+          const file = data.file as Record<string, unknown> | undefined
+          apiResult = {
+            fileId: file?.id,
+            permalink: file?.permalink,
+          }
           break
         }
 
-        case SlackOperation.FILE_LIST: {
-          const params = new URLSearchParams({ count: "100" })
-          if (channel) params.set("channel", channel)
-          apiResult = await slackRequest(
+        case SlackOperation.FILE_GET: {
+          if (!fileIdVal)
+            throw new NonRetriableError("Slack: file ID is required")
+          const data = await slackRequest(
             "GET",
-            `files.list?${params.toString()}`,
-            (creds as SlackBotCredential).token
+            `files.info?file=${encodeURIComponent(fileIdVal)}`,
+            token
           )
-          break
-        }
-
-        case SlackOperation.FILE_INFO: {
-          if (!messageTs)
-            throw new NonRetriableError(
-              "Slack: messageTs (file ID) is required"
-            )
-          apiResult = await slackRequest(
-            "GET",
-            `files.info?file=${encodeURIComponent(messageTs)}`,
-            (creds as SlackBotCredential).token
-          )
+          apiResult = data.file as Record<string, unknown>
           break
         }
 
         case SlackOperation.FILE_DELETE: {
-          if (!messageTs)
-            throw new NonRetriableError(
-              "Slack: messageTs (file ID) is required"
-            )
-          apiResult = await slackRequest(
-            "POST",
-            "files.delete",
-            (creds as SlackBotCredential).token,
-            { file: messageTs }
-          )
-          break
-        }
-
-        // ── Conversation Operations ──
-        case SlackOperation.CONVERSATION_OPEN: {
-          if (!slackUserId)
-            throw new NonRetriableError("Slack: userId is required")
-          apiResult = await slackRequest(
-            "POST",
-            "conversations.open",
-            (creds as SlackBotCredential).token,
-            { users: slackUserId }
-          )
+          if (!fileIdVal)
+            throw new NonRetriableError("Slack: file ID is required")
+          await slackRequest("POST", "files.delete", token, {
+            file: fileIdVal,
+          })
+          apiResult = { ok: true, fileId: fileIdVal }
           break
         }
 
         default:
           throw new NonRetriableError(
-            `Unknown Slack operation: ${config.operation}`
+            `Unknown or unsupported Slack operation: ${config.operation}`
           )
       }
 
@@ -558,21 +671,10 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
       }
     })
   } catch (error) {
-    await publish(
-      slackChannel().status({
-        nodeId,
-        status: "error",
-      })
-    )
+    await publish(slackChannel().status({ nodeId, status: "error" }))
     throw error
   }
 
-  await publish(
-    slackChannel().status({
-      nodeId,
-      status: "success",
-    })
-  )
-
+  await publish(slackChannel().status({ nodeId, status: "success" }))
   return result as Record<string, unknown>
 }
