@@ -2,11 +2,9 @@
 
 import { notionChannel } from "@/inngest/channels/notion"
 import { inngest } from "@/inngest/client"
-import { getSubscriptionToken, Realtime } from "@inngest/realtime"
+import { getSubscriptionToken } from "@inngest/realtime"
 
-export type NotionToken = Realtime.Token<typeof notionChannel, ["status"]>
-
-export async function fetchNotionRealtimeToken(): Promise<NotionToken> {
+export async function fetchNotionRealtimeToken() {
   const token = await getSubscriptionToken(inngest, {
     channel: notionChannel(),
     topics: ["status"],
