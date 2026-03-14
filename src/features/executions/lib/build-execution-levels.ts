@@ -56,6 +56,7 @@ export function buildExecutionLevels<T extends { id: string }>(
   }
 
   // Group nodes by their assigned level
+  if (nodeLevels.size === 0) return []
   const maxLevel = Math.max(...nodeLevels.values())
   const levels: T[][] = Array.from({ length: maxLevel + 1 }, () => [])
 
