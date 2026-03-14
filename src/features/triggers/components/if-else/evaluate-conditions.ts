@@ -24,9 +24,11 @@ function resolveValue(
 ): unknown {
   if (!template) return ""
   const resolved = resolveTemplate(template, context)
-  // Try to parse as number
-  const num = Number(resolved)
-  if (resolved !== "" && !isNaN(num)) return num
+  // Try to parse as number (strict: reject whitespace-only or empty strings)
+  if (resolved !== "" && resolved.trim() !== "") {
+    const num = Number(resolved)
+    if (!isNaN(num)) return num
+  }
   // Try to parse as boolean
   if (resolved === "true") return true
   if (resolved === "false") return false

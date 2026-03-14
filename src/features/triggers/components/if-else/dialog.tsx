@@ -60,6 +60,9 @@ const operatorLabel: Record<IfElseOperator, string> = {
 }
 
 function generateId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
   return Math.random().toString(36).slice(2, 11)
 }
 
@@ -80,6 +83,10 @@ function isCompoundConfigured(config: ConditionsConfig): boolean {
   return config.groups.some((g) =>
     g.conditions.some((c) => c.leftValue.trim() !== "")
   )
+}
+
+function cloneGroups(groups: ConditionGroup[]): ConditionGroup[] {
+  return groups.map((g) => ({ ...g, conditions: [...g.conditions] }))
 }
 
 export const IfElseDialog = ({
@@ -180,7 +187,7 @@ export const IfElseDialog = ({
   const updateCondition = useCallback(
     (groupIdx: number, condIdx: number, updates: Partial<Condition>) => {
       setConditionsConfig((prev) => {
-        const next = { ...prev, groups: prev.groups.map((g) => ({ ...g, conditions: [...g.conditions] })) }
+        const next = { ...prev, groups: cloneGroups(prev.groups) }
         next.groups[groupIdx].conditions[condIdx] = {
           ...next.groups[groupIdx].conditions[condIdx],
           ...updates,
@@ -193,7 +200,7 @@ export const IfElseDialog = ({
 
   const addCondition = useCallback((groupIdx: number) => {
     setConditionsConfig((prev) => {
-      const next = { ...prev, groups: prev.groups.map((g) => ({ ...g, conditions: [...g.conditions] })) }
+      const next = { ...prev, groups: cloneGroups(prev.groups) }
       next.groups[groupIdx].conditions.push(createEmptyCondition())
       return next
     })
@@ -201,7 +208,7 @@ export const IfElseDialog = ({
 
   const removeCondition = useCallback((groupIdx: number, condIdx: number) => {
     setConditionsConfig((prev) => {
-      const next = { ...prev, groups: prev.groups.map((g) => ({ ...g, conditions: [...g.conditions] })) }
+      const next = { ...prev, groups: cloneGroups(prev.groups) }
       if (next.groups[groupIdx].conditions.length > 1) {
         next.groups[groupIdx].conditions.splice(condIdx, 1)
       }
