@@ -27,6 +27,7 @@ const formSchema = z.object({
     gmailAppPassword: z.string().optional(),
     whatsappAccessToken: z.string().optional(),
     whatsappPhoneNumberId: z.string().optional(),
+    notionApiKey: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.type === CredentialType.GMAIL) {
         if (!data.gmailEmail) {
@@ -57,6 +58,15 @@ const formSchema = z.object({
                 code: z.ZodIssueCode.custom,
                 message: "Phone Number ID is required",
                 path: ["whatsappPhoneNumberId"],
+            })
+        }
+    }
+    if (data.type === CredentialType.NOTION) {
+        if (!data.notionApiKey) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Integration Token is required",
+                path: ["notionApiKey"],
             })
         }
     }
@@ -166,10 +176,23 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
         return { whatsappAccessToken: "", whatsappPhoneNumberId: "" };
     }, [initialData]);
 
+    const notionDefaults = useMemo(() => {
+        if (initialData?.type === CredentialType.NOTION && initialData.value) {
+            try {
+                const parsed = JSON.parse(initialData.value)
+                return { notionApiKey: parsed.apiKey ?? initialData.value }
+            } catch {
+                // plain string stored directly
+                return { notionApiKey: initialData.value ?? "" }
+            }
+        }
+        return { notionApiKey: "" }
+    }, [initialData])
+
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: initialData
-            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults }
+            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults }
             : {
                 name: "",
                 type: CredentialType.OPENAI,
@@ -178,6 +201,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                 gmailAppPassword: "",
                 whatsappAccessToken: "",
                 whatsappPhoneNumberId: "",
+                notionApiKey: "",
             }
     })
 
@@ -186,6 +210,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const isGoogleSheets = watchType === CredentialType.GOOGLE_SHEETS
     const isGoogleDrive = watchType === CredentialType.GOOGLE_DRIVE
     const isWhatsApp = watchType === CredentialType.WHATSAPP
+    const isNotion = watchType === CredentialType.NOTION
 
     const onSubmit = async (values: FormValues) => {
         let submitValues = { ...values }
@@ -206,7 +231,14 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             })
         }
 
-        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, ...payload } = submitValues
+        // For Notion, encode apiKey as JSON in the value field
+        if (values.type === CredentialType.NOTION) {
+            submitValues.value = JSON.stringify({
+                apiKey: values.notionApiKey,
+            })
+        }
+
+        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, ...payload } = submitValues
 
         if (isEdit && initialData?.id) {
             await updateCredential.mutate({
@@ -274,6 +306,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                     form.setValue("value", "gmail-credential")
                                                 } else if (val === CredentialType.WHATSAPP) {
                                                     form.setValue("value", "whatsapp-credential")
+                                                } else if (val === CredentialType.NOTION) {
+                                                    form.setValue("value", "notion-credential")
                                                 } else if (val === CredentialType.GOOGLE_SHEETS || val === CredentialType.GOOGLE_DRIVE) {
                                                     form.setValue("value", "")
                                                 } else {
@@ -281,6 +315,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                     if (
                                                       currentValue === "gmail-credential" ||
                                                       currentValue === "whatsapp-credential" ||
+                                                      currentValue === "notion-credential" ||
                                                       currentValue.startsWith("{")
                                                     ) {
                                                       form.setValue("value", "")
@@ -402,6 +437,34 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                             <li>Copy the &quot;Phone number ID&quot;</li>
                                         </ol>
                                     </div>
+                                </>
+                            ) : isNotion ? (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="notionApiKey"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Internal Integration Token</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" placeholder="secret_..." {...field} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Find this in{" "}
+                                                    <a
+                                                        href="https://www.notion.so/my-integrations"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-primary underline"
+                                                    >
+                                                        notion.so/my-integrations
+                                                    </a>
+                                                    {" "}→ select your integration → Secrets → Internal Integration Secret
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 </>
                             ) : isGoogleSheets || isGoogleDrive ? (
                                 <FormField

@@ -105,28 +105,35 @@ export const notionExecutor: NodeExecutor<NotionData> = async ({
 
   const raw = decrypt(credential.value)
   let creds: NotionCredential
+
   try {
-    creds = JSON.parse(raw)
+    const parsed = JSON.parse(raw)
+    // JSON format: {"apiKey": "secret_..."}
+    if (parsed.apiKey) {
+      creds = parsed
+    } else {
+      throw new Error("no apiKey field")
+    }
   } catch {
-    await publish(
-      notionChannel().status({
-        nodeId,
-        status: "error",
-      })
-    )
-    throw new NonRetriableError(
-      'Invalid Notion credential format. Expected JSON: {"apiKey": "secret_..."}'
-    )
+    // Plain string format — treat the raw value as the API key directly
+    if (raw?.trim().startsWith("secret_") || raw?.trim()) {
+      creds = { apiKey: raw.trim() }
+    } else {
+      await publish(notionChannel().status({ nodeId, status: "error" }))
+      throw new NonRetriableError(
+        "Notion: Invalid credential. " +
+        "Edit your Notion credential and paste your " +
+        "Internal Integration Token (starts with secret_)."
+      )
+    }
   }
 
   if (!creds.apiKey) {
-    await publish(
-      notionChannel().status({
-        nodeId,
-        status: "error",
-      })
+    await publish(notionChannel().status({ nodeId, status: "error" }))
+    throw new NonRetriableError(
+      "Notion: Integration Token is empty. " +
+      "Edit your Notion credential and paste your token."
     )
-    throw new NonRetriableError("Notion credential missing apiKey")
   }
 
   // Step 3: Execute the operation
