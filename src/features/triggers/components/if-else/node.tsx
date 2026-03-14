@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useParams } from "next/navigation"
 import { useTRPC } from "@/trpc/client"
 import { IfElseDialog } from "./dialog"
+import type { ConditionsConfig } from "./evaluate-conditions"
 
 const MAX_PREVIEW_LENGTH = 32
 
@@ -24,14 +25,32 @@ export const IfElseNode = memo((props: NodeProps) => {
     )
   )
 
-  const conditionPreview = config?.field
-    ? `${config.field} ${config.operator.toLowerCase().replace(/_/g, " ")} ${config.value}`.slice(
-        0,
-        MAX_PREVIEW_LENGTH
-      )
-    : "Not configured"
+  let conditionPreview = "Not configured"
+  let isConfigured = false
 
-  const isConfigured = !!config?.field
+  if (config?.conditionsJson && config.conditionsJson.trim() !== "") {
+    try {
+      const parsed = JSON.parse(config.conditionsJson) as ConditionsConfig
+      const totalConditions = parsed.groups.reduce(
+        (sum, g) => sum + g.conditions.length,
+        0
+      )
+      if (totalConditions > 0) {
+        conditionPreview = `${totalConditions} condition${totalConditions > 1 ? "s" : ""} (${parsed.groups.length} group${parsed.groups.length > 1 ? "s" : ""})`
+        isConfigured = true
+      }
+    } catch {
+      // fallback to legacy
+    }
+  }
+
+  if (!isConfigured && config?.field) {
+    conditionPreview = `${config.field} ${config.operator.toLowerCase().replace(/_/g, " ")} ${config.value}`.slice(
+      0,
+      MAX_PREVIEW_LENGTH
+    )
+    isConfigured = true
+  }
 
   return (
     <>
