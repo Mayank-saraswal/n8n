@@ -25,17 +25,31 @@ export const switchRouter = createTRPCRouter({
         workflowId: z.string(),
         nodeId: z.string(),
         variableName: z.string().max(200).default("switch"),
-        casesJson: z.string().max(50000).default("[]").refine(
-          (val) => {
-            try {
-              const parsed = JSON.parse(val)
-              return Array.isArray(parsed) && parsed.length <= 20
-            } catch {
-              return false
-            }
-          },
-          { message: "Maximum 20 cases per Switch node. Use nested Switch nodes for more complex routing." }
-        ),
+        casesJson: z.string().max(50000).default("[]").superRefine((val, ctx) => {
+          let parsed: unknown
+          try {
+            parsed = JSON.parse(val)
+          } catch {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "casesJson must be valid JSON. Re-open and re-save the Switch node.",
+            })
+            return
+          }
+          if (!Array.isArray(parsed)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "casesJson must be a JSON array. Re-open and re-save the Switch node.",
+            })
+            return
+          }
+          if (parsed.length > 20) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Maximum 20 cases per Switch node. Use nested Switch nodes for more complex routing.",
+            })
+          }
+        }),
       })
     )
     .mutation(async ({ input, ctx }) => {

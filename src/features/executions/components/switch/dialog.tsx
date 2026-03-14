@@ -48,10 +48,10 @@ export function SwitchDialog({ open, onOpenChange, nodeId, workflowId }: SwitchD
   const [saved, setSaved] = useState(false)
   const [activeCaseIndex, setActiveCaseIndex] = useState(0)
 
-  const { data: config, isLoading } = useQuery(
+  const { data: config, isLoading, isFetching } = useQuery(
     trpc.switch.getByNodeId.queryOptions(
       { nodeId },
-      { enabled: !!nodeId && open }
+      { enabled: !!nodeId && open, staleTime: 0 }
     )
   )
 
@@ -71,12 +71,12 @@ export function SwitchDialog({ open, onOpenChange, nodeId, workflowId }: SwitchD
 
   // Reset to defaults when dialog opens for a node with no saved config
   useEffect(() => {
-    if (open && !isLoading && !config) {
+    if (open && !isLoading && !isFetching && !config) {
       setCases([createEmptyCase(0)])
       setVariableName("switch")
       setActiveCaseIndex(0)
     }
-  }, [open, isLoading, config])
+  }, [open, isLoading, isFetching, config])
 
   const upsertMutation = useMutation(
     trpc.switch.upsert.mutationOptions({
