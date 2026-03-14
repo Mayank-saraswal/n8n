@@ -7,6 +7,19 @@ const ColumnValueSchema = z.object({
   value: z.string(),
 })
 
+const GoogleSheetsOpEnum = z.enum([
+  "APPEND_ROW",
+  "READ_ROWS",
+  "UPDATE_ROW",
+  "UPDATE_ROWS_BY_QUERY",
+  "DELETE_ROW",
+  "GET_ROW_BY_NUMBER",
+  "SEARCH_ROWS",
+  "CLEAR_RANGE",
+  "CREATE_SHEET",
+  "GET_SHEET_INFO",
+])
+
 export const googleSheetsRouter = createTRPCRouter({
   getByNodeId: protectedProcedure
     .input(z.object({ nodeId: z.string() }))
@@ -25,12 +38,26 @@ export const googleSheetsRouter = createTRPCRouter({
       z.object({
         nodeId: z.string(),
         workflowId: z.string(),
-        operation: z.enum(["APPEND_ROW", "READ_ROWS"]),
+        operation: GoogleSheetsOpEnum,
         spreadsheetId: z.string().min(1),
         sheetName: z.string().default("Sheet1"),
         range: z.string().default("A:Z"),
         rowData: z.array(ColumnValueSchema).default([]),
         credentialId: z.string(),
+        variableName: z.string().default("googleSheets"),
+        headerRow: z.boolean().default(true),
+        rowNumber: z.string().default(""),
+        rowValues: z.string().default(""),
+        searchColumn: z.string().default(""),
+        searchValue: z.string().default(""),
+        clearRange: z.string().default(""),
+        newSheetName: z.string().default(""),
+        valueInputOption: z.string().default("USER_ENTERED"),
+        matchColumn: z.string().default(""),
+        matchValue: z.string().default(""),
+        updateValues: z.string().default(""),
+        maxResults: z.number().int().min(1).max(10000).default(100),
+        includeEmptyRows: z.boolean().default(false),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -53,6 +80,20 @@ export const googleSheetsRouter = createTRPCRouter({
           range: input.range,
           rowData: input.rowData,
           credentialId: input.credentialId,
+          variableName: input.variableName,
+          headerRow: input.headerRow,
+          rowNumber: input.rowNumber,
+          rowValues: input.rowValues,
+          searchColumn: input.searchColumn,
+          searchValue: input.searchValue,
+          clearRange: input.clearRange,
+          newSheetName: input.newSheetName,
+          valueInputOption: input.valueInputOption,
+          matchColumn: input.matchColumn,
+          matchValue: input.matchValue,
+          updateValues: input.updateValues,
+          maxResults: input.maxResults,
+          includeEmptyRows: input.includeEmptyRows,
         },
         update: {
           operation: input.operation,
@@ -61,6 +102,20 @@ export const googleSheetsRouter = createTRPCRouter({
           range: input.range,
           rowData: input.rowData,
           credentialId: input.credentialId,
+          variableName: input.variableName,
+          headerRow: input.headerRow,
+          rowNumber: input.rowNumber,
+          rowValues: input.rowValues,
+          searchColumn: input.searchColumn,
+          searchValue: input.searchValue,
+          clearRange: input.clearRange,
+          newSheetName: input.newSheetName,
+          valueInputOption: input.valueInputOption,
+          matchColumn: input.matchColumn,
+          matchValue: input.matchValue,
+          updateValues: input.updateValues,
+          maxResults: input.maxResults,
+          includeEmptyRows: input.includeEmptyRows,
         },
       })
     }),

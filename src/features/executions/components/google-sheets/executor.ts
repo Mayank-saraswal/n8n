@@ -397,10 +397,255 @@ export const googleSheetsExecutor: NodeExecutor<GoogleSheetsData> = async ({
             }
           }
 
-          // ── Remaining operations (Part 3) ────────────────────────
+          // ── GET_ROW_BY_NUMBER ──────────────────────────────────
+          case GoogleSheetsOp.GET_ROW_BY_NUMBER: {
+            const rowNumber = resolveTemplate(config.rowNumber, context)
+            if (!rowNumber.trim())
+              throw new NonRetriableError(
+                "Google Sheets GET_ROW_BY_NUMBER: rowNumber is required. " +
+                  "Row 1 is usually the header. Data rows start at 2."
+              )
+            const rowNum = parseInt(rowNumber)
+            if (isNaN(rowNum) || rowNum < 1)
+              throw new NonRetriableError(
+                `Google Sheets GET_ROW_BY_NUMBER: must be positive integer. ` +
+                  `Received: "${rowNumber}"`
+              )
+
+            const [rowData, headerData] = await Promise.all([
+              sheetsRequest(
+                "GET",
+                `/${spreadsheetId}/values/` +
+                  `${encodeURIComponent(`${sheetName}!${rowNum}:${rowNum}`)}` +
+                  `?valueRenderOption=UNFORMATTED_VALUE`,
+                accessToken
+              ),
+              config.headerRow
+                ? sheetsRequest(
+                    "GET",
+                    `/${spreadsheetId}/values/` +
+                      `${encodeURIComponent(`${sheetName}!1:1`)}`,
+                    accessToken
+                  )
+                : Promise.resolve({ values: [] }),
+            ])
+
+            const rowArr =
+              ((rowData.values as string[][] | undefined) ?? [])[0] ?? []
+            const headers = config.headerRow
+              ? (((headerData.values as string[][] | undefined) ?? [])[0] ??
+                  [])
+              : rowArr.map((_, i) => String.fromCharCode(65 + i))
+
+            const rowObj = Object.fromEntries(
+              headers.map((h, i) => [h, rowArr[i] ?? ""])
+            )
+            return {
+              operation: "GET_ROW_BY_NUMBER",
+              row: rowObj,
+              rowNumber: rowNum,
+              rowArray: rowArr,
+              headers,
+              isEmpty: rowArr.length === 0,
+              sheetName,
+            }
+          }
+
+          // ── SEARCH_ROWS ─────────────────────────────────────────
+          case GoogleSheetsOp.SEARCH_ROWS: {
+            const searchColumn = resolveTemplate(
+              config.searchColumn,
+              context
+            )
+            const searchValue = resolveTemplate(
+              config.searchValue,
+              context
+            )
+            if (!searchColumn.trim())
+              throw new NonRetriableError(
+                "Google Sheets SEARCH_ROWS: searchColumn is required. " +
+                  "Enter the column header name, e.g. 'Phone' or 'Email'"
+              )
+            if (!searchValue.trim())
+              throw new NonRetriableError(
+                "Google Sheets SEARCH_ROWS: searchValue is required."
+              )
+
+            const allData = await sheetsRequest(
+              "GET",
+              `/${spreadsheetId}/values/` +
+                `${encodeURIComponent(`${sheetName}!A1:ZZ`)}` +
+                `?valueRenderOption=UNFORMATTED_VALUE`,
+              accessToken
+            )
+            const allValues =
+              (allData.values as string[][] | undefined) ?? []
+            if (allValues.length === 0) {
+              return {
+                operation: "SEARCH_ROWS",
+                rows: [],
+                count: 0,
+                firstRow: null,
+                firstRowNumber: null,
+                query: searchValue,
+                searchColumn,
+                sheetName,
+              }
+            }
+
+            const sHeaders = config.headerRow ? allValues[0] : []
+            const dataStart = config.headerRow ? 1 : 0
+            const searchColIdx = config.headerRow
+              ? sHeaders.indexOf(searchColumn)
+              : parseInt(searchColumn) - 1
+
+            if (config.headerRow && searchColIdx === -1) {
+              throw new NonRetriableError(
+                `Google Sheets SEARCH_ROWS: Column "${searchColumn}" not found. ` +
+                  `Available columns: ${sHeaders.join(", ")}`
+              )
+            }
+
+            const matchedRows: Record<string, unknown>[] = []
+            const matchedRowNumbers: number[] = []
+
+            for (
+              let i = dataStart;
+              i < allValues.length &&
+              matchedRows.length < config.maxResults;
+              i++
+            ) {
+              const row = allValues[i]
+              if (
+                String(row[searchColIdx] ?? "") ===
+                String(searchValue)
+              ) {
+                if (config.headerRow) {
+                  const obj: Record<string, string> = {}
+                  sHeaders.forEach((h, j) => {
+                    obj[h] = row[j] ?? ""
+                  })
+                  matchedRows.push(obj)
+                } else {
+                  matchedRows.push(
+                    Object.fromEntries(row.map((v, j) => [j, v]))
+                  )
+                }
+                matchedRowNumbers.push(i + 1)
+              }
+            }
+
+            return {
+              operation: "SEARCH_ROWS",
+              rows: matchedRows,
+              count: matchedRows.length,
+              firstRow: matchedRows[0] ?? null,
+              firstRowNumber: matchedRowNumbers[0] ?? null,
+              rowNumbers: matchedRowNumbers,
+              query: searchValue,
+              searchColumn,
+              sheetName,
+            }
+          }
+
+          // ── CLEAR_RANGE ─────────────────────────────────────────
+          case GoogleSheetsOp.CLEAR_RANGE: {
+            const clearRange = resolveTemplate(
+              config.clearRange || config.range || "A:Z",
+              context
+            )
+            const fullRange = `${sheetName}!${clearRange}`
+            await sheetsRequest(
+              "POST",
+              `/${spreadsheetId}/values/${encodeURIComponent(fullRange)}:clear`,
+              accessToken,
+              {}
+            )
+            return {
+              operation: "CLEAR_RANGE",
+              success: true,
+              clearedRange: fullRange,
+              sheetName,
+            }
+          }
+
+          // ── CREATE_SHEET ────────────────────────────────────────
+          case GoogleSheetsOp.CREATE_SHEET: {
+            const newSheetName = resolveTemplate(
+              config.newSheetName,
+              context
+            )
+            if (!newSheetName.trim())
+              throw new NonRetriableError(
+                "Google Sheets CREATE_SHEET: newSheetName is required."
+              )
+            const createResult = await sheetsRequest(
+              "POST",
+              `/${spreadsheetId}:batchUpdate`,
+              accessToken,
+              {
+                requests: [
+                  {
+                    addSheet: {
+                      properties: { title: newSheetName },
+                    },
+                  },
+                ],
+              }
+            )
+            const replies =
+              (createResult.replies as Array<{
+                addSheet?: {
+                  properties?: { sheetId?: number; title?: string }
+                }
+              }>) ?? []
+            const newSheet = replies[0]?.addSheet?.properties
+            return {
+              operation: "CREATE_SHEET",
+              success: true,
+              sheetId: newSheet?.sheetId ?? null,
+              sheetTitle: newSheet?.title ?? newSheetName,
+              spreadsheetId,
+            }
+          }
+
+          // ── GET_SHEET_INFO ──────────────────────────────────────
+          case GoogleSheetsOp.GET_SHEET_INFO: {
+            const infoData = await sheetsRequest(
+              "GET",
+              `/${spreadsheetId}?fields=` +
+                `properties.title,properties.locale,` +
+                `sheets.properties`,
+              accessToken
+            )
+            const props = infoData.properties as Record<
+              string,
+              unknown
+            >
+            const infoSheets = (
+              infoData.sheets as Array<{
+                properties: {
+                  sheetId: number
+                  title: string
+                  index: number
+                  rowCount?: number
+                  columnCount?: number
+                }
+              }>
+            )?.map((s) => s.properties) ?? []
+            return {
+              operation: "GET_SHEET_INFO",
+              title: props?.title ?? "",
+              locale: props?.locale ?? "",
+              sheets: infoSheets,
+              sheetCount: infoSheets.length,
+              spreadsheetId,
+            }
+          }
+
           default:
             throw new NonRetriableError(
-              `Google Sheets operation '${config.operation}' is not yet implemented.`
+              `Unknown Google Sheets operation: ${config.operation}`
             )
         }
       }
