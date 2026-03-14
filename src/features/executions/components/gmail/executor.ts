@@ -266,41 +266,74 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
         case GmailOperation.REPLY: {
           if (!messageId.trim()) {
             throw new NonRetriableError(
-              "Gmail REPLY: messageId is required to reply to a message."
+              "Gmail REPLY: messageId is required. " +
+              "Use {{gmail.messageId}} from a GET_MESSAGE or SEARCH_MESSAGES operation."
             )
           }
-          if (!to.trim()) {
+          if (!body.trim()) {
             throw new NonRetriableError(
-              "Gmail REPLY: 'To' field is required."
+              "Gmail REPLY: reply body is required."
             )
           }
+
+          // Fetch original message to get threading headers + sender
+          const original = await gmailRequest(
+            "GET",
+            `/messages/${messageId}?format=metadata` +
+            `&metadataHeaders=From&metadataHeaders=Subject` +
+            `&metadataHeaders=Message-ID&metadataHeaders=References`,
+            accessToken
+          )
+          const origPayload = original.payload as Record<string, unknown> | undefined
+          const origHeaders = origPayload?.headers as
+            | Array<{ name: string; value: string }>
+            | undefined
+          const origFrom =
+            origHeaders?.find((h) => h.name.toLowerCase() === "from")?.value ?? ""
+          const origSubject =
+            origHeaders?.find((h) => h.name.toLowerCase() === "subject")?.value ?? ""
+          const origMessageId =
+            origHeaders?.find((h) => h.name.toLowerCase() === "message-id")?.value ?? messageId
+          const origReferences =
+            origHeaders?.find((h) => h.name.toLowerCase() === "references")?.value ?? ""
+
+          // Determine reply recipient: explicit replyTo override → original From
+          const replyRecipient = replyTo.trim() || origFrom
+          if (!replyRecipient) {
+            throw new NonRetriableError(
+              "Gmail REPLY: Could not determine reply recipient from original message."
+            )
+          }
+
+          const replySubject = subject || (origSubject.startsWith("Re:") ? origSubject : `Re: ${origSubject}`)
+          const refChain = origReferences ? `${origReferences} ${origMessageId}` : origMessageId
+
           const raw = buildRawMessage({
-            to,
-            subject,
+            to: replyRecipient,
+            subject: replySubject,
             body,
             isHtml: config.isHtml,
             cc,
             bcc,
-            replyTo,
-            inReplyTo: messageId,
-            references: messageId,
+            inReplyTo: origMessageId,
+            references: refChain,
           })
-          const payload: Record<string, unknown> = {
+          const replyPayload: Record<string, unknown> = {
             raw,
-            threadId: threadId || undefined,
+            threadId: (original.threadId as string) || threadId || undefined,
           }
           const sent = await gmailRequest(
             "POST",
             "/messages/send",
             accessToken,
-            payload
+            replyPayload
           )
           apiResult = {
             messageId: sent.id,
             threadId: sent.threadId,
             labelIds: sent.labelIds,
-            to,
-            subject,
+            to: replyRecipient,
+            subject: replySubject,
             repliedTo: messageId,
             sentAt: new Date().toISOString(),
           }
