@@ -305,7 +305,7 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
             )
           }
 
-          const replySubject = subject || (origSubject.startsWith("Re:") ? origSubject : `Re: ${origSubject}`)
+          const replySubject = subject || (origSubject.toLowerCase().startsWith("re:") ? origSubject : `Re: ${origSubject}`)
           const refChain = origReferences ? `${origReferences} ${origMessageId}` : origMessageId
 
           const raw = buildRawMessage({
