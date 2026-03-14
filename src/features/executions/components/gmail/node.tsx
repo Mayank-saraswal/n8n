@@ -75,6 +75,18 @@ function getDescription(config: GmailNodeConfig | null | undefined): string {
             return config.to
                 ? `Draft to ${config.to.slice(0, 22)}`
                 : "Create Draft"
+        case "GET_ATTACHMENT":
+            return "Download attachment"
+        case "GET_THREAD":
+            return "Get thread"
+        case "LIST_LABELS":
+            return "List labels"
+        case "CREATE_LABEL":
+            return "Create label"
+        case "LIST_DRAFTS":
+            return "List drafts"
+        case "SEND_DRAFT":
+            return "Send draft"
         default:
             return "Click to configure"
     }
