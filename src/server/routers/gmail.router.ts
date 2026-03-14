@@ -2,21 +2,21 @@ import { z } from "zod"
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init"
 import prisma from "@/lib/db"
 import { GmailOperation } from "@/generated/prisma"
+import { TRPCError } from "@trpc/server"
 
 export const gmailRouter = createTRPCRouter({
   getByNodeId: protectedProcedure
     .input(z.object({ nodeId: z.string() }))
     .query(async ({ input, ctx }) => {
-      return prisma.gmailNode
-        .findUnique({
-          where: { nodeId: input.nodeId },
-          include: { workflow: { select: { userId: true } } },
-        })
-        .then((node) => {
-          if (!node) return null
-          if (node.workflow.userId !== ctx.auth.user.id) return null
-          return node
-        })
+      const node = await prisma.gmailNode.findUnique({
+        where: { nodeId: input.nodeId },
+        include: { workflow: { select: { userId: true } } },
+      })
+      if (!node) return null
+      if (node.workflow.userId !== ctx.auth.user.id) {
+        throw new TRPCError({ code: "UNAUTHORIZED" })
+      }
+      return node
     }),
 
   upsert: protectedProcedure

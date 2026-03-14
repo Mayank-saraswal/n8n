@@ -77,7 +77,56 @@ async function gmailRequest(
   return JSON.parse(text) as Record<string, unknown>
 }
 
-/* ── Helper 3: Build RFC 2822 message ── */
+/* ── Helper 3: Fetch message metadata ── */
+
+async function fetchMessageMetadata(
+  messageId: string,
+  accessToken: string,
+  includeBody: boolean
+): Promise<Record<string, unknown>> {
+  const format = includeBody ? "full" : "metadata"
+  const msg = await gmailRequest(
+    "GET",
+    `/messages/${messageId}?format=${format}`,
+    accessToken
+  )
+
+  const payload = msg.payload as Record<string, unknown> | undefined
+  const headers = (payload?.headers ?? []) as Array<{ name: string; value: string }>
+
+  const hdr = (name: string) =>
+    headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? ""
+
+  // Extract plain-text body from payload parts
+  let bodyText = ""
+  if (includeBody && payload) {
+    const parts = (payload.parts ?? [payload]) as Array<Record<string, unknown>>
+    for (const part of parts) {
+      if ((part.mimeType as string)?.startsWith("text/plain")) {
+        const data = (part.body as Record<string, unknown>)?.data as string | undefined
+        if (data) {
+          bodyText = Buffer.from(data, "base64url").toString("utf-8")
+          break
+        }
+      }
+    }
+  }
+
+  return {
+    messageId: msg.id,
+    threadId: msg.threadId,
+    labelIds: msg.labelIds,
+    snippet: msg.snippet,
+    from: hdr("From"),
+    to: hdr("To"),
+    subject: hdr("Subject"),
+    date: hdr("Date"),
+    isUnread: ((msg.labelIds as string[]) ?? []).includes("UNREAD"),
+    ...(includeBody ? { bodyText } : {}),
+  }
+}
+
+/* ── Helper 4: Build RFC 2822 message ── */
 
 function buildRawMessage(opts: {
   to: string
@@ -438,6 +487,7 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
               if (label.trim()) params.append("labelIds", label.trim())
             }
           }
+          if (searchQuery.trim()) params.set("q", searchQuery)
           if (pageToken.trim()) params.set("pageToken", pageToken)
 
           const list = await gmailRequest(
@@ -445,7 +495,15 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
             `/messages?${params.toString()}`,
             accessToken
           )
-          const messages = (list.messages as Array<Record<string, unknown>>) ?? []
+          const rawMessages = (list.messages as Array<Record<string, unknown>>) ?? []
+
+          // Fetch metadata for each message
+          const messages = await Promise.all(
+            rawMessages.map((m) =>
+              fetchMessageMetadata(m.id as string, accessToken, config.includeBody)
+            )
+          )
+
           apiResult = {
             messages,
             resultSizeEstimate: list.resultSizeEstimate,
@@ -473,7 +531,15 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
             `/messages?${params.toString()}`,
             accessToken
           )
-          const messages = (list.messages as Array<Record<string, unknown>>) ?? []
+          const rawMessages = (list.messages as Array<Record<string, unknown>>) ?? []
+
+          // Fetch metadata for each message
+          const messages = await Promise.all(
+            rawMessages.map((m) =>
+              fetchMessageMetadata(m.id as string, accessToken, config.includeBody)
+            )
+          )
+
           apiResult = {
             messages,
             resultSizeEstimate: list.resultSizeEstimate,
