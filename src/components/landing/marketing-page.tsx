@@ -640,7 +640,7 @@ function WorkflowDemo() {
                         />
                       ) : (
                         <span
-                          className="text-sm font-bold text-white rounded"
+                          className="text-sm font-bold text-white rounded-md"
                           style={{
                             backgroundColor: node.color,
                             padding: "2px 6px",
