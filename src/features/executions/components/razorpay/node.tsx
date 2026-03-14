@@ -19,6 +19,7 @@ type RazorpayNodeData = {
   paymentId?: string
   orderId?: string
   refundAmount?: string
+  refundId?: string
   customerName?: string
   customerEmail?: string
   customerPhone?: string

@@ -500,6 +500,7 @@ model RazorpayNode {
   paymentId     String             @default("")
   orderId       String             @default("")
   refundAmount  String             @default("")
+  refundId      String             @default("")
   customerName  String             @default("")
   customerEmail String             @default("")
   customerPhone String             @default("")

@@ -147,6 +147,7 @@ export const razorpayExecutor: NodeExecutor<RazorpayData> = async ({
       const paymentId = resolveTemplate(config.paymentId, context)
       const orderId = resolveTemplate(config.orderId, context)
       const refundAmount = resolveTemplate(config.refundAmount, context)
+      const refundId = resolveTemplate(config.refundId, context)
       const customerName = resolveTemplate(config.customerName, context)
       const customerEmail = resolveTemplate(config.customerEmail, context)
       const customerPhone = resolveTemplate(config.customerPhone, context)
@@ -231,8 +232,8 @@ export const razorpayExecutor: NodeExecutor<RazorpayData> = async ({
               "Razorpay FETCH_REFUND: 'paymentId' is required"
             )
           }
-          const refundPath = orderId
-            ? `/payments/${paymentId}/refunds/${orderId}`
+          const refundPath = refundId
+            ? `/payments/${paymentId}/refunds/${refundId}`
             : `/payments/${paymentId}/refunds`
           data = await razorpayRequest(
             "GET",

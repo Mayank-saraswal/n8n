@@ -37,6 +37,7 @@ export interface RazorpayFormValues {
   paymentId?: string
   orderId?: string
   refundAmount?: string
+  refundId?: string
   customerName?: string
   customerEmail?: string
   customerPhone?: string
@@ -129,6 +130,7 @@ export const RazorpayDialog = ({
   const [refundAmount, setRefundAmount] = useState(
     defaultValues.refundAmount || ""
   )
+  const [refundId, setRefundId] = useState(defaultValues.refundId || "")
   const [customerName, setCustomerName] = useState(
     defaultValues.customerName || ""
   )
@@ -163,6 +165,7 @@ export const RazorpayDialog = ({
       setPaymentId(config.paymentId)
       setOrderId(config.orderId)
       setRefundAmount(config.refundAmount)
+      setRefundId(config.refundId)
       setCustomerName(config.customerName)
       setCustomerEmail(config.customerEmail)
       setCustomerPhone(config.customerPhone)
@@ -182,6 +185,7 @@ export const RazorpayDialog = ({
       setPaymentId(defaultValues.paymentId || "")
       setOrderId(defaultValues.orderId || "")
       setRefundAmount(defaultValues.refundAmount || "")
+      setRefundId(defaultValues.refundId || "")
       setCustomerName(defaultValues.customerName || "")
       setCustomerEmail(defaultValues.customerEmail || "")
       setCustomerPhone(defaultValues.customerPhone || "")
@@ -218,6 +222,7 @@ export const RazorpayDialog = ({
       paymentId,
       orderId,
       refundAmount,
+      refundId,
       customerName,
       customerEmail,
       customerPhone,
@@ -239,6 +244,7 @@ export const RazorpayDialog = ({
         paymentId,
         orderId,
         refundAmount,
+        refundId,
         customerName,
         customerEmail,
         customerPhone,
@@ -441,8 +447,8 @@ export const RazorpayDialog = ({
                   <Label>Refund ID (optional)</Label>
                   <Input
                     placeholder="rfnd_xxxxxxxxxxxxx (leave empty for all refunds)"
-                    value={orderId}
-                    onChange={(e) => setOrderId(e.target.value)}
+                    value={refundId}
+                    onChange={(e) => setRefundId(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
                     If empty, returns all refunds for the payment
