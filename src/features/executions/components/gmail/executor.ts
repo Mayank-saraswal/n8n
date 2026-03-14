@@ -29,7 +29,8 @@ async function getAccessToken(refreshToken: string): Promise<string> {
     const err = await response.json().catch(() => ({}))
     throw new NonRetriableError(
       `Gmail: Failed to refresh access token. ` +
-        `Check your Gmail credential. ` +
+        `Your Gmail credential may be invalid or expired. ` +
+        `Please re-authenticate your Gmail account in settings. ` +
         `Error: ${(err as Record<string, string>).error_description ?? response.status}`
     )
   }
@@ -191,6 +192,7 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
       try {
         parsed = JSON.parse(raw)
       } catch {
+        // Fallback: credential stored as plain refresh token string (backward compat)
         parsed = { refreshToken: raw }
       }
 
@@ -323,11 +325,12 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
             `/messages/${messageId}?format=full`,
             accessToken
           )
-          const headers = (
-            original.payload as Record<string, unknown>
-          )?.headers as Array<{ name: string; value: string }> | undefined
+          const payload = original.payload as Record<string, unknown> | undefined
+          const msgHeaders = payload?.headers as
+            | Array<{ name: string; value: string }>
+            | undefined
           const origSubject =
-            headers?.find((h) => h.name.toLowerCase() === "subject")?.value ??
+            msgHeaders?.find((h) => h.name.toLowerCase() === "subject")?.value ??
             ""
           const fwdSubject = subject || `Fwd: ${origSubject}`
 
@@ -398,8 +401,8 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
             maxResults: String(config.maxResults),
           })
           if (labelIds.trim()) {
-            for (const l of labelIds.split(",")) {
-              if (l.trim()) params.append("labelIds", l.trim())
+            for (const label of labelIds.split(",")) {
+              if (label.trim()) params.append("labelIds", label.trim())
             }
           }
           if (pageToken.trim()) params.set("pageToken", pageToken)
@@ -462,7 +465,7 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
           }
           const addIds = labelIds
             .split(",")
-            .map((l) => l.trim())
+            .map((label) => label.trim())
             .filter(Boolean)
           const modified = await gmailRequest(
             "POST",
@@ -493,7 +496,7 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
           }
           const removeIds = labelIds
             .split(",")
-            .map((l) => l.trim())
+            .map((label) => label.trim())
             .filter(Boolean)
           const modified = await gmailRequest(
             "POST",
