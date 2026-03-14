@@ -243,10 +243,6 @@ export function SwitchDialog({ open, onOpenChange, nodeId, workflowId }: SwitchD
                 </button>
               ))}
               <button
-                onClick={() => {
-                  const fallbackInfo = "Fallback"
-                  return undefined
-                }}
                 className="px-3 py-1 text-xs rounded-md bg-muted/50 text-muted-foreground border border-dashed border-border cursor-default"
               >
                 Fallback ↓
