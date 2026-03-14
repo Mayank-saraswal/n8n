@@ -1,10 +1,10 @@
-import { NonRetriableError } from "inngest"
+import { NonRetriableError, RetryAfterError } from "inngest"
 import type { NodeExecutor } from "@/features/executions/types"
 import prisma from "@/lib/db"
-import { decrypt } from "@/lib/encryption"
 import { resolveTemplate } from "@/features/executions/lib/template-resolver"
 import { gmailChannel } from "@/inngest/channels/gmail"
 import { GmailOperation } from "@/generated/prisma"
+import { refreshGmailAccessToken } from "@/lib/gmail-auth"
 
 /* ── Types ── */
 
@@ -12,37 +12,9 @@ type GmailData = { nodeId?: string }
 
 const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me"
 
-/* ── Helper 1: Token refresh ── */
+/* ── Helper 1: Token refresh (shared) ── */
 
-async function getAccessToken(refreshToken: string): Promise<string> {
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      client_id: process.env.GOOGLE_GMAIL_CLIENT_ID,
-      client_secret: process.env.GOOGLE_GMAIL_CLIENT_SECRET,
-      refresh_token: refreshToken,
-      grant_type: "refresh_token",
-    }),
-  })
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}))
-    throw new NonRetriableError(
-      `Gmail: Failed to refresh access token. ` +
-        `Your Gmail credential may be invalid or expired. ` +
-        `Please re-authenticate your Gmail account in settings. ` +
-        `Error: ${(err as Record<string, string>).error_description ?? response.status}`
-    )
-  }
-  const data = (await response.json()) as { access_token: string }
-  if (!data.access_token) {
-    throw new NonRetriableError(
-      "Gmail: Token refresh succeeded but no access_token returned. " +
-        "Re-authenticate your Gmail credential."
-    )
-  }
-  return data.access_token
-}
+const getAccessToken = refreshGmailAccessToken
 
 /* ── Helper 2: Gmail API request ── */
 
@@ -65,16 +37,93 @@ async function gmailRequest(
   })
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({}))
-    const errMsg =
-      ((err as Record<string, Record<string, string>>).error?.message) ??
-      `${response.status} ${response.statusText}`
-    throw new NonRetriableError(`Gmail API error: ${errMsg}`)
+    const err = (await response.json().catch(() => ({}))) as Record<string, Record<string, string>>
+    const errMsg = err?.error?.message ?? `${response.status} ${response.statusText}`
+
+    if (response.status === 429) {
+      const retryAfter = response.headers.get("Retry-After") ?? "60"
+      throw new RetryAfterError("Gmail API rate limit exceeded", `${retryAfter}s`)
+    }
+    if (response.status >= 500) {
+      throw new RetryAfterError(`Gmail server error ${response.status}`, "60s")
+    }
+    if (response.status === 401) {
+      throw new NonRetriableError("Gmail: Authorization expired. Reconnect credential.")
+    }
+    if (response.status === 403) {
+      const msg = errMsg ?? ""
+      if (msg.includes("insufficientPermissions")) {
+        throw new NonRetriableError("Gmail: Insufficient permissions. Reconnect and approve all scopes.")
+      }
+      if (msg.includes("quotaExceeded")) {
+        throw new RetryAfterError("Gmail: Daily quota exceeded.", "3600s")
+      }
+    }
+    throw new NonRetriableError(`Gmail API error ${response.status}: ${errMsg}`)
   }
 
   const text = await response.text()
   if (!text) return {}
   return JSON.parse(text) as Record<string, unknown>
+}
+
+/* ── Helper: Extract body from payload (recursive MIME walk) ── */
+
+function extractBodyFromPayload(
+  payload: Record<string, unknown> | undefined,
+  preferHtml = false
+): { text: string; html: string } {
+  let text = ""
+  let html = ""
+
+  function walk(part: Record<string, unknown>) {
+    const mime = part.mimeType as string | undefined
+    const bodyData = (part.body as Record<string, unknown>)?.data as string | undefined
+
+    if (mime === "text/plain" && !text && bodyData) {
+      text = Buffer.from(bodyData, "base64url").toString("utf-8")
+    }
+    if (mime === "text/html" && !html && bodyData) {
+      html = Buffer.from(bodyData, "base64url").toString("utf-8")
+    }
+
+    const subParts = part.parts as Array<Record<string, unknown>> | undefined
+    if (subParts) {
+      for (const sub of subParts) walk(sub)
+    }
+  }
+
+  if (payload) {
+    walk(payload)
+  }
+
+  return { text, html }
+}
+
+/* ── Helper: Escape HTML special characters ── */
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+/* ── Helper: Count attachments recursively ── */
+
+function countAttachments(payload: Record<string, unknown> | undefined): number {
+  let count = 0
+  function walk(part: Record<string, unknown>) {
+    if ((part.body as Record<string, unknown>)?.attachmentId) count++
+    const subParts = part.parts as Array<Record<string, unknown>> | undefined
+    if (subParts) {
+      for (const sub of subParts) walk(sub)
+    }
+  }
+  if (payload) walk(payload)
+  return count
 }
 
 /* ── Helper 3: Fetch message metadata ── */
@@ -97,20 +146,12 @@ async function fetchMessageMetadata(
   const hdr = (name: string) =>
     headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? ""
 
-  // Extract plain-text body from payload parts
-  let bodyText = ""
-  if (includeBody && payload) {
-    const parts = (payload.parts ?? [payload]) as Array<Record<string, unknown>>
-    for (const part of parts) {
-      if ((part.mimeType as string)?.startsWith("text/plain")) {
-        const data = (part.body as Record<string, unknown>)?.data as string | undefined
-        if (data) {
-          bodyText = Buffer.from(data, "base64url").toString("utf-8")
-          break
-        }
-      }
-    }
-  }
+  // Extract body using shared helper
+  const { text: bodyText } = includeBody
+    ? extractBodyFromPayload(payload)
+    : { text: "" }
+
+  const attachmentCount = countAttachments(payload)
 
   return {
     messageId: msg.id,
@@ -122,6 +163,8 @@ async function fetchMessageMetadata(
     subject: hdr("Subject"),
     date: hdr("Date"),
     isUnread: ((msg.labelIds as string[]) ?? []).includes("UNREAD"),
+    isStarred: ((msg.labelIds as string[]) ?? []).includes("STARRED"),
+    attachmentCount,
     ...(includeBody ? { bodyText } : {}),
   }
 }
@@ -223,7 +266,7 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
   }
 
   // Step 2: Get tokens
-  const accessToken = await step.run(
+  const tokenResult = await step.run(
     `gmail-${nodeId}-get-tokens`,
     async () => {
       const credential = await prisma.credential.findUnique({
@@ -236,24 +279,11 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
         )
       }
 
-      const raw = decrypt(credential.value)
-      let parsed: { refreshToken?: string }
-      try {
-        parsed = JSON.parse(raw)
-      } catch {
-        // Fallback: credential stored as plain refresh token string (backward compat)
-        parsed = { refreshToken: raw }
-      }
-
-      if (!parsed?.refreshToken) {
-        throw new NonRetriableError(
-          'Gmail credential missing refreshToken. Store as JSON: {"refreshToken": "..."}'
-        )
-      }
-
-      return getAccessToken(parsed.refreshToken)
+      return getAccessToken(credential.value)
     }
   )
+
+  const accessToken = tokenResult.token
 
   // Step 3: Execute operation
   let result: Record<string, unknown>
@@ -411,14 +441,28 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
           const msgHeaders = payload?.headers as
             | Array<{ name: string; value: string }>
             | undefined
+          const origFrom =
+            msgHeaders?.find((h) => h.name.toLowerCase() === "from")?.value ?? ""
+          const origDate =
+            msgHeaders?.find((h) => h.name.toLowerCase() === "date")?.value ?? ""
           const origSubject =
             msgHeaders?.find((h) => h.name.toLowerCase() === "subject")?.value ??
             ""
           const fwdSubject = subject || `Fwd: ${origSubject}`
 
-          // Get the snippet as body fallback
-          const origBody = (original.snippet as string) ?? ""
-          const fwdBody = body || `---------- Forwarded message ----------\n${origBody}`
+          // Extract full body from original message
+          const { text: origText, html: origHtml } = extractBodyFromPayload(payload)
+
+          let fwdBody: string
+          if (config.isHtml) {
+            const noteHtml = body ? `<div>${escapeHtml(body)}</div>` : ""
+            const contentHtml = origHtml || escapeHtml(origText).replace(/\n/g, "<br>")
+            fwdBody = `${noteHtml}<div style="border-left:2px solid #ccc;padding-left:12px"><p><b>From:</b> ${escapeHtml(origFrom)}<br><b>Date:</b> ${escapeHtml(origDate)}<br><b>Subject:</b> ${escapeHtml(origSubject)}</p><div>${contentHtml}</div></div>`
+          } else {
+            const note = body ? `${body}\n\n` : ""
+            const origContent = origText || origHtml || ""
+            fwdBody = `${note}---------- Forwarded message ----------\nFrom: ${origFrom}\nDate: ${origDate}\nSubject: ${origSubject}\n\n${origContent}`
+          }
 
           const raw = buildRawMessage({
             to,
@@ -453,26 +497,44 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
               "Gmail GET_MESSAGE: messageId is required."
             )
           }
-          const format = config.includeBody ? "full" : "metadata"
-          let fields = "id,threadId,labelIds,snippet,internalDate"
-          if (config.includeHeaders) {
-            fields += ",payload/headers"
-          }
+
+          let url: string
           if (config.includeBody) {
-            fields += ",payload"
+            url = `/messages/${messageId}?format=full`
+          } else if (config.includeHeaders) {
+            const metaHeaders = ["From", "To", "Subject", "Date", "Message-ID", "Reply-To", "Cc"]
+            const params = new URLSearchParams({ format: "metadata" })
+            for (const h of metaHeaders) params.append("metadataHeaders", h)
+            url = `/messages/${messageId}?${params.toString()}`
+          } else {
+            url = `/messages/${messageId}?format=minimal`
           }
-          const msg = await gmailRequest(
-            "GET",
-            `/messages/${messageId}?format=${format}&fields=${encodeURIComponent(fields)}`,
-            accessToken
-          )
+
+          const msg = await gmailRequest("GET", url, accessToken)
+          const getMsgPayload = msg.payload as Record<string, unknown> | undefined
+          const getMsgHeaders = (getMsgPayload?.headers ?? []) as Array<{ name: string; value: string }>
+          const getMsgHdr = (name: string) =>
+            getMsgHeaders.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? ""
+
+          const { text: getMsgBodyText } = config.includeBody
+            ? extractBodyFromPayload(getMsgPayload)
+            : { text: "" }
+
+          const getMsgAttachmentCount = countAttachments(getMsgPayload)
+
           apiResult = {
-            id: msg.id,
+            messageId: msg.id,
             threadId: msg.threadId,
             labelIds: msg.labelIds,
             snippet: msg.snippet,
-            internalDate: msg.internalDate,
-            payload: config.includeBody ? msg.payload : undefined,
+            from: getMsgHdr("From"),
+            to: getMsgHdr("To"),
+            subject: getMsgHdr("Subject"),
+            date: getMsgHdr("Date"),
+            isUnread: ((msg.labelIds as string[]) ?? []).includes("UNREAD"),
+            isStarred: ((msg.labelIds as string[]) ?? []).includes("STARRED"),
+            attachmentCount: getMsgAttachmentCount,
+            ...(config.includeBody ? { bodyText: getMsgBodyText } : {}),
           }
           break
         }
@@ -717,9 +779,181 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
           break
         }
 
+        /* ── GET_ATTACHMENT ── */
+        case GmailOperation.GET_ATTACHMENT: {
+          const attMsgId = resolveTemplate(config.messageId, context)
+          const attId = resolveTemplate(config.attachmentId, context)
+          if (!attMsgId.trim()) {
+            throw new NonRetriableError("Gmail GET_ATTACHMENT: messageId is required.")
+          }
+          if (!attId.trim()) {
+            throw new NonRetriableError("Gmail GET_ATTACHMENT: attachmentId is required.")
+          }
+          const attResp = await gmailRequest(
+            "GET",
+            `/messages/${attMsgId}/attachments/${attId}`,
+            accessToken
+          )
+          const rawB64 = (attResp.data as string) ?? ""
+          const attSize = (attResp.size as number) ?? 0
+          // Normalize base64url → standard base64
+          const stdB64 = rawB64.replace(/-/g, "+").replace(/_/g, "/")
+          const outputFormat = config.attachmentOutputFormat || "base64"
+          let outputData: string
+          if (outputFormat === "text") {
+            outputData = Buffer.from(stdB64, "base64").toString("utf-8")
+          } else if (outputFormat === "dataUrl") {
+            outputData = `data:application/octet-stream;base64,${stdB64}`
+          } else {
+            outputData = stdB64
+          }
+          apiResult = {
+            data: outputData,
+            size: attSize,
+            sizeKb: Math.round(attSize / 1024),
+            attachmentId: attId,
+            messageId: attMsgId,
+          }
+          break
+        }
+
+        /* ── GET_THREAD ── */
+        case GmailOperation.GET_THREAD: {
+          if (!threadId.trim()) {
+            throw new NonRetriableError("Gmail GET_THREAD: threadId is required.")
+          }
+          const threadFormat = config.includeBody ? "full" : "metadata"
+          const thread = await gmailRequest(
+            "GET",
+            `/threads/${threadId}?format=${threadFormat}`,
+            accessToken
+          )
+          const threadMessages = (thread.messages as Array<Record<string, unknown>>) ?? []
+          const formattedMessages = threadMessages.map((tmsg) => {
+            const tPayload = tmsg.payload as Record<string, unknown> | undefined
+            const tHeaders = (tPayload?.headers ?? []) as Array<{ name: string; value: string }>
+            const tHdr = (name: string) =>
+              tHeaders.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? ""
+            const { text: tBodyText } = config.includeBody
+              ? extractBodyFromPayload(tPayload)
+              : { text: "" }
+            return {
+              messageId: tmsg.id,
+              threadId: tmsg.threadId,
+              from: tHdr("From"),
+              to: tHdr("To"),
+              subject: tHdr("Subject"),
+              date: tHdr("Date"),
+              snippet: tmsg.snippet,
+              isUnread: ((tmsg.labelIds as string[]) ?? []).includes("UNREAD"),
+              ...(config.includeBody ? { bodyText: tBodyText } : {}),
+            }
+          })
+          apiResult = {
+            threadId: thread.id,
+            snippet: thread.snippet,
+            messageCount: formattedMessages.length,
+            messages: formattedMessages,
+            firstMessage: formattedMessages[0] ?? null,
+            lastMessage: formattedMessages[formattedMessages.length - 1] ?? null,
+            conversationText: formattedMessages
+              .map((m) => `[${m.date}] ${m.from}:\n${m.bodyText ?? m.snippet ?? ""}`)
+              .join("\n\n---\n\n"),
+          }
+          break
+        }
+
+        /* ── LIST_LABELS ── */
+        case GmailOperation.LIST_LABELS: {
+          const labelsResp = await gmailRequest("GET", "/labels", accessToken)
+          const rawLabels = (labelsResp.labels as Array<Record<string, unknown>>) ?? []
+          const mappedLabels = rawLabels.map((l) => ({
+            id: l.id,
+            name: l.name,
+            type: l.type,
+            messagesTotal: l.messagesTotal,
+            messagesUnread: l.messagesUnread,
+          }))
+          apiResult = {
+            labels: mappedLabels,
+            count: mappedLabels.length,
+            userLabels: mappedLabels.filter((l) => l.type === "user"),
+            systemLabels: mappedLabels.filter((l) => l.type === "system"),
+          }
+          break
+        }
+
+        /* ── CREATE_LABEL ── */
+        case GmailOperation.CREATE_LABEL: {
+          const labelName = resolveTemplate(config.labelName, context)
+          if (!labelName.trim()) {
+            throw new NonRetriableError("Gmail CREATE_LABEL: labelName is required.")
+          }
+          const newLabel = await gmailRequest("POST", "/labels", accessToken, {
+            name: labelName,
+            labelListVisibility: "labelShow",
+            messageListVisibility: "show",
+          })
+          apiResult = {
+            labelId: newLabel.id,
+            name: newLabel.name,
+            type: newLabel.type,
+          }
+          break
+        }
+
+        /* ── LIST_DRAFTS ── */
+        case GmailOperation.LIST_DRAFTS: {
+          const draftParams = new URLSearchParams({
+            maxResults: String(config.maxResults),
+          })
+          if (pageToken.trim()) draftParams.set("pageToken", pageToken)
+          const draftsResp = await gmailRequest(
+            "GET",
+            `/drafts?${draftParams.toString()}`,
+            accessToken
+          )
+          const rawDrafts = (draftsResp.drafts as Array<Record<string, unknown>>) ?? []
+          const mappedDrafts = rawDrafts.map((d) => {
+            const dMsg = d.message as Record<string, unknown> | undefined
+            return {
+              draftId: d.id,
+              messageId: dMsg?.id,
+              threadId: dMsg?.threadId,
+            }
+          })
+          apiResult = {
+            drafts: mappedDrafts,
+            count: mappedDrafts.length,
+            nextPageToken: (draftsResp.nextPageToken as string) ?? null,
+          }
+          break
+        }
+
+        /* ── SEND_DRAFT ── */
+        case GmailOperation.SEND_DRAFT: {
+          const sendDraftId = resolveTemplate(config.draftId, context)
+          if (!sendDraftId.trim()) {
+            throw new NonRetriableError("Gmail SEND_DRAFT: draftId is required.")
+          }
+          const sentDraft = await gmailRequest(
+            "POST",
+            "/drafts/send",
+            accessToken,
+            { id: sendDraftId }
+          )
+          apiResult = {
+            messageId: sentDraft.id,
+            threadId: sentDraft.threadId,
+            draftId: sendDraftId,
+            sentAt: new Date().toISOString(),
+          }
+          break
+        }
+
         default:
           throw new NonRetriableError(
-            `Unknown or unsupported Gmail operation: ${config.operation}`
+            `Unknown Gmail operation: ${config.operation}`
           )
       }
 

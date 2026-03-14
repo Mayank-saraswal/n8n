@@ -115,6 +115,29 @@ MIT License. Basically, do cool stuff with this project.
 
 ---
 
+## 📬 Gmail Trigger Setup
+
+To enable the Gmail real-time trigger (fires workflows when new emails arrive), you need to configure Google Cloud Pub/Sub:
+
+1. **Create a Pub/Sub topic**: Go to [Google Cloud Console → Pub/Sub](https://console.cloud.google.com/cloudpubsub) and create a topic named `gmail-notifications`.
+
+2. **Create a push subscription**:
+   - Endpoint URL: `https://YOUR_DOMAIN/api/webhooks/gmail?token=YOUR_VERIFICATION_TOKEN`
+   - Replace `YOUR_DOMAIN` with your deployed Nodebase URL
+   - Replace `YOUR_VERIFICATION_TOKEN` with a random secret string
+
+3. **Grant publish permissions**: Add `gmail-api-push@system.gserviceaccount.com` with the **Pub/Sub Publisher** role on the topic.
+
+4. **Set environment variables**:
+   ```env
+   GMAIL_PUBSUB_VERIFICATION_TOKEN=your_random_secret_here
+   GMAIL_PUBSUB_TOPIC_NAME=projects/YOUR_PROJECT_ID/topics/gmail-notifications
+   ```
+
+Once configured, use the `activateWatch` mutation in the Gmail node to start watching an inbox. Watches are automatically renewed daily by the `gmail-watch-renewal` cron job.
+
+---
+
 Made with ❤️ by [Mayank Saraswal](https://github.com/Mayank-saraswal). Happy Automating!
  
 
