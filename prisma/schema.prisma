@@ -100,6 +100,7 @@ model workflow {
   notionNodes       NotionNode[]
   razorpayNodes     RazorpayNode[]
   slackNodes        SlackNode[]
+  gmailWatchers     GmailWatcher[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -200,6 +201,7 @@ enum CredentialType {
   XAI
   GROQ
   GMAIL
+  GMAIL_OAUTH
   GOOGLE_SHEETS
   GOOGLE_DRIVE
   WHATSAPP
@@ -314,6 +316,12 @@ enum GmailOperation {
   MARK_UNREAD
   MOVE_TO_TRASH
   CREATE_DRAFT
+  GET_ATTACHMENT
+  GET_THREAD
+  LIST_LABELS
+  CREATE_LABEL
+  LIST_DRAFTS
+  SEND_DRAFT
 }
 
 model GmailNode {
@@ -347,6 +355,14 @@ model GmailNode {
   attachmentName  String   @default("")
   attachmentMime  String   @default("application/octet-stream")
 
+  // New fields for extended operations
+  attachmentId           String @default("")
+  attachmentOutputFormat String @default("base64")
+  removeLabelIds         String @default("")
+  labelName              String @default("")
+  draftId                String @default("")
+  messageIds             String @default("") @db.Text
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -354,6 +370,23 @@ model GmailNode {
 
   @@index([workflowId])
   @@index([nodeId])
+}
+
+model GmailWatcher {
+  id            String   @id @default(cuid())
+  workflowId    String
+  nodeId        String   @unique
+  credentialId  String
+  email         String
+  active        Boolean  @default(true)
+  lastHistoryId String   @default("")
+  expiration    String   @default("")
+  filterQuery   String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  workflow      workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([email, active])
 }
 
 model SetVariableNode {

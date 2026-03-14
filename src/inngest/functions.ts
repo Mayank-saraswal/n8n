@@ -32,6 +32,7 @@ import { codeChannel } from "./channels/code";
 import { loopChannel } from "./channels/loop";
 import { notionChannel } from "./channels/notion";
 import { razorpayChannel } from "./channels/razorpay";
+import { gmailChannel } from "./channels/gmail";
 
 
 
@@ -84,7 +85,8 @@ export const executeWorkflow = inngest.createFunction(
       whatsappChannel(),
       loopChannel(),
       notionChannel(),
-      razorpayChannel()
+      razorpayChannel(),
+      gmailChannel()
 
     ]
   },
