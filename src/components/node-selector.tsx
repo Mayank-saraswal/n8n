@@ -105,7 +105,7 @@ const executionNodes: NodeTypeOptions[] = [
     {
         type:NodeType.SLACK,
         label:"Slack",
-        description:"Send message to slack",
+        description:"Send messages, manage channels, users & more",
         icon:"/logos/slack.svg"
     },
     {
