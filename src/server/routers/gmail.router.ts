@@ -3,11 +3,8 @@ import { createTRPCRouter, protectedProcedure } from "@/trpc/init"
 import prisma from "@/lib/db"
 import { GmailOperation } from "@/generated/prisma"
 import { TRPCError } from "@trpc/server"
-import { decrypt } from "@/lib/encryption"
-import {
-  GOOGLE_GMAIL_CLIENT_ID,
-  GOOGLE_GMAIL_CLIENT_SECRET,
-} from "@/lib/env"
+import { getGmailPubsubTopic } from "@/lib/env"
+import { refreshGmailAccessToken } from "@/lib/gmail-auth"
 
 const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me"
 
@@ -67,44 +64,11 @@ export const gmailRouter = createTRPCRouter({
       }
 
       try {
-        const raw = decrypt(credential.value)
-        let parsed: Record<string, unknown>
-        try {
-          parsed = JSON.parse(raw)
-        } catch {
-          parsed = { refreshToken: raw }
-        }
-
-        const refreshToken = parsed.refreshToken as string | undefined
-        if (!refreshToken) {
-          return { ok: false as const, error: "Missing refreshToken" }
-        }
-
-        // Exchange refresh token for access token
-        const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            client_id: GOOGLE_GMAIL_CLIENT_ID,
-            client_secret: GOOGLE_GMAIL_CLIENT_SECRET,
-            refresh_token: refreshToken,
-            grant_type: "refresh_token",
-          }),
-        })
-
-        if (!tokenRes.ok) {
-          const err = (await tokenRes.json().catch(() => ({}))) as Record<string, string>
-          return {
-            ok: false as const,
-            error: err.error_description ?? `Token refresh failed (${tokenRes.status})`,
-          }
-        }
-
-        const tokenData = (await tokenRes.json()) as { access_token: string }
+        const { token, email } = await refreshGmailAccessToken(credential.value)
 
         // Verify with Gmail profile
         const profileRes = await fetch(`${GMAIL_API}/profile`, {
-          headers: { Authorization: `Bearer ${tokenData.access_token}` },
+          headers: { Authorization: `Bearer ${token}` },
         })
 
         if (!profileRes.ok) {
@@ -112,7 +76,7 @@ export const gmailRouter = createTRPCRouter({
         }
 
         const profile = (await profileRes.json()) as { emailAddress?: string }
-        return { ok: true as const, email: profile.emailAddress ?? "" }
+        return { ok: true as const, email: profile.emailAddress ?? email }
       } catch (err) {
         return {
           ok: false as const,
@@ -215,41 +179,33 @@ export const gmailRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Credential not found" })
       }
 
-      // Get access token
-      const raw = decrypt(credential.value)
-      let parsed: Record<string, unknown>
-      try { parsed = JSON.parse(raw) } catch { parsed = { refreshToken: raw } }
-      const refreshToken = parsed.refreshToken as string | undefined
-      if (!refreshToken) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Missing refreshToken" })
+      // Get access token using shared helper
+      let token: string
+      let email: string
+      try {
+        const result = await refreshGmailAccessToken(credential.value)
+        token = result.token
+        email = result.email
+      } catch (err) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Token refresh failed",
+        })
       }
 
-      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_id: GOOGLE_GMAIL_CLIENT_ID,
-          client_secret: GOOGLE_GMAIL_CLIENT_SECRET,
-          refresh_token: refreshToken,
-          grant_type: "refresh_token",
-        }),
-      })
-      if (!tokenRes.ok) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Token refresh failed" })
+      // Get email address from profile if not available
+      if (!email) {
+        const profileRes = await fetch(`${GMAIL_API}/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const profile = profileRes.ok
+          ? ((await profileRes.json()) as { emailAddress?: string })
+          : { emailAddress: "" }
+        email = profile.emailAddress ?? ""
       }
-      const tokenData = (await tokenRes.json()) as { access_token: string }
-
-      // Get email address
-      const profileRes = await fetch(`${GMAIL_API}/profile`, {
-        headers: { Authorization: `Bearer ${tokenData.access_token}` },
-      })
-      const profile = profileRes.ok
-        ? ((await profileRes.json()) as { emailAddress?: string })
-        : { emailAddress: "" }
-      const email = profile.emailAddress ?? ""
 
       // Register Gmail watch
-      const topicName = process.env.GMAIL_PUBSUB_TOPIC_NAME ?? ""
+      const topicName = getGmailPubsubTopic()
       if (!topicName) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "GMAIL_PUBSUB_TOPIC_NAME not configured" })
       }
@@ -257,7 +213,7 @@ export const gmailRouter = createTRPCRouter({
       const watchRes = await fetch(`${GMAIL_API}/watch`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${tokenData.access_token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -314,29 +270,11 @@ export const gmailRouter = createTRPCRouter({
           where: { id: watcher.credentialId },
         })
         if (credential) {
-          const raw = decrypt(credential.value)
-          let parsed: Record<string, unknown>
-          try { parsed = JSON.parse(raw) } catch { parsed = { refreshToken: raw } }
-          const refreshToken = parsed.refreshToken as string | undefined
-          if (refreshToken) {
-            const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                client_id: GOOGLE_GMAIL_CLIENT_ID,
-                client_secret: GOOGLE_GMAIL_CLIENT_SECRET,
-                refresh_token: refreshToken,
-                grant_type: "refresh_token",
-              }),
-            })
-            if (tokenRes.ok) {
-              const tokenData = (await tokenRes.json()) as { access_token: string }
-              await fetch(`${GMAIL_API}/stop`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${tokenData.access_token}` },
-              })
-            }
-          }
+          const { token } = await refreshGmailAccessToken(credential.value)
+          await fetch(`${GMAIL_API}/stop`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          })
         }
       } catch {
         // Best effort to stop watch

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server"
 import { timingSafeEqual } from "crypto"
 import prisma from "@/lib/db"
 import { inngest } from "@/inngest/client"
+import { getGmailPubsubToken } from "@/lib/env"
 
 export const runtime = "nodejs"
 
@@ -13,7 +14,7 @@ function safeCompare(a: string, b: string): boolean {
 export async function POST(request: NextRequest) {
   // 1. Verify Pub/Sub verification token
   const token = request.nextUrl.searchParams.get("token") ?? ""
-  const expectedToken = process.env.GMAIL_PUBSUB_VERIFICATION_TOKEN
+  const expectedToken = getGmailPubsubToken()
   if (!expectedToken || !safeCompare(token, expectedToken)) {
     return new Response("Unauthorized", { status: 401 })
   }

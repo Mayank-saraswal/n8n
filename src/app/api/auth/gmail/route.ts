@@ -3,8 +3,8 @@ import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
 import crypto from "crypto"
 import {
-  GOOGLE_GMAIL_CLIENT_ID,
-  NEXTAUTH_URL,
+  getGoogleGmailClientId,
+  getNextAuthUrl,
 } from "@/lib/env"
 
 const SCOPES = [
@@ -34,8 +34,8 @@ export async function GET(req: NextRequest) {
   const response = NextResponse.redirect(
     `https://accounts.google.com/o/oauth2/v2/auth?` +
       new URLSearchParams({
-        client_id: GOOGLE_GMAIL_CLIENT_ID,
-        redirect_uri: `${NEXTAUTH_URL}/api/auth/gmail/callback`,
+        client_id: getGoogleGmailClientId(),
+        redirect_uri: `${getNextAuthUrl()}/api/auth/gmail/callback`,
         response_type: "code",
         access_type: "offline",
         prompt: "consent",

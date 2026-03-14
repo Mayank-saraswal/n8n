@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/db"
 import { encrypt } from "@/lib/encryption"
 import {
-  GOOGLE_GMAIL_CLIENT_ID,
-  GOOGLE_GMAIL_CLIENT_SECRET,
-  NEXTAUTH_URL,
+  getGoogleGmailClientId,
+  getGoogleGmailClientSecret,
+  getNextAuthUrl,
 } from "@/lib/env"
 
 export async function GET(req: NextRequest) {
@@ -37,9 +37,9 @@ export async function GET(req: NextRequest) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       code,
-      client_id: GOOGLE_GMAIL_CLIENT_ID,
-      client_secret: GOOGLE_GMAIL_CLIENT_SECRET,
-      redirect_uri: `${NEXTAUTH_URL}/api/auth/gmail/callback`,
+      client_id: getGoogleGmailClientId(),
+      client_secret: getGoogleGmailClientSecret(),
+      redirect_uri: `${getNextAuthUrl()}/api/auth/gmail/callback`,
       grant_type: "authorization_code",
     }),
   })
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
   })
 
   // Clear state cookie and redirect
-  const redirectUrl = new URL(state.redirectTo || "/credentials", NEXTAUTH_URL)
+  const redirectUrl = new URL(state.redirectTo || "/credentials", getNextAuthUrl())
   const response = NextResponse.redirect(redirectUrl)
   response.cookies.delete("gmail_oauth_state")
   return response

@@ -1,7 +1,7 @@
 "use client"
 
 import { CredentialType } from "@/generated/prisma";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, usePathname } from "next/navigation";
 import z from "zod";
 import { useCreateCredential, useUpdateCredential, useSuspennseCredential } from "../hooks/use-credentials";
 import { useUpgradeModal } from "@/hooks/use-upgrade-modal";
@@ -206,6 +206,7 @@ interface CredentialsFormPage {
 
 export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const router = useRouter();
+    const pathname = usePathname();
     const createCredential = useCreateCredential();
     const updateCredential = useUpdateCredential();
     const { handleError, modal } = useUpgradeModal();
@@ -498,7 +499,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                         variant="outline"
                                         asChild
                                     >
-                                        <a href={`/api/auth/gmail?redirectTo=${encodeURIComponent(window.location.pathname)}`}>
+                                        <a href={`/api/auth/gmail?redirectTo=${encodeURIComponent(pathname)}`}>
                                             <Image src="/logos/gmail.svg" alt="Gmail" width={16} height={16} className="mr-2" />
                                             Connect Gmail Account
                                         </a>

@@ -1,10 +1,7 @@
 import { inngest } from "@/inngest/client"
 import prisma from "@/lib/db"
-import { decrypt } from "@/lib/encryption"
-import {
-  GOOGLE_GMAIL_CLIENT_ID,
-  GOOGLE_GMAIL_CLIENT_SECRET,
-} from "@/lib/env"
+import { getGmailPubsubTopic } from "@/lib/env"
+import { refreshGmailAccessToken } from "@/lib/gmail-auth"
 
 const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me"
 
@@ -31,39 +28,17 @@ export const gmailWatchRenewal = inngest.createFunction(
           })
           if (!credential) continue
 
-          const raw = decrypt(credential.value)
-          let parsed: Record<string, unknown>
-          try {
-            parsed = JSON.parse(raw)
-          } catch {
-            parsed = { refreshToken: raw }
-          }
-          const refreshToken = parsed.refreshToken as string | undefined
-          if (!refreshToken) continue
-
-          // Get access token
-          const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              client_id: GOOGLE_GMAIL_CLIENT_ID,
-              client_secret: GOOGLE_GMAIL_CLIENT_SECRET,
-              refresh_token: refreshToken,
-              grant_type: "refresh_token",
-            }),
-          })
-          if (!tokenRes.ok) continue
-
-          const tokenData = (await tokenRes.json()) as { access_token: string }
+          // Get access token using shared helper
+          const { token } = await refreshGmailAccessToken(credential.value)
 
           // Register Gmail watch
-          const topicName = process.env.GMAIL_PUBSUB_TOPIC_NAME ?? ""
+          const topicName = getGmailPubsubTopic()
           if (!topicName) continue
 
           const watchRes = await fetch(`${GMAIL_API}/watch`, {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${tokenData.access_token}`,
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
