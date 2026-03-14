@@ -161,6 +161,11 @@ const credentialTypeOptions = [
         label: "Razorpay",
         logo: "/logos/razorpay.svg"
     },
+    {
+        value: CredentialType.SLACK,
+        label: "Slack",
+        logo: "/logos/slack.svg"
+    },
 
 ]
 

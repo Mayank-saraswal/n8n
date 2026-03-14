@@ -99,6 +99,7 @@ model workflow {
   loopNodes         LoopNode[]
   notionNodes       NotionNode[]
   razorpayNodes     RazorpayNode[]
+  slackNodes        SlackNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -204,6 +205,7 @@ enum CredentialType {
   WHATSAPP
   NOTION
   RAZORPAY
+  SLACK
 }
 
 model Node {
@@ -564,6 +566,65 @@ model RazorpayNode {
   authorized        String             @default("")
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+enum SlackOperation {
+  MESSAGE_SEND_WEBHOOK
+  MESSAGE_SEND
+  MESSAGE_UPDATE
+  MESSAGE_DELETE
+  MESSAGE_GET_PERMALINK
+  MESSAGE_SEARCH
+  CHANNEL_CREATE
+  CHANNEL_ARCHIVE
+  CHANNEL_UNARCHIVE
+  CHANNEL_INVITE
+  CHANNEL_KICK
+  CHANNEL_SET_TOPIC
+  CHANNEL_SET_PURPOSE
+  CHANNEL_HISTORY
+  CHANNEL_INFO
+  CHANNEL_LIST
+  CHANNEL_RENAME
+  USER_INFO
+  USER_LIST
+  USER_GET_PRESENCE
+  REACTION_ADD
+  REACTION_REMOVE
+  REACTION_GET
+  FILE_UPLOAD
+  FILE_LIST
+  FILE_INFO
+  FILE_DELETE
+  CONVERSATION_OPEN
+}
+
+model SlackNode {
+  id             String         @id @default(cuid())
+  nodeId         String         @unique
+  workflowId     String
+  credentialId   String?
+  operation      SlackOperation @default(MESSAGE_SEND_WEBHOOK)
+  variableName   String         @default("slack")
+  channel        String         @default("")
+  message        String         @default("") @db.Text
+  threadTs       String         @default("")
+  messageTs      String         @default("")
+  searchQuery    String         @default("")
+  channelName    String         @default("")
+  channelTopic   String         @default("")
+  channelPurpose String         @default("")
+  userId         String         @default("")
+  emoji          String         @default("")
+  fileComment    String         @default("")
+  webhookUrl     String         @default("")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
