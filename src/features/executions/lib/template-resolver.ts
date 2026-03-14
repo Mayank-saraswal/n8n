@@ -1,5 +1,9 @@
 import Handlebars from "handlebars"
 
+// ─── Constants ────────────────────────────────────────────────────────────
+const MAX_CACHE_SIZE = 500
+const DEFAULT_TRUNCATE_LENGTH = 100
+
 // ─── Template cache for performance ───────────────────────────────────────
 const templateCache = new Map<string, HandlebarsTemplateDelegate>()
 
@@ -40,7 +44,7 @@ hbs.registerHelper("lowercase", (str: unknown) =>
 // {{truncate str len}}
 hbs.registerHelper("truncate", (str: unknown, len: unknown) => {
   if (typeof str !== "string") return str
-  const max = typeof len === "number" ? len : 100
+  const max = typeof len === "number" ? len : DEFAULT_TRUNCATE_LENGTH
   return str.length > max ? str.slice(0, max) + "…" : str
 })
 
@@ -70,6 +74,9 @@ export function resolveTemplate(template: string, context: unknown): string {
 
   let compiled = templateCache.get(template)
   if (!compiled) {
+    if (templateCache.size >= MAX_CACHE_SIZE) {
+      templateCache.clear()
+    }
     compiled = hbs.compile(template, { noEscape: true })
     templateCache.set(template, compiled)
   }
