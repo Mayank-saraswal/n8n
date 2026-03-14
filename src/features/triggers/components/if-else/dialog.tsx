@@ -131,11 +131,27 @@ export const IfElseDialog = ({
           if (parsed.combinator && Array.isArray(parsed.groups)) {
             setConditionsConfig(parsed)
             setUseCompound(true)
+          } else {
+            setConditionsConfig(createDefaultConfig())
+            setUseCompound(false)
           }
         } catch {
           // Invalid JSON, stay in legacy mode
+          setConditionsConfig(createDefaultConfig())
+          setUseCompound(false)
         }
+      } else {
+        // No compound config — reset to legacy mode
+        setConditionsConfig(createDefaultConfig())
+        setUseCompound(false)
       }
+    } else {
+      // No config at all — reset everything
+      setField("")
+      setOperator(IfElseOperator.EQUALS)
+      setValue("")
+      setConditionsConfig(createDefaultConfig())
+      setUseCompound(false)
     }
   }, [config])
 

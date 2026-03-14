@@ -110,8 +110,6 @@ export const ifElseExecutor: NodeExecutor = async ({ nodeId, context, step }) =>
     return {
       ...context,
       branch: "false",
-      result: false,
-      error: "No condition configured. Open the node settings to configure.",
     }
   }
 
@@ -124,8 +122,6 @@ export const ifElseExecutor: NodeExecutor = async ({ nodeId, context, step }) =>
     return {
       ...context,
       branch: result ? "true" : "false",
-      result,
-      conditionsJson: config.conditionsJson,
     }
   }
 
@@ -140,12 +136,5 @@ export const ifElseExecutor: NodeExecutor = async ({ nodeId, context, step }) =>
   return {
     ...context,
     branch: result ? "true" : "false",
-    result,
-    condition: {
-      field: config.field,
-      operator: config.operator,
-      value: config.value,
-      resolvedField: resolvePath(context, config.field),
-    },
   }
 }

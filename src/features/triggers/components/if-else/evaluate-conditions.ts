@@ -182,7 +182,20 @@ export function parseConditionsJson(json: string): ConditionsConfig | null {
   try {
     const parsed = JSON.parse(json) as ConditionsConfig
     if (!parsed.combinator || !Array.isArray(parsed.groups)) return null
-    return parsed
+    // Validate each group has a combinator and conditions array
+    const validGroups: ConditionGroup[] = []
+    for (const group of parsed.groups) {
+      if (!group.combinator || !Array.isArray(group.conditions)) return null
+      // Filter out conditions missing required fields
+      const validConditions = group.conditions.filter(
+        (c) => c && typeof c.leftValue === "string" && typeof c.operator === "string"
+      )
+      if (validConditions.length > 0) {
+        validGroups.push({ ...group, conditions: validConditions })
+      }
+    }
+    if (validGroups.length === 0) return null
+    return { ...parsed, groups: validGroups }
   } catch {
     return null
   }
