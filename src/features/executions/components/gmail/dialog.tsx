@@ -24,8 +24,6 @@ import {
 } from "@/components/ui/select"
 import { useTRPC } from "@/trpc/client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useCredentialsByType } from "@/features/credentials/hooks/use-credentials"
-import { CredentialType } from "@/generated/prisma"
 import { CheckIcon, Loader2Icon } from "lucide-react"
 import Link from "next/link"
 import { Separator } from "@/components/ui/separator"
@@ -118,7 +116,7 @@ export const GmailDialog = ({
   const [saved, setSaved] = useState(false)
 
   const { data: credentials, isLoading: isLoadingCredentials } =
-    useCredentialsByType(CredentialType.GMAIL)
+    useQuery(trpc.gmail.getCredentials.queryOptions())
 
   const { data: config, isLoading } = useQuery(
     trpc.gmail.getByNodeId.queryOptions(

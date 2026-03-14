@@ -152,7 +152,12 @@ const credentialTypeOptions = [
     },
     {
         value: CredentialType.GMAIL,
-        label: "Gmail",
+        label: "Gmail (Legacy)",
+        logo: "/logos/gmail.svg"
+    },
+    {
+        value: CredentialType.GMAIL_OAUTH,
+        label: "Gmail OAuth",
         logo: "/logos/gmail.svg"
     },
     {
@@ -299,6 +304,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
 
     const watchType = form.watch("type")
     const isGmail = watchType === CredentialType.GMAIL
+    const isGmailOAuth = watchType === CredentialType.GMAIL_OAUTH
     const isGoogleSheets = watchType === CredentialType.GOOGLE_SHEETS
     const isGoogleDrive = watchType === CredentialType.GOOGLE_DRIVE
     const isWhatsApp = watchType === CredentialType.WHATSAPP
@@ -422,6 +428,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                 // Set a placeholder value for Gmail/WhatsApp so validation passes
                                                 if (val === CredentialType.GMAIL) {
                                                     form.setValue("value", "gmail-credential")
+                                                } else if (val === CredentialType.GMAIL_OAUTH) {
+                                                    form.setValue("value", "gmail-oauth-credential")
                                                 } else if (val === CredentialType.WHATSAPP) {
                                                     form.setValue("value", "whatsapp-credential")
                                                 } else if (val === CredentialType.NOTION) {
@@ -436,6 +444,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                     const currentValue = form.getValues("value")
                                                     if (
                                                       currentValue === "gmail-credential" ||
+                                                      currentValue === "gmail-oauth-credential" ||
                                                       currentValue === "whatsapp-credential" ||
                                                       currentValue === "notion-credential" ||
                                                       currentValue === "razorpay-credential" ||
@@ -478,8 +487,30 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                             />
 
 
-                            {isGmail ? (
+                            {isGmailOAuth ? (
+                                <div className="space-y-4">
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-2">Connect your Gmail account via OAuth2</p>
+                                        <p>Click the button below to securely authorize access to your Gmail account.</p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        asChild
+                                    >
+                                        <a href={`/api/auth/gmail?redirectTo=${encodeURIComponent(window.location.pathname)}`}>
+                                            <Image src="/logos/gmail.svg" alt="Gmail" width={16} height={16} className="mr-2" />
+                                            Connect Gmail Account
+                                        </a>
+                                    </Button>
+                                </div>
+                            ) : isGmail ? (
                                 <>
+                                    <div className="rounded-md border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200">
+                                        <p className="font-medium mb-1">⚠️ App Password is deprecated</p>
+                                        <p>Reconnect with OAuth2 to use all 12 Gmail operations. Select &quot;Gmail OAuth&quot; as the type above.</p>
+                                    </div>
+
                                     <FormField
                                         control={form.control}
                                         name="gmailEmail"

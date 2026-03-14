@@ -3,8 +3,89 @@ import { createTRPCRouter, protectedProcedure } from "@/trpc/init"
 import prisma from "@/lib/db"
 import { GmailOperation } from "@/generated/prisma"
 import { TRPCError } from "@trpc/server"
+import { decrypt } from "@/lib/encryption"
+
+const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me"
 
 export const gmailRouter = createTRPCRouter({
+  getCredentials: protectedProcedure.query(async ({ ctx }) => {
+    const credentials = await prisma.credential.findMany({
+      where: {
+        userId: ctx.auth.user.id,
+        type: { in: ["GMAIL", "GMAIL_OAUTH"] },
+      },
+      select: { id: true, name: true, type: true, createdAt: true },
+      orderBy: [{ type: "desc" }, { createdAt: "desc" }],
+    })
+    return credentials
+  }),
+
+  testCredential: protectedProcedure
+    .input(z.object({ credentialId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const credential = await prisma.credential.findUnique({
+        where: { id: input.credentialId, userId: ctx.auth.user.id },
+      })
+
+      if (!credential) {
+        return { ok: false as const, error: "Credential not found" }
+      }
+
+      try {
+        const raw = decrypt(credential.value)
+        let parsed: Record<string, unknown>
+        try {
+          parsed = JSON.parse(raw)
+        } catch {
+          parsed = { refreshToken: raw }
+        }
+
+        const refreshToken = parsed.refreshToken as string | undefined
+        if (!refreshToken) {
+          return { ok: false as const, error: "Missing refreshToken" }
+        }
+
+        // Exchange refresh token for access token
+        const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            client_id: process.env.GOOGLE_GMAIL_CLIENT_ID,
+            client_secret: process.env.GOOGLE_GMAIL_CLIENT_SECRET,
+            refresh_token: refreshToken,
+            grant_type: "refresh_token",
+          }),
+        })
+
+        if (!tokenRes.ok) {
+          const err = (await tokenRes.json().catch(() => ({}))) as Record<string, string>
+          return {
+            ok: false as const,
+            error: err.error_description ?? `Token refresh failed (${tokenRes.status})`,
+          }
+        }
+
+        const tokenData = (await tokenRes.json()) as { access_token: string }
+
+        // Verify with Gmail profile
+        const profileRes = await fetch(`${GMAIL_API}/profile`, {
+          headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        })
+
+        if (!profileRes.ok) {
+          return { ok: false as const, error: "Failed to fetch Gmail profile" }
+        }
+
+        const profile = (await profileRes.json()) as { emailAddress?: string }
+        return { ok: true as const, email: profile.emailAddress ?? "" }
+      } catch (err) {
+        return {
+          ok: false as const,
+          error: err instanceof Error ? err.message : "Unknown error",
+        }
+      }
+    }),
+
   getByNodeId: protectedProcedure
     .input(z.object({ nodeId: z.string() }))
     .query(async ({ input, ctx }) => {

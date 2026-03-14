@@ -1,4 +1,4 @@
-import { NonRetriableError } from "inngest"
+import { NonRetriableError, RetryAfterError } from "inngest"
 import type { NodeExecutor } from "@/features/executions/types"
 import prisma from "@/lib/db"
 import { decrypt } from "@/lib/encryption"
@@ -14,7 +14,35 @@ const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me"
 
 /* ── Helper 1: Token refresh ── */
 
-async function getAccessToken(refreshToken: string): Promise<string> {
+async function getAccessToken(
+  credentialValue: string
+): Promise<{ token: string; email: string }> {
+  const raw = decrypt(credentialValue)
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    parsed = { refreshToken: raw }
+  }
+
+  // Detect deprecated App Password format
+  if (
+    parsed.appPassword ||
+    (!parsed.refreshToken && typeof parsed.email === "string")
+  ) {
+    throw new NonRetriableError(
+      "This Gmail credential uses the deprecated App Password format. " +
+        "Go to Settings → Credentials and click Reconnect with OAuth2."
+    )
+  }
+
+  const refreshToken = parsed.refreshToken as string | undefined
+  if (!refreshToken) {
+    throw new NonRetriableError(
+      "Credential missing refreshToken. Delete and reconnect your Gmail account."
+    )
+  }
+
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -25,15 +53,32 @@ async function getAccessToken(refreshToken: string): Promise<string> {
       grant_type: "refresh_token",
     }),
   })
+
   if (!response.ok) {
-    const err = await response.json().catch(() => ({}))
+    const err = (await response.json().catch(() => ({}))) as Record<
+      string,
+      string
+    >
+
+    if (
+      (response.status === 400 || response.status === 401) &&
+      err.error === "invalid_grant"
+    ) {
+      throw new NonRetriableError(
+        "Gmail authorization revoked. Reconnect your account."
+      )
+    }
+
+    if (response.status === 429 || response.status >= 500) {
+      throw new RetryAfterError("Gmail token refresh failed", "30s")
+    }
+
     throw new NonRetriableError(
       `Gmail: Failed to refresh access token. ` +
-        `Your Gmail credential may be invalid or expired. ` +
-        `Please re-authenticate your Gmail account in settings. ` +
-        `Error: ${(err as Record<string, string>).error_description ?? response.status}`
+        `Error: ${err.error_description ?? response.status}`
     )
   }
+
   const data = (await response.json()) as { access_token: string }
   if (!data.access_token) {
     throw new NonRetriableError(
@@ -41,7 +86,8 @@ async function getAccessToken(refreshToken: string): Promise<string> {
         "Re-authenticate your Gmail credential."
     )
   }
-  return data.access_token
+
+  return { token: data.access_token, email: (parsed.email as string) ?? "" }
 }
 
 /* ── Helper 2: Gmail API request ── */
@@ -223,7 +269,7 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
   }
 
   // Step 2: Get tokens
-  const accessToken = await step.run(
+  const tokenResult = await step.run(
     `gmail-${nodeId}-get-tokens`,
     async () => {
       const credential = await prisma.credential.findUnique({
@@ -236,24 +282,11 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
         )
       }
 
-      const raw = decrypt(credential.value)
-      let parsed: { refreshToken?: string }
-      try {
-        parsed = JSON.parse(raw)
-      } catch {
-        // Fallback: credential stored as plain refresh token string (backward compat)
-        parsed = { refreshToken: raw }
-      }
-
-      if (!parsed?.refreshToken) {
-        throw new NonRetriableError(
-          'Gmail credential missing refreshToken. Store as JSON: {"refreshToken": "..."}'
-        )
-      }
-
-      return getAccessToken(parsed.refreshToken)
+      return getAccessToken(credential.value)
     }
   )
+
+  const accessToken = tokenResult.token
 
   // Step 3: Execute operation
   let result: Record<string, unknown>

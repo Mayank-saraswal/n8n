@@ -200,6 +200,7 @@ enum CredentialType {
   XAI
   GROQ
   GMAIL
+  GMAIL_OAUTH
   GOOGLE_SHEETS
   GOOGLE_DRIVE
   WHATSAPP
