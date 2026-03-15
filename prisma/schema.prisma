@@ -108,6 +108,7 @@ model workflow {
   errorTriggerNodes  ErrorTriggerNode[]
   razorpayTriggers   RazorpayTrigger[]
   whatsappTriggers   WhatsAppTrigger[]
+  msg91Nodes         Msg91Node[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -148,6 +149,7 @@ enum NodeType {
   ERROR_TRIGGER
   RAZORPAY_TRIGGER
   WHATSAPP_TRIGGER
+  MSG91
 }
 
 enum HttpMethod {
@@ -221,6 +223,7 @@ enum CredentialType {
   NOTION
   RAZORPAY
   SLACK
+  MSG91
 }
 
 model Node {
@@ -954,4 +957,77 @@ model WhatsAppTrigger {
   @@index([nodeId])
   @@index([workflowId])
   @@index([webhookId])
+}
+
+model Msg91Node {
+  id           String         @id @default(cuid())
+  nodeId       String         @unique
+  workflowId   String
+  credentialId String?
+
+  operation    Msg91Operation @default(SEND_OTP)
+  variableName String         @default("msg91")
+
+  mobile       String   @default("") @db.Text
+  senderId     String   @default("")
+  flowId       String   @default("")
+  smsVariables String   @default("{}") @db.Text
+  message      String   @default("") @db.Text
+  route        String   @default("4")
+
+  bulkData     String   @default("[]") @db.Text
+
+  scheduleTime String   @default("")
+
+  otpTemplateId String  @default("")
+  otpExpiry    Int      @default(10)
+  otpLength    Int      @default(6)
+  otpValue     String   @default("")
+  retryType    String   @default("text")
+
+  whatsappTemplate String @default("")
+  whatsappLang     String @default("en")
+  whatsappParams   String @default("[]") @db.Text
+  integratedNumber String @default("")
+
+  mediaType    String   @default("image")
+  mediaUrl     String   @default("")
+  mediaCaption String   @default("")
+
+  voiceMessage String   @default("")
+
+  toEmail      String   @default("")
+  subject      String   @default("")
+  emailBody    String   @default("") @db.Text
+  fromEmail    String   @default("")
+  fromName     String   @default("")
+
+  requestId    String   @default("")
+
+  continueOnFail Boolean @default(false)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workflow     workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+enum Msg91Operation {
+  SEND_SMS
+  SEND_BULK_SMS
+  SEND_TRANSACTIONAL
+  SCHEDULE_SMS
+  SEND_OTP
+  VERIFY_OTP
+  RESEND_OTP
+  INVALIDATE_OTP
+  SEND_WHATSAPP
+  SEND_WHATSAPP_MEDIA
+  SEND_VOICE_OTP
+  SEND_EMAIL
+  GET_BALANCE
+  GET_REPORT
 }
