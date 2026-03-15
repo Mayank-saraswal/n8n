@@ -35,6 +35,7 @@ import { razorpayChannel } from "./channels/razorpay";
 import { gmailChannel } from "./channels/gmail";
 import { switchChannel } from "./channels/switch";
 import { waitChannel } from "./channels/wait";
+import { mergeChannel } from "./channels/merge";
 
 
 export const executeWorkflow = inngest.createFunction(
@@ -94,7 +95,8 @@ export const executeWorkflow = inngest.createFunction(
       razorpayChannel(),
       gmailChannel(),
       switchChannel(),
-      waitChannel()
+      waitChannel(),
+      mergeChannel()
 
     ]
   },

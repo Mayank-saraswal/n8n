@@ -31,6 +31,7 @@ import { NotionNode } from "@/features/executions/components/notion/node";
 import { RazorpayNode } from "@/features/executions/components/razorpay/node";
 import { SwitchNode } from "@/features/executions/components/switch/node";
 import { WaitNode } from "@/features/executions/components/wait/node";
+import { MergeNode } from "@/features/executions/components/merge/node";
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -64,6 +65,7 @@ export const nodeComponents = {
     [NodeType.RAZORPAY]: RazorpayNode,
     [NodeType.SWITCH]: SwitchNode,
     [NodeType.WAIT]: WaitNode,
+    [NodeType.MERGE]: MergeNode,
     //change later
 
 
