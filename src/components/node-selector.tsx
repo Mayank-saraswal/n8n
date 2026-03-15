@@ -65,6 +65,12 @@ const triggerNodes: NodeTypeOptions[] = [
         description:"Fires when any node in this workflow fails",
         icon:AlertTriangleIcon,
     },
+    {
+        type:NodeType.RAZORPAY_TRIGGER,
+        label:"Razorpay Trigger",
+        description:"When Razorpay event occurs (payment, refund, etc.)",
+        icon:"/logos/razorpay.svg",
+    },
 ]
 
 const executionNodes: NodeTypeOptions[] = [

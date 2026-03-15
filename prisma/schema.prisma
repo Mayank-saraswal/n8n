@@ -105,7 +105,8 @@ model workflow {
   switchNodes       SwitchNode[]
   waitNodes         WaitNode[]
   mergeNodes        MergeNode[]
-  errorTriggerNodes ErrorTriggerNode[]
+  errorTriggerNodes  ErrorTriggerNode[]
+  razorpayTriggers   RazorpayTrigger[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -144,6 +145,7 @@ enum NodeType {
   WAIT
   MERGE
   ERROR_TRIGGER
+  RAZORPAY_TRIGGER
 }
 
 enum HttpMethod {
@@ -905,4 +907,25 @@ model ErrorTriggerNode {
 
   @@index([nodeId])
   @@index([workflowId])
+}
+
+model RazorpayTrigger {
+  id            String   @id @default(cuid())
+  nodeId        String   @unique
+  workflowId    String
+
+  webhookId     String   @unique @default(uuid())
+  webhookSecret String   @default("")
+  activeEvents  String   @default("[]") @db.Text
+  variableName  String   @default("razorpayTrigger")
+  isActive      Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  workflow      workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([nodeId])
+  @@index([workflowId])
+  @@index([webhookId])
 }
