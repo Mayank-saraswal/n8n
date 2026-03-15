@@ -78,17 +78,24 @@ export async function runCodeSandbox(
   const rawOutput = vm.run(wrappedCode)
 
   // Await the result if it's a promise (from async user code)
-  const output = rawOutput && typeof rawOutput.then === "function"
-    ? await Promise.race([
-        rawOutput,
-        new Promise((_, reject) =>
-          setTimeout(
-            () => reject(new Error(`Code execution timed out after ${timeout}ms`)),
-            timeout,
-          ),
-        ),
-      ])
-    : rawOutput
+  let output: unknown
+  if (rawOutput && typeof rawOutput.then === "function") {
+    let timer: ReturnType<typeof globalThis.setTimeout> | undefined
+    output = await Promise.race([
+      (rawOutput as Promise<unknown>).then((v: unknown) => {
+        if (timer) clearTimeout(timer)
+        return v
+      }),
+      new Promise((_, reject) => {
+        timer = globalThis.setTimeout(
+          () => reject(new Error(`Code execution timed out after ${timeout}ms`)),
+          timeout,
+        )
+      }),
+    ])
+  } else {
+    output = rawOutput
+  }
 
   return { output, logs }
 }

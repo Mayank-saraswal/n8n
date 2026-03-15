@@ -53,7 +53,7 @@ export const CodeDialog = ({
   const [code, setCode] = useState(DEFAULT_CODE)
   const [language, setLanguage] = useState("javascript")
   const [outputMode, setOutputMode] = useState<"append" | "replace" | "raw">("append")
-  const [timeout, setTimeout_] = useState(5000)
+  const [timeout, setTimeoutMs] = useState(5000)
   const [continueOnFail, setContinueOnFail] = useState(false)
   const [allowedDomains, setAllowedDomains] = useState("")
   const [saved, setSaved] = useState(false)
@@ -71,7 +71,7 @@ export const CodeDialog = ({
       if (config.code) setCode(config.code)
       if (config.language) setLanguage(config.language)
       if (config.outputMode) setOutputMode(config.outputMode as "append" | "replace" | "raw")
-      if (config.timeout) setTimeout_(config.timeout)
+      if (config.timeout) setTimeoutMs(config.timeout)
       setContinueOnFail(config.continueOnFail ?? false)
       if (config.allowedDomains !== undefined) setAllowedDomains(config.allowedDomains)
     }
@@ -83,7 +83,7 @@ export const CodeDialog = ({
       setCode(DEFAULT_CODE)
       setLanguage("javascript")
       setOutputMode("append")
-      setTimeout_(5000)
+      setTimeoutMs(5000)
       setContinueOnFail(false)
       setAllowedDomains("")
     }
@@ -174,7 +174,7 @@ export const CodeDialog = ({
                   max={30000}
                   step={100}
                   value={timeout}
-                  onChange={(e) => setTimeout_(Number(e.target.value))}
+                  onChange={(e) => setTimeoutMs(Number(e.target.value))}
                   className="h-8 text-xs"
                 />
               </div>
