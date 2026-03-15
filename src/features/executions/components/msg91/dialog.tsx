@@ -16,7 +16,9 @@ import { Switch } from "@/components/ui/switch"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -79,20 +81,35 @@ type Msg91Op =
   | "SEND_EMAIL"
   | "GET_BALANCE" | "GET_REPORT"
 
-const needsMobile = (op: string) =>
-  ["SEND_SMS", "SEND_BULK_SMS", "SEND_TRANSACTIONAL", "SCHEDULE_SMS", "SEND_OTP", "VERIFY_OTP", "RESEND_OTP", "INVALIDATE_OTP", "SEND_WHATSAPP", "SEND_WHATSAPP_MEDIA", "SEND_VOICE_OTP"].includes(op)
+const SMS_OPS: Msg91Op[] = ["SEND_SMS", "SEND_BULK_SMS", "SEND_TRANSACTIONAL", "SCHEDULE_SMS"]
+const OTP_OPS: Msg91Op[] = ["SEND_OTP", "VERIFY_OTP", "RESEND_OTP", "INVALIDATE_OTP"]
+const WHATSAPP_OPS: Msg91Op[] = ["SEND_WHATSAPP", "SEND_WHATSAPP_MEDIA"]
+const MOBILE_OPS: Msg91Op[] = [...SMS_OPS, ...OTP_OPS, ...WHATSAPP_OPS, "SEND_VOICE_OTP"]
+
+const needsMobile = (op: string) => MOBILE_OPS.includes(op as Msg91Op)
 const needsFlowId = (op: string) =>
   ["SEND_SMS", "SEND_BULK_SMS", "SCHEDULE_SMS"].includes(op)
 const needsSenderId = (op: string) =>
   ["SEND_SMS", "SEND_BULK_SMS", "SEND_TRANSACTIONAL", "SCHEDULE_SMS"].includes(op)
 const needsOtpFields = (op: string) =>
   ["SEND_OTP", "SEND_VOICE_OTP"].includes(op)
-const needsWhatsApp = (op: string) =>
-  ["SEND_WHATSAPP"].includes(op)
-const needsMedia = (op: string) =>
-  ["SEND_WHATSAPP_MEDIA"].includes(op)
-const needsEmail = (op: string) =>
-  ["SEND_EMAIL"].includes(op)
+
+const OUTPUT_HINTS: Record<string, string[]> = {
+  SEND_SMS: ["requestId", "status", "mobile"],
+  SEND_BULK_SMS: ["requestId", "count", "status"],
+  SEND_TRANSACTIONAL: ["requestId", "status", "mobile"],
+  SCHEDULE_SMS: ["requestId", "status", "mobile"],
+  SEND_OTP: ["status", "mobile"],
+  VERIFY_OTP: ["verified", "status", "mobile"],
+  RESEND_OTP: ["status", "mobile", "retryType"],
+  INVALIDATE_OTP: ["status", "mobile"],
+  SEND_WHATSAPP: ["messageId", "status", "mobile"],
+  SEND_WHATSAPP_MEDIA: ["messageId", "status", "mobile"],
+  SEND_VOICE_OTP: ["status", "mobile"],
+  SEND_EMAIL: ["status"],
+  GET_BALANCE: ["balance"],
+  GET_REPORT: ["requestId", "reports"],
+}
 
 export const Msg91Dialog = ({
   open,
@@ -303,6 +320,8 @@ export const Msg91Dialog = ({
     onSubmit(values)
   }
 
+  const v = variableName || "msg91"
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
@@ -319,6 +338,8 @@ export const Msg91Dialog = ({
           </div>
         ) : (
           <div className="space-y-4 py-2">
+            {/* ── SECTION 1: Always visible ───────────────── */}
+
             {/* Credential */}
             <div className="space-y-2">
               <Label>MSG91 Credential</Label>
@@ -343,26 +364,44 @@ export const Msg91Dialog = ({
 
             <Separator />
 
-            {/* Operation */}
+            {/* Operation (grouped) */}
             <div className="space-y-2">
               <Label>Operation</Label>
-              <Select value={operation} onValueChange={(v) => setOperation(v as Msg91Op)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={operation} onValueChange={(val) => setOperation(val as Msg91Op)}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SEND_SMS">Send SMS</SelectItem>
-                  <SelectItem value="SEND_BULK_SMS">Send Bulk SMS</SelectItem>
-                  <SelectItem value="SEND_TRANSACTIONAL">Send Transactional SMS</SelectItem>
-                  <SelectItem value="SCHEDULE_SMS">Schedule SMS</SelectItem>
-                  <SelectItem value="SEND_OTP">Send OTP</SelectItem>
-                  <SelectItem value="VERIFY_OTP">Verify OTP</SelectItem>
-                  <SelectItem value="RESEND_OTP">Resend OTP</SelectItem>
-                  <SelectItem value="INVALIDATE_OTP">Invalidate OTP</SelectItem>
-                  <SelectItem value="SEND_WHATSAPP">Send WhatsApp</SelectItem>
-                  <SelectItem value="SEND_WHATSAPP_MEDIA">WhatsApp Media</SelectItem>
-                  <SelectItem value="SEND_VOICE_OTP">Voice OTP</SelectItem>
-                  <SelectItem value="SEND_EMAIL">Send Email</SelectItem>
-                  <SelectItem value="GET_BALANCE">Get Balance</SelectItem>
-                  <SelectItem value="GET_REPORT">Get Report</SelectItem>
+                  <SelectGroup>
+                    <SelectLabel>SMS</SelectLabel>
+                    <SelectItem value="SEND_SMS">Send SMS (Template)</SelectItem>
+                    <SelectItem value="SEND_TRANSACTIONAL">Send Transactional SMS</SelectItem>
+                    <SelectItem value="SEND_BULK_SMS">Send Bulk SMS</SelectItem>
+                    <SelectItem value="SCHEDULE_SMS">Schedule SMS</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>OTP</SelectLabel>
+                    <SelectItem value="SEND_OTP">Send OTP</SelectItem>
+                    <SelectItem value="VERIFY_OTP">Verify OTP</SelectItem>
+                    <SelectItem value="RESEND_OTP">Resend OTP</SelectItem>
+                    <SelectItem value="INVALIDATE_OTP">Invalidate OTP</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>WhatsApp</SelectLabel>
+                    <SelectItem value="SEND_WHATSAPP">Send WhatsApp Template</SelectItem>
+                    <SelectItem value="SEND_WHATSAPP_MEDIA">Send WhatsApp Media</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Voice</SelectLabel>
+                    <SelectItem value="SEND_VOICE_OTP">Send Voice OTP</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Email</SelectLabel>
+                    <SelectItem value="SEND_EMAIL">Send Email</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Account</SelectLabel>
+                    <SelectItem value="GET_BALANCE">Get SMS Balance</SelectItem>
+                    <SelectItem value="GET_REPORT">Get Delivery Report</SelectItem>
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
@@ -371,54 +410,102 @@ export const Msg91Dialog = ({
             <div className="space-y-2">
               <Label>Variable Name</Label>
               <Input value={variableName} onChange={(e) => setVariableName(e.target.value)} placeholder="msg91" />
-              <p className="text-xs text-muted-foreground">Access output as {"{{"}msg91.status{"}}"}.</p>
+              <p className="text-xs text-muted-foreground">Access output as {`{{${v}.status}}`}.</p>
+            </div>
+
+            {/* Continue on fail */}
+            <div className="flex items-center justify-between">
+              <Label>Continue on Fail</Label>
+              <Switch checked={continueOnFail} onCheckedChange={setContinueOnFail} />
             </div>
 
             <Separator />
 
-            {/* ── Mobile ─────────────────────────────────────── */}
+            {/* ── SECTION 2: Mobile number ────────────────── */}
             {needsMobile(operation) && (
               <div className="space-y-2">
                 <Label>Mobile Number</Label>
-                <Input value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="919876543210 or {{variable}}" />
-                <p className="text-xs text-muted-foreground">Include country code (e.g. 91 for India)</p>
+                <Input
+                  value={mobile}
+                  onChange={(e) => setMobile(e.target.value)}
+                  placeholder="919876543210 or {{whatsappTrigger.from}}"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Include country code without + (e.g. 919876543210 for India). Supports {"{{variables}}"}.
+                </p>
               </div>
             )}
 
-            {/* ── SMS fields ─────────────────────────────────── */}
-            {needsSenderId(operation) && (
-              <div className="space-y-2">
-                <Label>Sender ID</Label>
-                <Input value={senderId} onChange={(e) => setSenderId(e.target.value)} placeholder="NODEBS (6 chars, DLT registered)" />
-              </div>
-            )}
+            {/* ── SECTION 3: Conditional fields ───────────── */}
 
-            {needsFlowId(operation) && (
+            {/* ── SEND_SMS / SCHEDULE_SMS ─────────────────── */}
+            {(operation === "SEND_SMS" || operation === "SCHEDULE_SMS") && (
               <>
+                {needsSenderId(operation) && (
+                  <div className="space-y-2">
+                    <Label>Sender ID</Label>
+                    <Input value={senderId} onChange={(e) => setSenderId(e.target.value)} placeholder="NODEBS" maxLength={6} />
+                    <p className="text-xs text-muted-foreground">6-character DLT-registered sender ID</p>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Flow ID</Label>
                   <Input value={flowId} onChange={(e) => setFlowId(e.target.value)} placeholder="MSG91 Flow ID" />
-                  <p className="text-xs text-muted-foreground">From MSG91 Dashboard → SMS → Flows</p>
+                  <p className="text-xs text-muted-foreground">Find in MSG91 Dashboard → SMS → Flows</p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Template Variables (JSON)</Label>
-                  <Textarea value={smsVariables} onChange={(e) => setSmsVariables(e.target.value)} placeholder='{"VAR1": "value1", "VAR2": "value2"}' rows={3} />
+                  <Label>SMS Variables (JSON)</Label>
+                  <Textarea
+                    value={smsVariables}
+                    onChange={(e) => setSmsVariables(e.target.value)}
+                    placeholder={'{"VAR1": "{{order.amount}}", "VAR2": "Order #{{order.id}}"}'}
+                    rows={3}
+                  />
+                </div>
+                {operation === "SCHEDULE_SMS" && (
+                  <div className="space-y-2">
+                    <Label>Schedule Time</Label>
+                    <Input
+                      value={scheduleTime}
+                      onChange={(e) => setScheduleTime(e.target.value)}
+                      placeholder="2025-04-01 10:00:00 or {{trigger.scheduledAt}}"
+                    />
+                  </div>
+                )}
+                {/* DLT Compliance Card */}
+                <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3 space-y-1">
+                  <p className="text-xs font-medium">📋 DLT Registration Required</p>
+                  <p className="text-xs text-muted-foreground">
+                    India&apos;s TRAI mandates DLT registration for commercial SMS.
+                    Register templates at jio DLT portal or via your telecom operator.
+                    Your Flow ID must correspond to a DLT-approved template.
+                  </p>
                 </div>
               </>
             )}
 
+            {/* ── SEND_TRANSACTIONAL ──────────────────────── */}
             {operation === "SEND_TRANSACTIONAL" && (
               <>
                 <div className="space-y-2">
+                  <Label>Sender ID</Label>
+                  <Input value={senderId} onChange={(e) => setSenderId(e.target.value)} placeholder="NODEBS" maxLength={6} />
+                  <p className="text-xs text-muted-foreground">6-character DLT-registered sender ID</p>
+                </div>
+                <div className="space-y-2">
                   <Label>Message</Label>
-                  <Textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Your message text" rows={3} />
+                  <Textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Your message text — supports {{variables}}"
+                    rows={3}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Route</Label>
                   <Select value={route} onValueChange={setRoute}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">1 - Promotional</SelectItem>
                       <SelectItem value="4">4 - Transactional</SelectItem>
                       <SelectItem value="8">8 - DND Transactional</SelectItem>
                     </SelectContent>
@@ -427,30 +514,123 @@ export const Msg91Dialog = ({
               </>
             )}
 
+            {/* ── SEND_BULK_SMS ───────────────────────────── */}
             {operation === "SEND_BULK_SMS" && (
-              <div className="space-y-2">
-                <Label>Bulk Data (JSON Array)</Label>
-                <Textarea value={bulkData} onChange={(e) => setBulkData(e.target.value)} placeholder='[{"mobile":"919...", "VAR1":"value"}, ...]' rows={4} />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label>Sender ID</Label>
+                  <Input value={senderId} onChange={(e) => setSenderId(e.target.value)} placeholder="NODEBS" maxLength={6} />
+                  <p className="text-xs text-muted-foreground">6-character DLT-registered sender ID</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Flow ID</Label>
+                  <Input value={flowId} onChange={(e) => setFlowId(e.target.value)} placeholder="MSG91 Flow ID" />
+                  <p className="text-xs text-muted-foreground">Find in MSG91 Dashboard → SMS → Flows</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Bulk Data (JSON Array)</Label>
+                  <Textarea
+                    value={bulkData}
+                    onChange={(e) => setBulkData(e.target.value)}
+                    placeholder={`[
+  {"mobile": "919876543210", "VAR1": "Order #1234"},
+  {"mobile": "919876543211", "VAR1": "Order #5678"}
+]`}
+                    rows={5}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Each item needs &quot;mobile&quot; plus your template variables. CSV import coming soon.
+                  </p>
+                </div>
+              </>
             )}
 
-            {operation === "SCHEDULE_SMS" && (
-              <div className="space-y-2">
-                <Label>Schedule Time</Label>
-                <Input value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} placeholder="YYYY-MM-DD HH:mm:ss or {{variable}}" />
-              </div>
-            )}
-
-            {/* ── OTP fields ─────────────────────────────────── */}
-            {needsOtpFields(operation) && (
+            {/* ── SEND_OTP ────────────────────────────────── */}
+            {operation === "SEND_OTP" && (
               <>
                 <div className="space-y-2">
                   <Label>OTP Template ID</Label>
                   <Input value={otpTemplateId} onChange={(e) => setOtpTemplateId(e.target.value)} placeholder="DLT-registered template ID" />
+                  <p className="text-xs text-muted-foreground">Find in MSG91 Dashboard → OTP</p>
                 </div>
                 <div className="space-y-2">
                   <Label>OTP Length</Label>
-                  <Select value={String(otpLength)} onValueChange={(v) => setOtpLength(Number(v))}>
+                  <Select value={String(otpLength)} onValueChange={(val) => setOtpLength(Number(val))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="4">4 digits</SelectItem>
+                      <SelectItem value="5">5 digits</SelectItem>
+                      <SelectItem value="6">6 digits</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>OTP Expiry (minutes)</Label>
+                  <Input type="number" value={otpExpiry} onChange={(e) => setOtpExpiry(Number(e.target.value))} placeholder="10" />
+                </div>
+                {/* OTP Info Card */}
+                <div className="rounded-lg border border-blue-300 bg-blue-50 dark:bg-blue-950/30 p-3 space-y-1">
+                  <p className="text-xs font-medium">ℹ️ OTP is auto-generated by MSG91</p>
+                  <p className="text-xs text-muted-foreground">
+                    The OTP is NOT returned in the output for security.
+                    Flow: Send OTP → user enters OTP → Verify OTP in next node.
+                    Use IF/Else on {`{{${v}.verified}}`} to gate access.
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* ── VERIFY_OTP ──────────────────────────────── */}
+            {operation === "VERIFY_OTP" && (
+              <>
+                <div className="space-y-2">
+                  <Label>OTP Value</Label>
+                  <Input
+                    value={otpValue}
+                    onChange={(e) => setOtpValue(e.target.value)}
+                    placeholder="{{body.otp}} or {{form.otp}}"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The OTP entered by the user — usually from a form or webhook
+                  </p>
+                </div>
+                {/* Verify Info Card */}
+                <div className="rounded-lg border border-blue-300 bg-blue-50 dark:bg-blue-950/30 p-3 space-y-1">
+                  <p className="text-xs font-medium">ℹ️ Verification result</p>
+                  <p className="text-xs text-muted-foreground">
+                    Use {`{{${v}.verified}}`} in an IF/Else node to gate the next step.
+                    If verified = false and continueOnFail is ON, workflow continues.
+                    If verified = false and continueOnFail is OFF, workflow stops.
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* ── RESEND_OTP ──────────────────────────────── */}
+            {operation === "RESEND_OTP" && (
+              <div className="space-y-2">
+                <Label>Retry Type</Label>
+                <Select value={retryType} onValueChange={setRetryType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">text - SMS</SelectItem>
+                    <SelectItem value="voice">voice - Phone Call</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* ── SEND_VOICE_OTP ──────────────────────────── */}
+            {operation === "SEND_VOICE_OTP" && (
+              <>
+                <div className="space-y-2">
+                  <Label>OTP Template ID</Label>
+                  <Input value={otpTemplateId} onChange={(e) => setOtpTemplateId(e.target.value)} placeholder="DLT-registered template ID" />
+                  <p className="text-xs text-muted-foreground">Find in MSG91 Dashboard → OTP</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>OTP Length</Label>
+                  <Select value={String(otpLength)} onValueChange={(val) => setOtpLength(Number(val))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="4">4 digits</SelectItem>
@@ -466,53 +646,54 @@ export const Msg91Dialog = ({
               </>
             )}
 
-            {operation === "VERIFY_OTP" && (
-              <div className="space-y-2">
-                <Label>OTP Value</Label>
-                <Input value={otpValue} onChange={(e) => setOtpValue(e.target.value)} placeholder="{{body.otp}} or entered OTP" />
-              </div>
-            )}
-
-            {operation === "RESEND_OTP" && (
-              <div className="space-y-2">
-                <Label>Retry Type</Label>
-                <Select value={retryType} onValueChange={setRetryType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">Text (SMS)</SelectItem>
-                    <SelectItem value="voice">Voice Call</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* ── WhatsApp fields ────────────────────────────── */}
-            {(needsWhatsApp(operation) || needsMedia(operation)) && (
-              <div className="space-y-2">
-                <Label>Integrated Number</Label>
-                <Input value={integratedNumber} onChange={(e) => setIntegratedNumber(e.target.value)} placeholder="Your WhatsApp number via MSG91" />
-              </div>
-            )}
-
-            {needsWhatsApp(operation) && (
+            {/* ── SEND_WHATSAPP ───────────────────────────── */}
+            {operation === "SEND_WHATSAPP" && (
               <>
                 <div className="space-y-2">
-                  <Label>WhatsApp Template Name</Label>
-                  <Input value={whatsappTemplate} onChange={(e) => setWhatsappTemplate(e.target.value)} placeholder="template_name" />
+                  <Label>Integrated Number</Label>
+                  <Input value={integratedNumber} onChange={(e) => setIntegratedNumber(e.target.value)} placeholder="Your MSG91 WhatsApp number" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Template Language</Label>
-                  <Input value={whatsappLang} onChange={(e) => setWhatsappLang(e.target.value)} placeholder="en" />
+                  <Label>Template Name</Label>
+                  <Input value={whatsappTemplate} onChange={(e) => setWhatsappTemplate(e.target.value)} placeholder="order_confirmation" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Template Components (JSON)</Label>
-                  <Textarea value={whatsappParams} onChange={(e) => setWhatsappParams(e.target.value)} placeholder='[{"type":"body","parameters":[...]}]' rows={3} />
+                  <Label>Language</Label>
+                  <Select value={whatsappLang} onValueChange={setWhatsappLang}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en">en — English</SelectItem>
+                      <SelectItem value="en_US">en_US — English (US)</SelectItem>
+                      <SelectItem value="hi">hi — Hindi</SelectItem>
+                      <SelectItem value="ta">ta — Tamil</SelectItem>
+                      <SelectItem value="te">te — Telugu</SelectItem>
+                      <SelectItem value="kn">kn — Kannada</SelectItem>
+                      <SelectItem value="mr">mr — Marathi</SelectItem>
+                      <SelectItem value="bn">bn — Bengali</SelectItem>
+                      <SelectItem value="gu">gu — Gujarati</SelectItem>
+                      <SelectItem value="ml">ml — Malayalam</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Template Params (JSON Array)</Label>
+                  <Textarea
+                    value={whatsappParams}
+                    onChange={(e) => setWhatsappParams(e.target.value)}
+                    placeholder={'[{"type":"body","parameters":[{"type":"text","text":"{{order.id}}"}]}]'}
+                    rows={3}
+                  />
                 </div>
               </>
             )}
 
-            {needsMedia(operation) && (
+            {/* ── SEND_WHATSAPP_MEDIA ─────────────────────── */}
+            {operation === "SEND_WHATSAPP_MEDIA" && (
               <>
+                <div className="space-y-2">
+                  <Label>Integrated Number</Label>
+                  <Input value={integratedNumber} onChange={(e) => setIntegratedNumber(e.target.value)} placeholder="Your MSG91 WhatsApp number" />
+                </div>
                 <div className="space-y-2">
                   <Label>Media Type</Label>
                   <Select value={mediaType} onValueChange={setMediaType}>
@@ -526,7 +707,12 @@ export const Msg91Dialog = ({
                 </div>
                 <div className="space-y-2">
                   <Label>Media URL</Label>
-                  <Input value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="https://example.com/image.jpg" />
+                  <Input
+                    value={mediaUrl}
+                    onChange={(e) => setMediaUrl(e.target.value)}
+                    placeholder="https://example.com/image.jpg or {{variable}}"
+                  />
+                  <p className="text-xs text-muted-foreground">Public URL of media to send. Supports {"{{variables}}"}.</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Caption</Label>
@@ -535,12 +721,26 @@ export const Msg91Dialog = ({
               </>
             )}
 
-            {/* ── Email fields ───────────────────────────────── */}
-            {needsEmail(operation) && (
+            {/* ── SEND_EMAIL ──────────────────────────────── */}
+            {operation === "SEND_EMAIL" && (
               <>
                 <div className="space-y-2">
                   <Label>To Email</Label>
                   <Input value={toEmail} onChange={(e) => setToEmail(e.target.value)} placeholder="recipient@example.com or {{variable}}" />
+                  <p className="text-xs text-muted-foreground">Supports {"{{variables}}"}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Subject</Label>
+                  <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email subject — supports {{variables}}" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email Body</Label>
+                  <Textarea
+                    value={emailBody}
+                    onChange={(e) => setEmailBody(e.target.value)}
+                    placeholder="Email content (HTML supported, supports {{variables}})"
+                    rows={4}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>From Email</Label>
@@ -550,34 +750,36 @@ export const Msg91Dialog = ({
                   <Label>From Name</Label>
                   <Input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Your Name" />
                 </div>
-                <div className="space-y-2">
-                  <Label>Subject</Label>
-                  <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email subject" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email Body</Label>
-                  <Textarea value={emailBody} onChange={(e) => setEmailBody(e.target.value)} placeholder="Email content (HTML supported)" rows={4} />
-                </div>
               </>
             )}
 
-            {/* ── Report ─────────────────────────────────────── */}
+            {/* ── GET_REPORT ──────────────────────────────── */}
             {operation === "GET_REPORT" && (
               <div className="space-y-2">
                 <Label>Request ID</Label>
-                <Input value={requestId} onChange={(e) => setRequestId(e.target.value)} placeholder="Request ID from previous SMS send" />
+                <Input
+                  value={requestId}
+                  onChange={(e) => setRequestId(e.target.value)}
+                  placeholder={`{{${v}.requestId}} from a previous Send SMS node`}
+                />
               </div>
             )}
 
             <Separator />
 
-            {/* Continue on fail */}
-            <div className="flex items-center justify-between">
-              <Label>Continue on Fail</Label>
-              <Switch checked={continueOnFail} onCheckedChange={setContinueOnFail} />
+            {/* ── SECTION 4: Output variables ─────────────── */}
+            <div className="rounded-lg border bg-muted/50 p-3 space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">
+                Output variables:
+              </p>
+              <p className="text-xs text-muted-foreground font-mono">
+                {OUTPUT_HINTS[operation]
+                  ?.map((f) => `{{${v}.${f}}}`)
+                  .join("  ") ?? ""}
+              </p>
             </div>
 
-            {/* Save */}
+            {/* ── SECTION 5: Save ─────────────────────────── */}
             <Button onClick={handleSave} disabled={upsertMutation.isPending} className="w-full">
               {upsertMutation.isPending ? (
                 <Loader2Icon className="animate-spin size-4 mr-2" />

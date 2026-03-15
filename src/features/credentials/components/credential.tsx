@@ -30,6 +30,7 @@ const formSchema = z.object({
     notionApiKey: z.string().optional(),
     razorpayKeyId: z.string().optional(),
     razorpayKeySecret: z.string().optional(),
+    msg91AuthKey: z.string().optional(),
     slackAuthType: z.enum(["bot_token", "webhook"]).optional(),
     slackBotToken: z.string().optional(),
     slackWebhookUrl: z.string().optional(),
@@ -88,6 +89,15 @@ const formSchema = z.object({
                 code: z.ZodIssueCode.custom,
                 message: "Key Secret is required",
                 path: ["razorpayKeySecret"],
+            })
+        }
+    }
+    if (data.type === CredentialType.MSG91) {
+        if (!data.msg91AuthKey) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Auth Key is required",
+                path: ["msg91AuthKey"],
             })
         }
     }
@@ -190,6 +200,11 @@ const credentialTypeOptions = [
         label: "Slack",
         logo: "/logos/slack.svg"
     },
+    {
+        value: CredentialType.MSG91,
+        label: "MSG91",
+        logo: "/logos/msg91.svg"
+    },
 
 ]
 
@@ -257,6 +272,18 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
         return { razorpayKeyId: "", razorpayKeySecret: "" }
     }, [initialData])
 
+    const msg91Defaults = useMemo(() => {
+        if (initialData?.type === CredentialType.MSG91 && initialData.value) {
+            try {
+                const parsed = JSON.parse(initialData.value)
+                return { msg91AuthKey: parsed.authKey ?? "" }
+            } catch {
+                return { msg91AuthKey: initialData.value ?? "" }
+            }
+        }
+        return { msg91AuthKey: "" }
+    }, [initialData])
+
     const slackDefaults = useMemo(() => {
         if (initialData?.type === CredentialType.SLACK && initialData.value) {
             try {
@@ -285,7 +312,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: initialData
-            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...slackDefaults }
+            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...msg91Defaults, ...slackDefaults }
             : {
                 name: "",
                 type: CredentialType.OPENAI,
@@ -297,6 +324,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                 notionApiKey: "",
                 razorpayKeyId: "",
                 razorpayKeySecret: "",
+                msg91AuthKey: "",
                 slackAuthType: "bot_token",
                 slackBotToken: "",
                 slackWebhookUrl: "",
@@ -311,6 +339,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const isWhatsApp = watchType === CredentialType.WHATSAPP
     const isNotion = watchType === CredentialType.NOTION
     const isRazorpay = watchType === CredentialType.RAZORPAY
+    const isMsg91 = watchType === CredentialType.MSG91
     const isSlack = watchType === CredentialType.SLACK
     const watchSlackAuthType = form.watch("slackAuthType")
 
@@ -348,6 +377,13 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             })
         }
 
+        // For MSG91, encode authKey as JSON in the value field
+        if (values.type === CredentialType.MSG91) {
+            submitValues.value = JSON.stringify({
+                authKey: values.msg91AuthKey,
+            })
+        }
+
         // For Slack, encode based on auth type
         if (values.type === CredentialType.SLACK) {
             if (values.slackAuthType === "bot_token") {
@@ -363,7 +399,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             }
         }
 
-        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, slackAuthType, slackBotToken, slackWebhookUrl, ...payload } = submitValues
+        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, msg91AuthKey, slackAuthType, slackBotToken, slackWebhookUrl, ...payload } = submitValues
 
         if (isEdit && initialData?.id) {
             await updateCredential.mutate({
@@ -437,6 +473,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                     form.setValue("value", "notion-credential")
                                                 } else if (val === CredentialType.RAZORPAY) {
                                                     form.setValue("value", "razorpay-credential")
+                                                } else if (val === CredentialType.MSG91) {
+                                                    form.setValue("value", "msg91-credential")
                                                 } else if (val === CredentialType.SLACK) {
                                                     form.setValue("value", "slack-credential")
                                                 } else if (val === CredentialType.GOOGLE_SHEETS || val === CredentialType.GOOGLE_DRIVE) {
@@ -449,6 +487,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                       currentValue === "whatsapp-credential" ||
                                                       currentValue === "notion-credential" ||
                                                       currentValue === "razorpay-credential" ||
+                                                      currentValue === "msg91-credential" ||
                                                       currentValue === "slack-credential" ||
                                                       currentValue.startsWith("{")
                                                     ) {
@@ -666,6 +705,39 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                         <p className="mt-2 text-xs">
                                             Use rzp_test_ keys for testing, rzp_live_ for production
                                         </p>
+                                    </div>
+                                </>
+                            ) : isMsg91 ? (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="msg91AuthKey"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Auth Key</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" placeholder="Enter your MSG91 Auth Key" {...field} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Found in MSG91 Dashboard → API → Auth Key
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-2">ℹ️ How to get your MSG91 Auth Key</p>
+                                        <ol className="list-decimal list-inside space-y-1">
+                                            <li>Go to{" "}
+                                                <a href="https://msg91.com" target="_blank" rel="noopener noreferrer" className="underline">
+                                                    msg91.com
+                                                </a>
+                                                {" "}and log in
+                                            </li>
+                                            <li>Navigate to API → Auth Key</li>
+                                            <li>Copy the Auth Key</li>
+                                        </ol>
                                     </div>
                                 </>
                             ) : isSlack ? (

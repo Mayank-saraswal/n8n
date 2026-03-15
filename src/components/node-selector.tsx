@@ -242,7 +242,7 @@ const executionNodes: NodeTypeOptions[] = [
     {
         type:NodeType.MSG91,
         label:"MSG91",
-        description:"SMS, OTP, WhatsApp, Voice & Email via MSG91",
+        description:"SMS, OTP, WhatsApp, Voice, Email — India's #1",
         icon:"/logos/msg91.svg"
     }
 

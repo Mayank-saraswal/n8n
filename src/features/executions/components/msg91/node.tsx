@@ -17,21 +17,46 @@ type Msg91NodeData = {
 
 type Msg91NodeType = Node<Msg91NodeData>
 
-const operationLabels: Record<string, string> = {
-  SEND_SMS: "Send SMS",
-  SEND_BULK_SMS: "Send Bulk SMS",
-  SEND_TRANSACTIONAL: "Send Transactional",
-  SCHEDULE_SMS: "Schedule SMS",
-  SEND_OTP: "Send OTP",
-  VERIFY_OTP: "Verify OTP",
-  RESEND_OTP: "Resend OTP",
-  INVALIDATE_OTP: "Invalidate OTP",
-  SEND_WHATSAPP: "Send WhatsApp",
-  SEND_WHATSAPP_MEDIA: "WhatsApp Media",
-  SEND_VOICE_OTP: "Voice OTP",
-  SEND_EMAIL: "Send Email",
-  GET_BALANCE: "Get Balance",
-  GET_REPORT: "Get Report",
+function truncate(s: string, max: number) {
+  return s && s.length > max ? s.slice(0, max) + "…" : s
+}
+
+function getDescription(data: Msg91NodeData): string {
+  const op = data?.operation
+  if (!op) return "Click to configure"
+
+  switch (op) {
+    case "SEND_SMS":
+      return data.mobile ? `Send SMS to ${truncate(data.mobile as string, 15)}` : "Send SMS"
+    case "SEND_BULK_SMS":
+      return "Send Bulk SMS"
+    case "SEND_TRANSACTIONAL":
+      return data.mobile ? `Transactional to ${truncate(data.mobile as string, 15)}` : "Send Transactional"
+    case "SCHEDULE_SMS":
+      return data.mobile ? `Schedule SMS to ${truncate(data.mobile as string, 15)}` : "Schedule SMS"
+    case "SEND_OTP":
+      return data.mobile ? `Send OTP to ${truncate(data.mobile as string, 15)}` : "Send OTP"
+    case "VERIFY_OTP":
+      return "Verify OTP"
+    case "RESEND_OTP":
+      return "Resend OTP"
+    case "INVALIDATE_OTP":
+      return "Invalidate OTP"
+    case "SEND_WHATSAPP":
+      return data.whatsappTemplate ? `WhatsApp: ${truncate(data.whatsappTemplate as string, 20)}` : "Send WhatsApp"
+    case "SEND_WHATSAPP_MEDIA":
+      return "WhatsApp Media"
+    case "SEND_VOICE_OTP":
+      return "Voice OTP"
+    case "SEND_EMAIL":
+      return data.subject ? `Email: ${truncate(data.subject as string, 20)}` : "Send Email"
+    case "GET_BALANCE":
+      return "Check SMS Balance"
+    case "GET_REPORT":
+      return "Get Delivery Report"
+    default:
+      return op.replace(/_/g, " ")
+  }
 }
 
 export const Msg91Node = memo((props: NodeProps<Msg91NodeType>) => {
@@ -66,10 +91,7 @@ export const Msg91Node = memo((props: NodeProps<Msg91NodeType>) => {
   }
 
   const nodeData = props.data
-  const opLabel = nodeData?.operation
-    ? operationLabels[nodeData.operation] ?? nodeData.operation.replace(/_/g, " ")
-    : ""
-  const description = opLabel ? opLabel : "Click to configure"
+  const description = getDescription(nodeData)
 
   return (
     <>
