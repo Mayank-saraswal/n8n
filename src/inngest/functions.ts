@@ -304,7 +304,7 @@ export const executeWorkflow = inngest.createFunction(
             throw err
           } finally {
             nodeOrder++
-            await step.run(`snapshot-node-${node.id}`, async () => {
+            await step.run(`snapshot-node-${node.id}-${nodeOrder}`, async () => {
               return prisma.nodeExecution.create({
                 data: {
                   executionId: executionDbId,
@@ -386,7 +386,7 @@ export const executeWorkflow = inngest.createFunction(
               throw err
             } finally {
               nodeOrder++
-              await step.run(`snapshot-node-${node.id}`, async () => {
+              await step.run(`snapshot-node-${node.id}-${nodeOrder}`, async () => {
                 return prisma.nodeExecution.create({
                   data: {
                     executionId: executionDbId,
