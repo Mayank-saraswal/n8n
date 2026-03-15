@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init"
 import prisma from "@/lib/db"
 
@@ -45,7 +46,7 @@ export const waitRouter = createTRPCRouter({
         select: { userId: true },
       })
       if (!workflow || workflow.userId !== userId) {
-        throw new Error("Unauthorized")
+        throw new TRPCError({ code: "UNAUTHORIZED" })
       }
 
       const { nodeId, workflowId, ...data } = input
@@ -69,7 +70,7 @@ export const waitRouter = createTRPCRouter({
         include: { workflow: { select: { userId: true } } },
       })
       if (!node || node.workflow.userId !== ctx.auth.user.id) {
-        throw new Error("Unauthorized")
+        throw new TRPCError({ code: "UNAUTHORIZED" })
       }
       return prisma.waitNode.delete({ where: { nodeId: input.nodeId } })
     }),

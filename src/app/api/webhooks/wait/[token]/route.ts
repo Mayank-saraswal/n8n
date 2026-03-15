@@ -9,7 +9,9 @@ export async function POST(
 ) {
   const { token } = await params
 
-  if (!token || token.length < 5) {
+  const eventName = decodeURIComponent(token)
+
+  if (!eventName.startsWith("wait/resume-") || eventName.length < 20) {
     return NextResponse.json(
       { error: "Invalid resume token" },
       { status: 400 }
@@ -22,8 +24,6 @@ export async function POST(
   } catch {
     // No body is fine — webhook resume doesn't require one
   }
-
-  const eventName = decodeURIComponent(token)
 
   await inngest.send({
     name: eventName,
