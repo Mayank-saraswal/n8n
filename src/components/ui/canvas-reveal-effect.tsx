@@ -173,6 +173,7 @@ const DotMatrix: React.FC<DotMatrixProps> = ({
   );
 };
 
+type UniformValue = { value: number | THREE.Vector2 | THREE.Vector3 | THREE.Vector3[] | number[] };
 type Uniforms = {
   [key: string]: {
     value: number[] | number[][] | number;
@@ -207,7 +208,7 @@ const ShaderMaterial = ({
   });
 
   const getUniforms = () => {
-    const preparedUniforms: Record<string, { value: number | THREE.Vector2 | THREE.Vector3 | THREE.Vector3[] | number[] }> = {};
+    const preparedUniforms: Record<string, UniformValue> = {};
 
     for (const uniformName in uniforms) {
       const uniform = uniforms[uniformName];
@@ -277,7 +278,7 @@ const ShaderMaterial = ({
   }, [size.width, size.height, source]);
 
   return (
-    <mesh ref={ref as React.RefObject<THREE.Mesh>}>
+    <mesh ref={ref}>
       <planeGeometry args={[2, 2]} />
       <primitive object={material} attach="material" />
     </mesh>
