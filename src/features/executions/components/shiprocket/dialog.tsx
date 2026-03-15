@@ -377,21 +377,7 @@ export const ShiprocketDialog = ({
     upsertMutation.mutate({
       nodeId,
       workflowId,
-      credentialId: credentialId || undefined,
-      operation,
-      variableName,
-      orderId, orderDate, channelId,
-      billingName, billingAddress, billingAddress2, billingCity, billingState, billingCountry, billingPincode, billingEmail, billingPhone, billingAlternatePhone,
-      shippingIsBilling, shippingName, shippingAddress, shippingAddress2, shippingCity, shippingState, shippingCountry, shippingPincode, shippingEmail, shippingPhone,
-      orderItems, paymentMethod, subTotal, codAmount,
-      length, breadth, height, weight,
-      shiprocketOrderId, shipmentId, awbCode, courierId, courierName,
-      pickupLocation, pickupPostcode, deliveryPostcode, cod,
-      returnOrderId, returnReason, returnPickupLocation,
-      productName, productSku, productMrp, productSellingPrice, productWeight, productCategory, productHsn,
-      filterStatus, pageNo, perPage,
-      warehouseName, warehouseEmail, warehousePhone, warehouseAddress, warehouseCity, warehouseState, warehousePincode, warehouseCountry,
-      cancelReason, continueOnFail,
+      ...values,
     })
     onSubmit(values)
   }
