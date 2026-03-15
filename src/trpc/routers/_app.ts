@@ -26,6 +26,8 @@ import { switchRouter } from '@/server/routers/switch.router';
 import { waitRouter } from '@/server/routers/wait.router';
 import { mergeRouter } from '@/server/routers/merge.router';
 import { errorTriggerRouter } from '@/server/routers/error-trigger.router';
+import { razorpayTriggerRouter } from '@/server/routers/razorpay-trigger.router';
+import { whatsappTriggerRouter } from '@/server/routers/whatsapp-trigger.router';
 export const appRouter = createTRPCRouter({
   workflows: workflowsRouter,
   credentials:credentialsRouter,
@@ -48,6 +50,8 @@ export const appRouter = createTRPCRouter({
   wait: waitRouter,
   merge: mergeRouter,
   errorTrigger: errorTriggerRouter,
+  razorpayTrigger: razorpayTriggerRouter,
+  whatsappTrigger: whatsappTriggerRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;

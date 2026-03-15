@@ -37,6 +37,8 @@ import { switchChannel } from "./channels/switch";
 import { waitChannel } from "./channels/wait";
 import { mergeChannel } from "./channels/merge";
 import { errorTriggerChannel } from "./channels/error-trigger";
+import { razorpayTriggerChannel } from "./channels/razorpay-trigger"
+import { whatsappTriggerChannel } from "./channels/whatsapp-trigger";
 
 const MAX_JSON_LENGTH = 100_000;
 
@@ -175,6 +177,8 @@ export const executeWorkflow = inngest.createFunction(
       waitChannel(),
       mergeChannel(),
       errorTriggerChannel(),
+      razorpayTriggerChannel(),
+      whatsappTriggerChannel(),
 
     ]
   },

@@ -65,6 +65,18 @@ const triggerNodes: NodeTypeOptions[] = [
         description:"Fires when any node in this workflow fails",
         icon:AlertTriangleIcon,
     },
+    {
+        type:NodeType.RAZORPAY_TRIGGER,
+        label:"Razorpay Trigger",
+        description:"When Razorpay event occurs (payment, refund, etc.)",
+        icon:"/logos/razorpay.svg",
+    },
+    {
+        type:NodeType.WHATSAPP_TRIGGER,
+        label:"WhatsApp Trigger",
+        description:"When WhatsApp message is received",
+        icon:"/logos/whatsapp.svg",
+    },
 ]
 
 const executionNodes: NodeTypeOptions[] = [

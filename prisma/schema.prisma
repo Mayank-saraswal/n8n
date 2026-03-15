@@ -105,7 +105,9 @@ model workflow {
   switchNodes       SwitchNode[]
   waitNodes         WaitNode[]
   mergeNodes        MergeNode[]
-  errorTriggerNodes ErrorTriggerNode[]
+  errorTriggerNodes  ErrorTriggerNode[]
+  razorpayTriggers   RazorpayTrigger[]
+  whatsappTriggers   WhatsAppTrigger[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -144,6 +146,8 @@ enum NodeType {
   WAIT
   MERGE
   ERROR_TRIGGER
+  RAZORPAY_TRIGGER
+  WHATSAPP_TRIGGER
 }
 
 enum HttpMethod {
@@ -905,4 +909,49 @@ model ErrorTriggerNode {
 
   @@index([nodeId])
   @@index([workflowId])
+}
+
+model RazorpayTrigger {
+  id            String   @id @default(cuid())
+  nodeId        String   @unique
+  workflowId    String
+
+  webhookId     String   @unique @default(uuid())
+  webhookSecret String   @default("")
+  activeEvents  String   @default("[]") @db.Text
+  variableName  String   @default("razorpayTrigger")
+  isActive      Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  workflow      workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([nodeId])
+  @@index([workflowId])
+  @@index([webhookId])
+}
+
+model WhatsAppTrigger {
+  id                String   @id @default(cuid())
+  nodeId            String   @unique
+  workflowId        String
+
+  webhookId         String   @unique @default(uuid())
+  verifyToken       String   @default(uuid())
+  phoneNumberId     String   @default("")
+  activeEvents      String   @default("[]") @db.Text
+  messageTypes      String   @default("[]") @db.Text
+  ignoreOwnMessages Boolean  @default(true)
+  variableName      String   @default("whatsappTrigger")
+  isActive          Boolean  @default(true)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  workflow          workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([nodeId])
+  @@index([workflowId])
+  @@index([webhookId])
 }
