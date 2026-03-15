@@ -477,7 +477,7 @@ export const Msg91Dialog = ({
                   <p className="text-xs font-medium">📋 DLT Registration Required</p>
                   <p className="text-xs text-muted-foreground">
                     India&apos;s TRAI mandates DLT registration for commercial SMS.
-                    Register templates at jio DLT portal or via your telecom operator.
+                    Register templates at Jio DLT portal or via your telecom operator.
                     Your Flow ID must correspond to a DLT-approved template.
                   </p>
                 </div>
