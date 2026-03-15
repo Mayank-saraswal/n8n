@@ -29,6 +29,7 @@ export const codeRouter = createTRPCRouter({
         timeout: z.number().int().min(100).max(30000).default(5000),
         continueOnFail: z.boolean().default(false),
         allowedDomains: z.string().default(""),
+        variableName: z.string().default("codeOutput"),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -52,6 +53,7 @@ export const codeRouter = createTRPCRouter({
           timeout: input.timeout,
           continueOnFail: input.continueOnFail,
           allowedDomains: input.allowedDomains,
+          variableName: input.variableName,
         },
         update: {
           code: input.code,
@@ -60,6 +62,7 @@ export const codeRouter = createTRPCRouter({
           timeout: input.timeout,
           continueOnFail: input.continueOnFail,
           allowedDomains: input.allowedDomains,
+          variableName: input.variableName,
         },
       })
     }),

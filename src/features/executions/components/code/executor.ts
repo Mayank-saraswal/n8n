@@ -17,77 +17,119 @@ export const codeExecutor: NodeExecutor = async ({
     })
   )
 
-  const codeNode = await step.run(`code-${nodeId}-load-config`, async () => {
+  // Step 1: Load config
+  const config = await step.run(`code-${nodeId}-load-config`, async () => {
     return prisma.codeNode.findUnique({ where: { nodeId } })
   })
 
-  if (!codeNode?.code?.trim()) {
+  if (!config) {
     await publish(
       codeChannel().status({
         nodeId,
         status: "error",
       })
     )
-    throw new NonRetriableError("Code node has no code to execute")
+    throw new NonRetriableError(
+      "Code node not configured. Open the node and write your code."
+    )
+  }
+  if (!config.code?.trim()) {
+    await publish(
+      codeChannel().status({
+        nodeId,
+        status: "error",
+      })
+    )
+    throw new NonRetriableError(
+      "Code node is empty. Open the node and write your code."
+    )
   }
 
+  // Step 2: Validate — idempotent; steps 1 & 2 don't re-run on retry of step 3
+  await step.run(`code-${nodeId}-validate`, async () => {
+    const timeout = config.timeout ?? 5000
+    if (timeout < 100 || timeout > 30000) {
+      throw new NonRetriableError(
+        `Code timeout must be 100–30000ms. Got: ${timeout}ms`
+      )
+    }
+    return { codeLength: config.code.length, timeout }
+  })
+
+  // Step 3: Execute
   try {
     const result = await step.run(`code-${nodeId}-execute`, async () => {
-      const timeout = codeNode.timeout ?? 5000
-      const outputMode = codeNode.outputMode ?? "append"
-      const allowedDomains = codeNode.allowedDomains ?? ""
+      const timeout = config.timeout ?? 5000
+      const outputMode = config.outputMode ?? "append"
+      const allowedDomains = config.allowedDomains ?? ""
+      const variableName = (config as Record<string, unknown>).variableName as string | undefined
 
-      try {
-        const { output, logs } = await runCodeSandbox({
-          code: codeNode.code,
-          context,
-          language: codeNode.language ?? "javascript",
-          timeout,
-          allowedDomains,
-        })
+      const { output, logs, executionMs, error } = await runCodeSandbox({
+        code: config.code,
+        context,
+        timeout,
+        allowedDomains,
+        variableName: variableName || "codeOutput",
+      })
 
-        // Log captured console output
-        for (const line of logs) {
-          console.log(`[CodeNode ${nodeId}]`, line)
+      // Log captured console output to server
+      for (const line of logs) {
+        console.log(`[CodeNode ${nodeId}]`, line)
+      }
+
+      if (error) {
+        throw new NonRetriableError(`Code execution error: ${error}`)
+      }
+
+      // Build base result depending on outputMode
+      let resultContext: Record<string, unknown>
+
+      if (outputMode === "raw") {
+        if (
+          output !== undefined &&
+          output !== null &&
+          typeof output === "object" &&
+          !Array.isArray(output)
+        ) {
+          resultContext = output as Record<string, unknown>
+        } else {
+          const key = variableName || "codeOutput"
+          resultContext = { [key]: output ?? null }
         }
-
-        // Apply output based on outputMode
-        if (outputMode === "raw") {
-          // Raw mode: return the output directly as the full context
-          if (output !== undefined && output !== null && typeof output === "object" && !Array.isArray(output)) {
-            return output as Record<string, unknown>
-          }
-          return { codeOutput: output ?? null }
+      } else if (outputMode === "replace") {
+        if (
+          output !== undefined &&
+          output !== null &&
+          typeof output === "object" &&
+          !Array.isArray(output)
+        ) {
+          resultContext = output as Record<string, unknown>
+        } else {
+          const key = variableName || "codeOutput"
+          resultContext = { [key]: output ?? null }
         }
-
-        if (outputMode === "replace") {
-          // Replace mode: output replaces context entirely
-          if (output !== undefined && output !== null && typeof output === "object" && !Array.isArray(output)) {
-            return output as Record<string, unknown>
-          }
-          return { codeOutput: output ?? null }
-        }
-
+      } else {
         // Default: "append" mode — merge into existing context
         if (output !== undefined && output !== null) {
           if (Array.isArray(output)) {
-            return { ...context, codeOutput: output }
+            const key = variableName || "codeOutput"
+            resultContext = { ...context, [key]: output }
+          } else if (typeof output === "object") {
+            resultContext = { ...context, ...output }
+          } else {
+            const key = variableName || "codeOutput"
+            resultContext = { ...context, [key]: output }
           }
-          if (typeof output === "object") {
-            return { ...context, ...output }
-          }
-          return { ...context, codeOutput: output }
+        } else {
+          resultContext = { ...context }
         }
+      }
 
-        return context
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err)
-        if (message.includes("timed out") || message.includes("Script execution timed out")) {
-          throw new NonRetriableError(
-            `Code node timed out after ${timeout}ms`
-          )
-        }
-        throw new NonRetriableError(`Code execution error: ${message}`)
+      // Always include logs and executionMs metadata
+      return {
+        ...resultContext,
+        _codeLogs: logs,
+        _codeExecutionMs: executionMs,
       }
     })
 
@@ -100,7 +142,7 @@ export const codeExecutor: NodeExecutor = async ({
 
     return result as Record<string, unknown>
   } catch (err) {
-    if (codeNode.continueOnFail) {
+    if (config.continueOnFail) {
       await publish(
         codeChannel().status({
           nodeId,

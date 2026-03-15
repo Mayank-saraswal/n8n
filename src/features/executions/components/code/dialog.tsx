@@ -24,13 +24,70 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 
-const DEFAULT_CODE = `// $input contains all data from previous nodes
-// Example: $input.body.name, $input.email, $input.googleSheets.rows
-// You can use await and fetch() for async operations
+const STARTER_TEMPLATES: Record<string, { label: string; code: string }> = {
+  blank: {
+    label: "Blank",
+    code: `// Write your code here
+// $input, $json — all data from previous nodes
+// $ — helper object with fetch, date, number, string, array, json utilities
 
 return {
   // your output here
-}`
+}`,
+  },
+  transform: {
+    label: "Transform data",
+    code: `// Transform incoming data
+const data = $input
+
+return {
+  name: data.name?.toUpperCase(),
+  email: data.email?.toLowerCase(),
+  processed: true,
+  processedAt: $.date.now(),
+}`,
+  },
+  fetch: {
+    label: "Fetch API data",
+    code: `// Fetch data from an API (add domain to Allowed Domains)
+const data = await $.getJson("https://api.example.com/data")
+
+return {
+  apiData: data,
+  fetchedAt: $.date.now(),
+}`,
+  },
+  filter: {
+    label: "Filter & map array",
+    code: `// Filter and transform an array
+const items = $input.items ?? []
+
+const filtered = items
+  .filter(item => item.active)
+  .map(item => ({
+    id: item.id,
+    name: item.name,
+    slug: $.string.slugify(item.name),
+  }))
+
+return { filtered, count: filtered.length }`,
+  },
+  aggregate: {
+    label: "Aggregate numbers",
+    code: `// Aggregate numeric data
+const items = $input.items ?? []
+const amounts = items.map(i => i.amount)
+
+return {
+  total: $.number.sum(amounts),
+  average: $.number.average(amounts),
+  formatted: $.number.formatCurrency($.number.sum(amounts)),
+  count: items.length,
+}`,
+  },
+}
+
+const DEFAULT_CODE = STARTER_TEMPLATES.blank.code
 
 interface CodeDialogProps {
   open: boolean
@@ -56,6 +113,7 @@ export const CodeDialog = ({
   const [timeout, setTimeoutMs] = useState(5000)
   const [continueOnFail, setContinueOnFail] = useState(false)
   const [allowedDomains, setAllowedDomains] = useState("")
+  const [variableName, setVariableName] = useState("codeOutput")
   const [saved, setSaved] = useState(false)
 
   const { data: config, isLoading } = useQuery(
@@ -74,6 +132,7 @@ export const CodeDialog = ({
       if (config.timeout) setTimeoutMs(config.timeout)
       setContinueOnFail(config.continueOnFail ?? false)
       if (config.allowedDomains !== undefined) setAllowedDomains(config.allowedDomains)
+      if (config.variableName) setVariableName(config.variableName)
     }
   }, [config])
 
@@ -86,6 +145,7 @@ export const CodeDialog = ({
       setTimeoutMs(5000)
       setContinueOnFail(false)
       setAllowedDomains("")
+      setVariableName("codeOutput")
     }
   }, [open, config])
 
@@ -116,7 +176,15 @@ export const CodeDialog = ({
         timeout,
         continueOnFail,
         allowedDomains,
+        variableName,
       })
+    }
+  }
+
+  const handleTemplateSelect = (key: string) => {
+    const template = STARTER_TEMPLATES[key]
+    if (template) {
+      setCode(template.code)
     }
   }
 
@@ -126,8 +194,8 @@ export const CodeDialog = ({
         <DialogHeader>
           <DialogTitle>Code</DialogTitle>
           <DialogDescription>
-            Write JavaScript to transform your data. Supports async/await and
-            fetch().
+            Write JavaScript to transform your data. Supports async/await,
+            fetch(), and the $ helper API.
           </DialogDescription>
         </DialogHeader>
 
@@ -138,7 +206,7 @@ export const CodeDialog = ({
         ) : (
           <div className="space-y-4">
             {/* Settings row */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Language</Label>
                 <Select value={language} onValueChange={setLanguage}>
@@ -178,6 +246,22 @@ export const CodeDialog = ({
                   className="h-8 text-xs"
                 />
               </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Starter Template</Label>
+                <Select onValueChange={handleTemplateSelect}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Choose..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(STARTER_TEMPLATES).map(([key, tmpl]) => (
+                      <SelectItem key={key} value={key}>
+                        {tmpl.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Code editor */}
@@ -200,19 +284,37 @@ export const CodeDialog = ({
               />
             </div>
 
-            {/* Variable hints */}
-            <div className="rounded-lg border bg-muted/50 p-3 space-y-1">
+            {/* Variable hints — updated for $ API */}
+            <div className="rounded-lg border bg-muted/50 p-3 space-y-1.5">
               <p className="text-xs font-medium text-muted-foreground">
-                Available variables:
+                Available APIs:
               </p>
-              <p className="text-xs text-muted-foreground font-mono">
-                $input.body.* &nbsp; $input.headers.* &nbsp; $json (alias for
-                $input) &nbsp; fetch(url)
-              </p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-muted-foreground font-mono">
+                <span>$input.* / $json.*</span>
+                <span>$.get(key) / $.all()</span>
+                <span>$.fetch(url) / $.getJson(url)</span>
+                <span>$.postJson(url, body)</span>
+                <span>$.date.now() / $.date.addDays()</span>
+                <span>$.number.sum() / $.number.formatCurrency()</span>
+                <span>$.string.slugify() / $.string.truncate()</span>
+                <span>$.array.groupBy() / $.array.chunk()</span>
+                <span>$.json.pick() / $.json.omit()</span>
+                <span>$.log(...args)</span>
+              </div>
             </div>
 
             {/* Advanced settings */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Variable Name</Label>
+                <Input
+                  value={variableName}
+                  onChange={(e) => setVariableName(e.target.value)}
+                  placeholder="codeOutput"
+                  className="h-8 text-xs"
+                />
+              </div>
+
               <div className="space-y-1.5">
                 <Label className="text-xs">Allowed Domains (comma-separated)</Label>
                 <Input

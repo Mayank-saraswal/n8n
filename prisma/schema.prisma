@@ -498,6 +498,7 @@ model CodeNode {
   timeout        Int      @default(5000)
   continueOnFail Boolean  @default(false)
   allowedDomains String   @default("")
+  variableName   String   @default("codeOutput")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
