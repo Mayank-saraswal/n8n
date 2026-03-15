@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -22,10 +22,11 @@ import {
 } from "@/components/ui/select"
 import { useTRPC } from "@/trpc/client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CheckIcon, Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react"
+import { CheckIcon, Loader2Icon } from "lucide-react"
 import { IfElseOperator } from "@/generated/prisma"
 import { OPERATORS } from "./operators"
-import type { Condition, ConditionGroup, ConditionsConfig } from "./evaluate-conditions"
+import type { ConditionsConfig } from "./evaluate-conditions"
+import { ConditionsBuilder, createDefaultConfig, isCompoundConfigured } from "./conditions-builder"
 
 interface IfElseDialogProps {
   open: boolean
@@ -57,36 +58,6 @@ const operatorLabel: Record<IfElseOperator, string> = {
   [IfElseOperator.IS_TRUE]: "is true",
   [IfElseOperator.IS_FALSE]: "is false",
   [IfElseOperator.REGEX_MATCH]: "matches regex",
-}
-
-function generateId(): string {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID()
-  }
-  return Math.random().toString(36).slice(2, 11)
-}
-
-function createEmptyCondition(): Condition {
-  return { id: generateId(), leftValue: "", operator: "equals", rightValue: "" }
-}
-
-function createEmptyGroup(): ConditionGroup {
-  return { combinator: "AND", conditions: [createEmptyCondition()] }
-}
-
-function createDefaultConfig(): ConditionsConfig {
-  return { combinator: "AND", groups: [createEmptyGroup()] }
-}
-
-// Check if compound config has at least one condition with leftValue set
-function isCompoundConfigured(config: ConditionsConfig): boolean {
-  return config.groups.some((g) =>
-    g.conditions.some((c) => c.leftValue.trim() !== "")
-  )
-}
-
-function cloneGroups(groups: ConditionGroup[]): ConditionGroup[] {
-  return groups.map((g) => ({ ...g, conditions: [...g.conditions] }))
 }
 
 export const IfElseDialog = ({
@@ -199,65 +170,6 @@ export const IfElseDialog = ({
     }
   }
 
-  // Compound conditions helpers
-  const updateCondition = useCallback(
-    (groupIdx: number, condIdx: number, updates: Partial<Condition>) => {
-      setConditionsConfig((prev) => {
-        const next = { ...prev, groups: cloneGroups(prev.groups) }
-        next.groups[groupIdx].conditions[condIdx] = {
-          ...next.groups[groupIdx].conditions[condIdx],
-          ...updates,
-        }
-        return next
-      })
-    },
-    []
-  )
-
-  const addCondition = useCallback((groupIdx: number) => {
-    setConditionsConfig((prev) => {
-      const next = { ...prev, groups: cloneGroups(prev.groups) }
-      next.groups[groupIdx].conditions.push(createEmptyCondition())
-      return next
-    })
-  }, [])
-
-  const removeCondition = useCallback((groupIdx: number, condIdx: number) => {
-    setConditionsConfig((prev) => {
-      const next = { ...prev, groups: cloneGroups(prev.groups) }
-      if (next.groups[groupIdx].conditions.length > 1) {
-        next.groups[groupIdx].conditions.splice(condIdx, 1)
-      }
-      return next
-    })
-  }, [])
-
-  const addGroup = useCallback(() => {
-    setConditionsConfig((prev) => ({
-      ...prev,
-      groups: [...prev.groups, createEmptyGroup()],
-    }))
-  }, [])
-
-  const removeGroup = useCallback((groupIdx: number) => {
-    setConditionsConfig((prev) => {
-      if (prev.groups.length <= 1) return prev
-      return { ...prev, groups: prev.groups.filter((_, i) => i !== groupIdx) }
-    })
-  }, [])
-
-  const setGroupCombinator = useCallback((groupIdx: number, combinator: "AND" | "OR") => {
-    setConditionsConfig((prev) => {
-      const next = { ...prev, groups: prev.groups.map((g) => ({ ...g })) }
-      next.groups[groupIdx].combinator = combinator
-      return next
-    })
-  }, [])
-
-  const setTopCombinator = useCallback((combinator: "AND" | "OR") => {
-    setConditionsConfig((prev) => ({ ...prev, combinator }))
-  }, [])
-
   const showValue = !OPERATORS_WITHOUT_VALUE.includes(operator)
 
   const NUMERIC_OPERATORS: IfElseOperator[] = [
@@ -266,11 +178,6 @@ export const IfElseDialog = ({
     IfElseOperator.GREATER_THAN_OR_EQUAL,
     IfElseOperator.LESS_THAN_OR_EQUAL,
   ]
-
-  const operatorRequiresRightValue = (op: string) => {
-    const def = OPERATORS.find((o) => o.value === op)
-    return !def || def.requiresRightValue
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -475,187 +382,17 @@ export const IfElseDialog = ({
             ) : (
               /* ──────── COMPOUND CONDITIONS UI ──────── */
               <>
-                {/* Top-level combinator */}
-                {conditionsConfig.groups.length > 1 && (
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs">Groups combined with:</Label>
-                    <Select
-                      value={conditionsConfig.combinator}
-                      onValueChange={(val) => setTopCombinator(val as "AND" | "OR")}
-                    >
-                      <SelectTrigger className="w-24 h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="AND">AND</SelectItem>
-                        <SelectItem value="OR">OR</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* Condition groups */}
-                <div className="space-y-4">
-                  {conditionsConfig.groups.map((group, groupIdx) => (
-                    <div
-                      key={groupIdx}
-                      className="rounded-lg border bg-muted/30 p-4 space-y-3"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-muted-foreground">
-                            Group {groupIdx + 1}
-                          </span>
-                          {group.conditions.length > 1 && (
-                            <Select
-                              value={group.combinator}
-                              onValueChange={(val) => setGroupCombinator(groupIdx, val as "AND" | "OR")}
-                            >
-                              <SelectTrigger className="w-20 h-7 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="AND">AND</SelectItem>
-                                <SelectItem value="OR">OR</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </div>
-                        {conditionsConfig.groups.length > 1 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0"
-                            onClick={() => removeGroup(groupIdx)}
-                          >
-                            <Trash2Icon className="size-3.5 text-muted-foreground" />
-                          </Button>
-                        )}
-                      </div>
-
-                      {/* Conditions in this group */}
-                      {group.conditions.map((condition, condIdx) => (
-                        <div key={condition.id} className="space-y-2">
-                          {condIdx > 0 && (
-                            <div className="text-center">
-                              <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                                {group.combinator}
-                              </span>
-                            </div>
-                          )}
-                          <div className="flex items-start gap-2">
-                            {/* Left Value */}
-                            <Input
-                              placeholder="{{variable}}"
-                              className="font-mono text-xs flex-1"
-                              value={condition.leftValue}
-                              onChange={(e) =>
-                                updateCondition(groupIdx, condIdx, {
-                                  leftValue: e.target.value,
-                                })
-                              }
-                            />
-                            {/* Operator */}
-                            <Select
-                              value={condition.operator}
-                              onValueChange={(val) =>
-                                updateCondition(groupIdx, condIdx, { operator: val })
-                              }
-                            >
-                              <SelectTrigger className="w-[180px] text-xs">
-                                <SelectValue placeholder="operator" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectGroup>
-                                  <SelectLabel>Equality</SelectLabel>
-                                  {OPERATORS.filter((o) => o.category.includes("any") && o.requiresRightValue).map((o) => (
-                                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                                  ))}
-                                </SelectGroup>
-                                <SelectGroup>
-                                  <SelectLabel>String</SelectLabel>
-                                  {OPERATORS.filter((o) => o.category.includes("string")).map((o) => (
-                                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                                  ))}
-                                </SelectGroup>
-                                <SelectGroup>
-                                  <SelectLabel>Number</SelectLabel>
-                                  {OPERATORS.filter((o) => o.category.includes("number")).map((o) => (
-                                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                                  ))}
-                                </SelectGroup>
-                                <SelectGroup>
-                                  <SelectLabel>Existence</SelectLabel>
-                                  {OPERATORS.filter((o) => o.category.includes("any") && !o.requiresRightValue).map((o) => (
-                                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                                  ))}
-                                </SelectGroup>
-                                <SelectGroup>
-                                  <SelectLabel>Boolean</SelectLabel>
-                                  {OPERATORS.filter((o) => o.category.includes("boolean")).map((o) => (
-                                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                                  ))}
-                                </SelectGroup>
-                                <SelectGroup>
-                                  <SelectLabel>Array</SelectLabel>
-                                  {OPERATORS.filter((o) => o.category.includes("array")).map((o) => (
-                                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                                  ))}
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
-                            {/* Right Value */}
-                            {operatorRequiresRightValue(condition.operator) && (
-                              <Input
-                                placeholder="value"
-                                className="font-mono text-xs flex-1"
-                                value={condition.rightValue}
-                                onChange={(e) =>
-                                  updateCondition(groupIdx, condIdx, {
-                                    rightValue: e.target.value,
-                                  })
-                                }
-                              />
-                            )}
-                            {/* Remove condition */}
-                            {group.conditions.length > 1 && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-9 w-9 p-0 shrink-0"
-                                onClick={() => removeCondition(groupIdx, condIdx)}
-                              >
-                                <Trash2Icon className="size-3.5 text-muted-foreground" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-
-                      {/* Add condition button */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => addCondition(groupIdx)}
-                      >
-                        <PlusIcon className="size-3 mr-1" />
-                        Add condition
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Add group button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={addGroup}
-                >
-                  <PlusIcon className="size-3.5 mr-1" />
-                  Add group
-                </Button>
+                <ConditionsBuilder
+                  value={JSON.stringify(conditionsConfig)}
+                  onChange={(json) => {
+                    try {
+                      const parsed = JSON.parse(json) as ConditionsConfig
+                      setConditionsConfig(parsed)
+                    } catch {
+                      // ignore invalid JSON
+                    }
+                  }}
+                />
 
                 {/* Preview for compound */}
                 <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
@@ -669,19 +406,23 @@ export const IfElseDialog = ({
                           </span>
                         )}
                         <span className="text-muted-foreground">(</span>
-                        {group.conditions.map((c, ci) => (
-                          <span key={c.id}>
-                            {ci > 0 && (
-                              <span className="text-blue-500 font-semibold">
-                                {" "}{group.combinator}{" "}
+                        {group.conditions.map((c, ci) => {
+                          const opDef = OPERATORS.find((o) => o.value === c.operator)
+                          const needsRight = !opDef || opDef.requiresRightValue
+                          return (
+                            <span key={c.id}>
+                              {ci > 0 && (
+                                <span className="text-blue-500 font-semibold">
+                                  {" "}{group.combinator}{" "}
+                                </span>
+                              )}
+                              <span className="text-foreground">
+                                {c.leftValue || "?"} {opDef?.label ?? c.operator}
+                                {needsRight ? ` "${c.rightValue}"` : ""}
                               </span>
-                            )}
-                            <span className="text-foreground">
-                              {c.leftValue || "?"} {OPERATORS.find((o) => o.value === c.operator)?.label ?? c.operator}
-                              {operatorRequiresRightValue(c.operator) ? ` "${c.rightValue}"` : ""}
                             </span>
-                          </span>
-                        ))}
+                          )
+                        })}
                         <span className="text-muted-foreground">)</span>
                       </div>
                     ))}

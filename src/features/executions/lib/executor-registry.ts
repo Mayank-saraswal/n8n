@@ -28,6 +28,7 @@ import { codeExecutor } from "../components/code/executor";
 import { loopExecutor } from "../components/loop/executor";
 import { notionExecutor } from "../components/notion/executor";
 import { razorpayExecutor } from "../components/razorpay/executor";
+import { switchExecutor } from "../components/switch/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -59,6 +60,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.LOOP]: loopExecutor,
     [NodeType.NOTION]: notionExecutor,
     [NodeType.RAZORPAY]: razorpayExecutor,
+    [NodeType.SWITCH]: switchExecutor,
 
 }
 

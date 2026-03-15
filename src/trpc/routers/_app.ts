@@ -22,6 +22,7 @@ import { loopRouter } from '@/server/routers/loop.router';
 import { notionRouter } from '@/server/routers/notion.router';
 import { razorpayRouter } from '@/server/routers/razorpay.router';
 import { slackRouter } from '@/server/routers/slack.router';
+import { switchRouter } from '@/server/routers/switch.router';
 export const appRouter = createTRPCRouter({
   workflows: workflowsRouter,
   credentials:credentialsRouter,
@@ -40,6 +41,7 @@ export const appRouter = createTRPCRouter({
   notion: notionRouter,
   razorpay: razorpayRouter,
   slack: slackRouter,
+  switch: switchRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;
