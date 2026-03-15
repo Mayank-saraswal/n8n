@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
   Table,
   Zap,
+  LucideIcon
 } from "lucide-react";
 import Image from "next/image";
 import type { Metadata } from "next";
@@ -56,7 +57,7 @@ function NodeCard({
   id: string;
   title: string;
   desc: string;
-  icon?: React.ElementType;
+  icon?: LucideIcon;
   logo?: string;
   credential?: string;
   operations?: string;

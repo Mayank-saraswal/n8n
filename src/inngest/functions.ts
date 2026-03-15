@@ -43,7 +43,7 @@ export const executeWorkflow = inngest.createFunction(
     id: "execute-workflow",
     retries: process.env.NODE_ENV === "production" ? 3 : 0,
     concurrency: {
-      limit: 10,
+      limit: 3,
       key: "event.data.workflowId",
     },
     onFailure: async ({ event, step }) => {
