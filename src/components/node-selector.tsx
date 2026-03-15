@@ -71,6 +71,12 @@ const triggerNodes: NodeTypeOptions[] = [
         description:"When Razorpay event occurs (payment, refund, etc.)",
         icon:"/logos/razorpay.svg",
     },
+    {
+        type:NodeType.WHATSAPP_TRIGGER,
+        label:"WhatsApp Trigger",
+        description:"When WhatsApp message is received",
+        icon:"/logos/whatsapp.svg",
+    },
 ]
 
 const executionNodes: NodeTypeOptions[] = [

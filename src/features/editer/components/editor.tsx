@@ -62,6 +62,7 @@ export const Editor = ({workflowId}:{workflowId:string}) => {
     const deleteMerge = useMutation(trpc.merge.delete.mutationOptions())
     const deleteErrorTrigger = useMutation(trpc.errorTrigger.delete.mutationOptions())
     const deleteRazorpayTrigger = useMutation(trpc.razorpayTrigger.delete.mutationOptions())
+    const deleteWhatsappTrigger = useMutation(trpc.whatsappTrigger.delete.mutationOptions())
 
     const onNodesDelete = useCallback((deletedNodes: Node[]) => {
       for (const node of deletedNodes) {
@@ -83,9 +84,10 @@ export const Editor = ({workflowId}:{workflowId:string}) => {
           case NodeType.MERGE: deleteMerge.mutate({ nodeId }); break
           case NodeType.ERROR_TRIGGER: deleteErrorTrigger.mutate({ nodeId }); break
           case NodeType.RAZORPAY_TRIGGER: deleteRazorpayTrigger.mutate({ nodeId }); break
+          case NodeType.WHATSAPP_TRIGGER: deleteWhatsappTrigger.mutate({ nodeId }); break
         }
       }
-    }, [deleteCode, deleteGmail, deleteGoogleDrive, deleteGoogleSheets, deleteIfElse, deleteLoop, deleteNotion, deleteRazorpay, deleteSetVariable, deleteSlack, deleteSwitch, deleteWhatsapp, deleteWait, deleteMerge, deleteErrorTrigger, deleteRazorpayTrigger])
+    }, [deleteCode, deleteGmail, deleteGoogleDrive, deleteGoogleSheets, deleteIfElse, deleteLoop, deleteNotion, deleteRazorpay, deleteSetVariable, deleteSlack, deleteSwitch, deleteWhatsapp, deleteWait, deleteMerge, deleteErrorTrigger, deleteRazorpayTrigger, deleteWhatsappTrigger])
 
        const onNodesChange = useCallback(
     (changes:NodeChange[]) => setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),
