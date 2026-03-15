@@ -5,7 +5,7 @@ import { memo, useState } from "react"
 import { BaseExecutionNode } from "../base-execution-node"
 import { Timer } from "lucide-react"
 import { WaitDialog, type WaitConfig } from "./dialog"
-import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-node-status"
+import { useNodeStatusWithPayload } from "@/features/triggers/components/shared/hooks/use-node-status"
 import { fetchWaitRealtimeToken } from "./actions"
 import { WAIT_CHANNEL_NAME } from "@/inngest/channels/wait"
 import { useParams } from "next/navigation"
@@ -24,12 +24,14 @@ export const WaitNode = memo((props: NodeProps<WaitNodeType>) => {
   const params = useParams()
   const workflowId = params.workflowId as string
 
-  const nodeStatus = useNodeStatus({
+  const { status: nodeStatus, payload } = useNodeStatusWithPayload({
     nodeId: props.id,
     channel: WAIT_CHANNEL_NAME,
     topic: "status",
     refreshToken: fetchWaitRealtimeToken,
   })
+
+  const resumeUrl = payload?.resumeUrl as string | undefined
 
   const handleOpenSettings = () => setDialogOpen(true)
 
@@ -80,7 +82,18 @@ export const WaitNode = memo((props: NodeProps<WaitNodeType>) => {
         description={description}
         onSettings={handleOpenSettings}
         onDoubleClick={handleOpenSettings}
-      />
+      >
+        {resumeUrl && (
+          <div className="mt-1 max-w-[180px]">
+            <p className="text-[9px] text-muted-foreground truncate">
+              Resume URL:
+            </p>
+            <code className="text-[8px] text-blue-600 dark:text-blue-400 break-all select-all leading-tight block">
+              {resumeUrl}
+            </code>
+          </div>
+        )}
+      </BaseExecutionNode>
     </>
   )
 })

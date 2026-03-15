@@ -25,26 +25,6 @@ function toSleepDuration(duration: number, unit: string): string {
   }
 }
 
-/**
- * Convert a duration + unit to milliseconds (for output).
- */
-function toMs(duration: number, unit: string): number {
-  switch (unit) {
-    case "seconds":
-      return duration * 1_000
-    case "minutes":
-      return duration * 60_000
-    case "hours":
-      return duration * 3_600_000
-    case "days":
-      return duration * 86_400_000
-    case "weeks":
-      return duration * 604_800_000
-    default:
-      return duration * 60_000
-  }
-}
-
 export const waitExecutor: NodeExecutor = async ({
   nodeId,
   context,
@@ -118,18 +98,49 @@ export const waitExecutor: NodeExecutor = async ({
       targetDatetime = resolveTemplate(targetDatetime, context) as string
     }
 
-    const targetDate = new Date(targetDatetime)
-    if (isNaN(targetDate.getTime())) {
+    const timezone = config.timezone || "UTC"
+    let targetDate: Date
+
+    // If string already has explicit timezone info (Z or +HH:MM), parse directly
+    if (/[Z]$|[+-]\d{2}:?\d{2}$/.test(targetDatetime.trim())) {
+      targetDate = new Date(targetDatetime)
+    } else {
+      // No timezone in the string — interpret it in the configured timezone
+      try {
+        const naive = new Date(targetDatetime)
+        if (Number.isNaN(naive.getTime())) {
+          throw new NonRetriableError(
+            `Wait node: "${targetDatetime}" is not a valid datetime. ` +
+            `Use ISO format: 2025-06-15T09:00:00 or 2025-06-15T09:00:00Z`
+          )
+        }
+
+        // Get what UTC time corresponds to this "local" time in the target timezone
+        const utcString = naive.toLocaleString("en-US", { timeZone: "UTC" })
+        const tzString = naive.toLocaleString("en-US", { timeZone: timezone })
+        const utcMs = new Date(utcString).getTime()
+        const tzMs = new Date(tzString).getTime()
+        const offsetMs = utcMs - tzMs
+        targetDate = new Date(naive.getTime() + offsetMs)
+      } catch (err) {
+        if (err instanceof NonRetriableError) throw err
+        throw new NonRetriableError(
+          `Wait node: invalid timezone "${timezone}". ` +
+          `Use IANA format: Asia/Kolkata, UTC, America/New_York, Europe/London`
+        )
+      }
+    }
+
+    if (Number.isNaN(targetDate.getTime())) {
       await publish(
         waitChannel().status({
           nodeId,
           status: "error",
         })
       )
-      return {
-        ...context,
-        error: `Wait node: invalid datetime "${targetDatetime}"`,
-      }
+      throw new NonRetriableError(
+        `Wait node: "${targetDatetime}" is not a valid datetime.`
+      )
     }
 
     await publish(
