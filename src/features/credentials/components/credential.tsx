@@ -31,6 +31,8 @@ const formSchema = z.object({
     razorpayKeyId: z.string().optional(),
     razorpayKeySecret: z.string().optional(),
     msg91AuthKey: z.string().optional(),
+    shiprocketEmail: z.string().optional(),
+    shiprocketPassword: z.string().optional(),
     slackAuthType: z.enum(["bot_token", "webhook"]).optional(),
     slackBotToken: z.string().optional(),
     slackWebhookUrl: z.string().optional(),
@@ -98,6 +100,22 @@ const formSchema = z.object({
                 code: z.ZodIssueCode.custom,
                 message: "Auth Key is required",
                 path: ["msg91AuthKey"],
+            })
+        }
+    }
+    if (data.type === CredentialType.SHIPROCKET) {
+        if (!data.shiprocketEmail) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Email is required",
+                path: ["shiprocketEmail"],
+            })
+        }
+        if (!data.shiprocketPassword) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Password is required",
+                path: ["shiprocketPassword"],
             })
         }
     }
@@ -205,6 +223,11 @@ const credentialTypeOptions = [
         label: "MSG91",
         logo: "/logos/msg91.svg"
     },
+    {
+        value: CredentialType.SHIPROCKET,
+        label: "Shiprocket",
+        logo: "/logos/shiprocket.svg"
+    },
 
 ]
 
@@ -284,6 +307,21 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
         return { msg91AuthKey: "" }
     }, [initialData])
 
+    const shiprocketDefaults = useMemo(() => {
+        if (initialData?.type === CredentialType.SHIPROCKET && initialData.value) {
+            try {
+                const parsed = JSON.parse(initialData.value)
+                return {
+                    shiprocketEmail: parsed.email ?? "",
+                    shiprocketPassword: parsed.password ?? "",
+                }
+            } catch {
+                return { shiprocketEmail: "", shiprocketPassword: "" }
+            }
+        }
+        return { shiprocketEmail: "", shiprocketPassword: "" }
+    }, [initialData])
+
     const slackDefaults = useMemo(() => {
         if (initialData?.type === CredentialType.SLACK && initialData.value) {
             try {
@@ -312,7 +350,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: initialData
-            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...msg91Defaults, ...slackDefaults }
+            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...msg91Defaults, ...shiprocketDefaults, ...slackDefaults }
             : {
                 name: "",
                 type: CredentialType.OPENAI,
@@ -325,6 +363,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                 razorpayKeyId: "",
                 razorpayKeySecret: "",
                 msg91AuthKey: "",
+                shiprocketEmail: "",
+                shiprocketPassword: "",
                 slackAuthType: "bot_token",
                 slackBotToken: "",
                 slackWebhookUrl: "",
@@ -340,6 +380,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const isNotion = watchType === CredentialType.NOTION
     const isRazorpay = watchType === CredentialType.RAZORPAY
     const isMsg91 = watchType === CredentialType.MSG91
+    const isShiprocket = watchType === CredentialType.SHIPROCKET
     const isSlack = watchType === CredentialType.SLACK
     const watchSlackAuthType = form.watch("slackAuthType")
 
@@ -384,6 +425,14 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             })
         }
 
+        // For Shiprocket, encode email + password as JSON in the value field
+        if (values.type === CredentialType.SHIPROCKET) {
+            submitValues.value = JSON.stringify({
+                email: values.shiprocketEmail,
+                password: values.shiprocketPassword,
+            })
+        }
+
         // For Slack, encode based on auth type
         if (values.type === CredentialType.SLACK) {
             if (values.slackAuthType === "bot_token") {
@@ -399,7 +448,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             }
         }
 
-        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, msg91AuthKey, slackAuthType, slackBotToken, slackWebhookUrl, ...payload } = submitValues
+        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, msg91AuthKey, shiprocketEmail, shiprocketPassword, slackAuthType, slackBotToken, slackWebhookUrl, ...payload } = submitValues
 
         if (isEdit && initialData?.id) {
             await updateCredential.mutate({
@@ -737,6 +786,55 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                             </li>
                                             <li>Navigate to API → Auth Key</li>
                                             <li>Copy the Auth Key</li>
+                                        </ol>
+                                    </div>
+                                </>
+                            ) : isShiprocket ? (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="shiprocketEmail"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Email</FormLabel>
+                                                <FormControl>
+                                                    <Input type="email" placeholder="Enter your Shiprocket email" {...field} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    The email you use to log in to Shiprocket
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="shiprocketPassword"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Password</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" placeholder="Enter your Shiprocket password" {...field} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Your Shiprocket account password
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-2">ℹ️ How to get your Shiprocket credentials</p>
+                                        <ol className="list-decimal list-inside space-y-1">
+                                            <li>Go to{" "}
+                                                <a href="https://app.shiprocket.in" target="_blank" rel="noopener noreferrer" className="underline">
+                                                    app.shiprocket.in
+                                                </a>
+                                                {" "}and sign up or log in
+                                            </li>
+                                            <li>Use the same email and password here</li>
+                                            <li>Shiprocket uses JWT auth — credentials are used to generate a token</li>
                                         </ol>
                                     </div>
                                 </>

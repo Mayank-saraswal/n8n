@@ -36,6 +36,7 @@ import { ErrorTriggerNode } from "@/features/triggers/components/error-trigger/n
 import { RazorpayTriggerNode } from "@/features/triggers/components/razorpay-trigger/node";
 import { WhatsAppTriggerNode } from "@/features/triggers/components/whatsapp-trigger/node";
 import { Msg91Node } from "@/features/executions/components/msg91/node";
+import { ShiprocketNode } from "@/features/executions/components/shiprocket/node";
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -74,6 +75,7 @@ export const nodeComponents = {
     [NodeType.RAZORPAY_TRIGGER]: RazorpayTriggerNode,
     [NodeType.WHATSAPP_TRIGGER]: WhatsAppTriggerNode,
     [NodeType.MSG91]: Msg91Node,
+    [NodeType.SHIPROCKET]: ShiprocketNode,
     //change later
 
 

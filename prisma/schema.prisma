@@ -109,6 +109,7 @@ model workflow {
   razorpayTriggers   RazorpayTrigger[]
   whatsappTriggers   WhatsAppTrigger[]
   msg91Nodes         Msg91Node[]
+  shiprocketNodes    ShiprocketNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -150,6 +151,7 @@ enum NodeType {
   RAZORPAY_TRIGGER
   WHATSAPP_TRIGGER
   MSG91
+  SHIPROCKET
 }
 
 enum HttpMethod {
@@ -200,6 +202,7 @@ model Credential {
   type   CredentialType
   user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   Node   Node[]
+  shiprocketNodes ShiprocketNode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -224,6 +227,7 @@ enum CredentialType {
   RAZORPAY
   SLACK
   MSG91
+  SHIPROCKET
 }
 
 model Node {
@@ -1030,4 +1034,135 @@ enum Msg91Operation {
   SEND_EMAIL
   GET_BALANCE
   GET_REPORT
+}
+
+model ShiprocketNode {
+  id           String              @id @default(cuid())
+  nodeId       String              @unique
+  workflowId   String
+  credentialId String?
+
+  operation    ShiprocketOperation @default(CREATE_ORDER)
+  variableName String              @default("shiprocket")
+
+  // ── ORDER fields ──────────────────────────────────────────────────
+  orderId            String @default("") @db.Text
+  orderDate          String @default("")
+  channelId          String @default("")
+
+  billingName        String @default("") @db.Text
+  billingAddress     String @default("") @db.Text
+  billingAddress2    String @default("") @db.Text
+  billingCity        String @default("") @db.Text
+  billingState       String @default("") @db.Text
+  billingCountry     String @default("India")
+  billingPincode     String @default("") @db.Text
+  billingEmail       String @default("") @db.Text
+  billingPhone       String @default("") @db.Text
+  billingAlternatePhone String @default("") @db.Text
+
+  shippingIsBilling   Boolean @default(true)
+  shippingName        String @default("") @db.Text
+  shippingAddress     String @default("") @db.Text
+  shippingAddress2    String @default("") @db.Text
+  shippingCity        String @default("") @db.Text
+  shippingState       String @default("") @db.Text
+  shippingCountry     String @default("India")
+  shippingPincode     String @default("") @db.Text
+  shippingEmail       String @default("") @db.Text
+  shippingPhone       String @default("") @db.Text
+
+  orderItems         String @default("[]") @db.Text
+
+  paymentMethod      String @default("prepaid")
+  subTotal           String @default("") @db.Text
+  codAmount          String @default("0")
+
+  length             String @default("") @db.Text
+  breadth            String @default("") @db.Text
+  height             String @default("") @db.Text
+  weight             String @default("") @db.Text
+
+  shiprocketOrderId  String @default("") @db.Text
+  shipmentId         String @default("") @db.Text
+  awbCode            String @default("") @db.Text
+
+  courierId          String @default("") @db.Text
+  courierName        String @default("") @db.Text
+
+  // ── PICKUP ────────────────────────────────────────────────────────
+  pickupLocation     String @default("") @db.Text
+
+  // ── RATE/SERVICEABILITY ───────────────────────────────────────────
+  pickupPostcode     String @default("") @db.Text
+  deliveryPostcode   String @default("") @db.Text
+  cod                String @default("0")
+
+  // ── RETURN ───────────────────────────────────────────────────────
+  returnOrderId      String @default("") @db.Text
+  returnReason       String @default("") @db.Text
+  returnPickupLocation String @default("") @db.Text
+
+  // ── PRODUCT ──────────────────────────────────────────────────────
+  productName        String @default("") @db.Text
+  productSku         String @default("") @db.Text
+  productMrp         String @default("") @db.Text
+  productSellingPrice String @default("") @db.Text
+  productWeight      String @default("") @db.Text
+  productCategory    String @default("") @db.Text
+  productHsn         String @default("") @db.Text
+
+  // ── LIST filters ─────────────────────────────────────────────────
+  filterStatus       String @default("") @db.Text
+  pageNo             Int    @default(1)
+  perPage            Int    @default(10)
+
+  // ── WAREHOUSE ────────────────────────────────────────────────────
+  warehouseName      String @default("") @db.Text
+  warehouseEmail     String @default("") @db.Text
+  warehousePhone     String @default("") @db.Text
+  warehouseAddress   String @default("") @db.Text
+  warehouseCity      String @default("") @db.Text
+  warehouseState     String @default("") @db.Text
+  warehousePincode   String @default("") @db.Text
+  warehouseCountry   String @default("India")
+
+  cancelReason       String @default("") @db.Text
+
+  continueOnFail     Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workflow     workflow    @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  credential   Credential? @relation(fields: [credentialId], references: [id])
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+enum ShiprocketOperation {
+  CREATE_ORDER
+  GET_ORDER
+  CANCEL_ORDER
+  UPDATE_ORDER
+  GET_ORDER_TRACKING
+  CLONE_ORDER
+  GENERATE_AWB
+  GET_ORDERS_LIST
+  TRACK_SHIPMENT
+  ASSIGN_COURIER
+  GENERATE_LABEL
+  GENERATE_MANIFEST
+  REQUEST_PICKUP
+  GET_COURIER_LIST
+  GET_RATE
+  CHECK_SERVICEABILITY
+  CREATE_RETURN
+  GET_RETURN_REASONS
+  TRACK_RETURN
+  CREATE_PRODUCT
+  GET_PRODUCTS
+  GET_PICKUP_LOCATIONS
+  CREATE_PICKUP_LOCATION
 }
