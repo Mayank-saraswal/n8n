@@ -110,7 +110,7 @@ export const CodeDialog = ({
   const [code, setCode] = useState(DEFAULT_CODE)
   const [language, setLanguage] = useState("javascript")
   const [outputMode, setOutputMode] = useState<"append" | "replace" | "raw">("append")
-  const [timeout, setTimeoutMs] = useState(5000)
+  const [timeoutMs, setTimeoutMs] = useState(5000)
   const [continueOnFail, setContinueOnFail] = useState(false)
   const [allowedDomains, setAllowedDomains] = useState("")
   const [variableName, setVariableName] = useState("codeOutput")
@@ -173,7 +173,7 @@ export const CodeDialog = ({
         code,
         language,
         outputMode,
-        timeout,
+        timeout: timeoutMs,
         continueOnFail,
         allowedDomains,
         variableName,
@@ -241,7 +241,7 @@ export const CodeDialog = ({
                   min={100}
                   max={30000}
                   step={100}
-                  value={timeout}
+                  value={timeoutMs}
                   onChange={(e) => setTimeoutMs(Number(e.target.value))}
                   className="h-8 text-xs"
                 />

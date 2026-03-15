@@ -62,7 +62,7 @@ export const codeExecutor: NodeExecutor = async ({
       const timeout = config.timeout ?? 5000
       const outputMode = config.outputMode ?? "append"
       const allowedDomains = config.allowedDomains ?? ""
-      const variableName = (config as Record<string, unknown>).variableName as string | undefined
+      const variableName = config.variableName
 
       const { output, logs, executionMs, error } = await runCodeSandbox({
         code: config.code,
