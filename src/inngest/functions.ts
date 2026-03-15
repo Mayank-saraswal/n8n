@@ -34,8 +34,7 @@ import { notionChannel } from "./channels/notion";
 import { razorpayChannel } from "./channels/razorpay";
 import { gmailChannel } from "./channels/gmail";
 import { switchChannel } from "./channels/switch";
-
-
+import { waitChannel } from "./channels/wait";
 
 
 export const executeWorkflow = inngest.createFunction(
@@ -94,7 +93,8 @@ export const executeWorkflow = inngest.createFunction(
       notionChannel(),
       razorpayChannel(),
       gmailChannel(),
-      switchChannel()
+      switchChannel(),
+      waitChannel()
 
     ]
   },

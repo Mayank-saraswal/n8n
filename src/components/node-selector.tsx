@@ -1,7 +1,7 @@
 "use client"
 import { createId} from "@paralleldrive/cuid2"
 import { useReactFlow } from "@xyflow/react"
-import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, GitForkIcon, SlidersHorizontalIcon, TableIcon, CodeIcon, RepeatIcon} from "lucide-react"
+import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, GitForkIcon, SlidersHorizontalIcon, TableIcon, CodeIcon, RepeatIcon, TimerIcon} from "lucide-react"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { 
@@ -208,6 +208,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Razorpay",
         description:"Orders, payments, refunds, subscriptions",
         icon:"/logos/razorpay.svg"
+    },
+    {
+        type:NodeType.WAIT,
+        label:"Wait / Delay",
+        description:"Pause execution for a duration, until a time, or until webhook",
+        icon:TimerIcon
     }
 
 ]

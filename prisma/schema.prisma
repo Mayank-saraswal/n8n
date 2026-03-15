@@ -103,6 +103,7 @@ model workflow {
   slackNodes        SlackNode[]
   gmailWatchers     GmailWatcher[]
   switchNodes       SwitchNode[]
+  waitNodes         WaitNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -138,6 +139,7 @@ enum NodeType {
   NOTION
   RAZORPAY
   SWITCH
+  WAIT
 }
 
 enum HttpMethod {
@@ -768,6 +770,39 @@ model SlackNode {
   fileId           String         @default("")
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+model WaitNode {
+  id               String   @id @default(cuid())
+  nodeId           String   @unique
+  workflowId       String
+
+  // Resume mode: "duration" | "until" | "webhook"
+  waitMode         String   @default("duration")
+
+  // Duration mode fields
+  duration         Int      @default(30)
+  durationUnit     String   @default("minutes")
+
+  // Until mode fields
+  untilDatetime    String   @default("")
+  timezone         String   @default("UTC")
+
+  // Webhook mode fields
+  timeoutDuration  Int      @default(24)
+  timeoutUnit      String   @default("hours")
+  continueOnTimeout Boolean @default(true)
+
+  // Output
+  variableName     String   @default("wait")
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 

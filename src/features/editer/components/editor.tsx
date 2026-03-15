@@ -58,6 +58,7 @@ export const Editor = ({workflowId}:{workflowId:string}) => {
     const deleteSlack = useMutation(trpc.slack.delete.mutationOptions())
     const deleteSwitch = useMutation(trpc.switch.delete.mutationOptions())
     const deleteWhatsapp = useMutation(trpc.whatsapp.delete.mutationOptions())
+    const deleteWait = useMutation(trpc.wait.delete.mutationOptions())
 
     const onNodesDelete = useCallback((deletedNodes: Node[]) => {
       for (const node of deletedNodes) {
@@ -75,9 +76,10 @@ export const Editor = ({workflowId}:{workflowId:string}) => {
           case NodeType.SLACK: deleteSlack.mutate({ nodeId }); break
           case NodeType.SWITCH: deleteSwitch.mutate({ nodeId }); break
           case NodeType.WHATSAPP: deleteWhatsapp.mutate({ nodeId }); break
+          case NodeType.WAIT: deleteWait.mutate({ nodeId }); break
         }
       }
-    }, [deleteCode, deleteGmail, deleteGoogleDrive, deleteGoogleSheets, deleteIfElse, deleteLoop, deleteNotion, deleteRazorpay, deleteSetVariable, deleteSlack, deleteSwitch, deleteWhatsapp])
+    }, [deleteCode, deleteGmail, deleteGoogleDrive, deleteGoogleSheets, deleteIfElse, deleteLoop, deleteNotion, deleteRazorpay, deleteSetVariable, deleteSlack, deleteSwitch, deleteWhatsapp, deleteWait])
 
        const onNodesChange = useCallback(
     (changes:NodeChange[]) => setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),

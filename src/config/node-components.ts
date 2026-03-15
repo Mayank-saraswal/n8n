@@ -30,6 +30,7 @@ import { LoopNode } from "@/features/executions/components/loop/node";
 import { NotionNode } from "@/features/executions/components/notion/node";
 import { RazorpayNode } from "@/features/executions/components/razorpay/node";
 import { SwitchNode } from "@/features/executions/components/switch/node";
+import { WaitNode } from "@/features/executions/components/wait/node";
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -62,6 +63,7 @@ export const nodeComponents = {
     [NodeType.NOTION]: NotionNode,
     [NodeType.RAZORPAY]: RazorpayNode,
     [NodeType.SWITCH]: SwitchNode,
+    [NodeType.WAIT]: WaitNode,
     //change later
 
 
