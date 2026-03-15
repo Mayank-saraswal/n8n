@@ -327,7 +327,7 @@ export const msg91Executor: NodeExecutor<Msg91Data> = async ({
               throw new NonRetriableError(
                 "OTP verification failed: " +
                   ((responseData as Record<string, string>).message ??
-                    "OTP not match")
+                    "OTP does not match")
               )
             }
 
