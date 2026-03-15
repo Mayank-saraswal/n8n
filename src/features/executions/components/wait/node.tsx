@@ -88,7 +88,7 @@ export const WaitNode = memo((props: NodeProps<WaitNodeType>) => {
             <p className="text-[9px] text-muted-foreground truncate">
               Resume URL:
             </p>
-            <code className="text-[8px] text-blue-600 dark:text-blue-400 break-all select-all leading-tight block">
+            <code className="text-[10px] text-blue-600 dark:text-blue-400 break-all select-all leading-tight block">
               {resumeUrl}
             </code>
           </div>
