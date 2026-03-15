@@ -244,6 +244,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"MSG91",
         description:"SMS, OTP, WhatsApp, Voice, Email — India's #1",
         icon:"/logos/msg91.svg"
+    },
+    {
+        type:NodeType.SHIPROCKET,
+        label:"Shiprocket",
+        description:"Indian shipping — orders, tracking, returns, labels",
+        icon:"/logos/shiprocket.svg"
     }
 
 ]
