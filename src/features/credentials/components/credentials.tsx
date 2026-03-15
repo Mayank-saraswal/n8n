@@ -147,6 +147,7 @@ const credentialsLogos: Record<CredentialType, string> = {
   [CredentialType.NOTION]: "/logos/notion.svg",
   [CredentialType.RAZORPAY]: "/logos/razorpay.svg",
   [CredentialType.SLACK]: "/logos/slack.svg",
+  [CredentialType.MSG91]: "/logos/msg91.svg",
 }
 
 export const CredentialsItem = ({

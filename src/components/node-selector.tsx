@@ -238,6 +238,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Merge",
         description:"Combine data from multiple branches",
         icon:MergeIcon
+    },
+    {
+        type:NodeType.MSG91,
+        label:"MSG91",
+        description:"SMS, OTP, WhatsApp, Voice & Email via MSG91",
+        icon:"/logos/msg91.svg"
     }
 
 ]

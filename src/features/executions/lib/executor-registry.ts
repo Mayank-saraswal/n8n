@@ -34,6 +34,7 @@ import { mergeExecutor } from "../components/merge/executor";
 import { errorTriggerExecutor } from "../components/error-trigger/executor";
 import { razorpayTriggerExecutor } from "@/features/triggers/components/razorpay-trigger/executor";
 import { whatsappTriggerExecutor } from "@/features/triggers/components/whatsapp-trigger/executor";
+import { msg91Executor } from "../components/msg91/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -71,6 +72,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.ERROR_TRIGGER]: errorTriggerExecutor,
     [NodeType.RAZORPAY_TRIGGER]: razorpayTriggerExecutor,
     [NodeType.WHATSAPP_TRIGGER]: whatsappTriggerExecutor,
+    [NodeType.MSG91]: msg91Executor,
 
 }
 

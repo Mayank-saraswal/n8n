@@ -35,6 +35,7 @@ import { MergeNode } from "@/features/executions/components/merge/node";
 import { ErrorTriggerNode } from "@/features/triggers/components/error-trigger/node";
 import { RazorpayTriggerNode } from "@/features/triggers/components/razorpay-trigger/node";
 import { WhatsAppTriggerNode } from "@/features/triggers/components/whatsapp-trigger/node";
+import { Msg91Node } from "@/features/executions/components/msg91/node";
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -72,6 +73,7 @@ export const nodeComponents = {
     [NodeType.ERROR_TRIGGER]: ErrorTriggerNode,
     [NodeType.RAZORPAY_TRIGGER]: RazorpayTriggerNode,
     [NodeType.WHATSAPP_TRIGGER]: WhatsAppTriggerNode,
+    [NodeType.MSG91]: Msg91Node,
     //change later
 
 
