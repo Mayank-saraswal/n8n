@@ -36,6 +36,18 @@ import { gmailChannel } from "./channels/gmail";
 import { switchChannel } from "./channels/switch";
 import { waitChannel } from "./channels/wait";
 import { mergeChannel } from "./channels/merge";
+import { errorTriggerChannel } from "./channels/error-trigger";
+
+const MAX_JSON_LENGTH = 100_000;
+
+function truncateJson(obj: unknown): string {
+  try {
+    const json = JSON.stringify(obj);
+    return json.length > MAX_JSON_LENGTH ? json.slice(0, MAX_JSON_LENGTH) : json;
+  } catch {
+    return "";
+  }
+}
 
 
 export const executeWorkflow = inngest.createFunction(
@@ -48,7 +60,7 @@ export const executeWorkflow = inngest.createFunction(
     },
     onFailure: async ({ event, step }) => {
 
-      return await step.run("mark-execution-failed", async () => {
+      const updatedExecution = await step.run("mark-execution-failed", async () => {
         return prisma.execution.update({
           where: {
             inngestEventId: event.data.event.id,
@@ -59,7 +71,58 @@ export const executeWorkflow = inngest.createFunction(
             errorStack: event.data.error.stack,
 
           },
+          select: {
+            id: true,
+            workflowId: true,
+          },
         });
+      });
+
+      await step.run("fire-error-triggers", async () => {
+        const errorTriggerNodes = await prisma.errorTriggerNode.findMany({
+          where: { workflowId: updatedExecution.workflowId },
+        });
+        if (errorTriggerNodes.length === 0) return;
+
+        const failedNodeExecs = await prisma.nodeExecution.findMany({
+          where: {
+            executionId: updatedExecution.id,
+            status: "failed",
+          },
+          orderBy: { executionOrder: "desc" },
+          take: 1,
+        });
+        const failedNode = failedNodeExecs[0];
+
+        for (const trigger of errorTriggerNodes) {
+          await prisma.nodeExecution.create({
+            data: {
+              executionId: updatedExecution.id,
+              nodeId: trigger.nodeId,
+              nodeName: "Error Trigger",
+              nodeType: "ERROR_TRIGGER",
+              status: "success",
+              inputJson: JSON.stringify({
+                error: event.data.error.message,
+                nodeName: failedNode?.nodeName ?? "",
+                nodeId: failedNode?.nodeId ?? "",
+              }),
+              outputJson: JSON.stringify({
+                [trigger.variableName]: {
+                  message: event.data.error.message,
+                  stack: event.data.error.stack,
+                  nodeName: failedNode?.nodeName ?? "",
+                  nodeId: failedNode?.nodeId ?? "",
+                  executionId: updatedExecution.id,
+                  workflowId: updatedExecution.workflowId,
+                  timestamp: new Date().toISOString(),
+                },
+              }),
+              durationMs: 0,
+              executionOrder: 9999,
+            },
+          });
+        }
       });
     }
 
@@ -96,7 +159,8 @@ export const executeWorkflow = inngest.createFunction(
       gmailChannel(),
       switchChannel(),
       waitChannel(),
-      mergeChannel()
+      mergeChannel(),
+      errorTriggerChannel(),
 
     ]
   },
@@ -117,6 +181,9 @@ export const executeWorkflow = inngest.createFunction(
         },
       });
     });
+
+    const executionDbId = execution.id;
+    let nodeOrder = 0;
 
     const preparedWorkflow = await step.run("prepare-workflow", async () => {
       const workflow = await prisma.workflow.findUniqueOrThrow({
@@ -200,16 +267,45 @@ export const executeWorkflow = inngest.createFunction(
           if (executedByLoop.has(node.id)) continue
 
           const executor = resolveExecutor(node.type as NodeType)
-          context = await executor({
-            data: node.data as Record<string, unknown>,
-            nodeId: node.id,
-            userId,
-            context,
-            step,
-            publish,
-            workflowNodes,
-            workflowConnections,
-          })
+          const nodeStartTime = Date.now()
+          let nodeOutput: Record<string, unknown> = {}
+          let nodeStatus = "success"
+          let nodeError = ""
+          try {
+            context = await executor({
+              data: node.data as Record<string, unknown>,
+              nodeId: node.id,
+              userId,
+              context,
+              step,
+              publish,
+              workflowNodes,
+              workflowConnections,
+            })
+            nodeOutput = context
+          } catch (err) {
+            nodeStatus = "failed"
+            nodeError = err instanceof Error ? err.message : String(err)
+            throw err
+          } finally {
+            nodeOrder++
+            await step.run(`snapshot-node-${node.id}`, async () => {
+              return prisma.nodeExecution.create({
+                data: {
+                  executionId: executionDbId,
+                  nodeId: node.id,
+                  nodeName: (node.data as Record<string, string>)?.label || "",
+                  nodeType: node.type,
+                  status: nodeStatus,
+                  inputJson: truncateJson(context),
+                  outputJson: truncateJson(nodeOutput),
+                  errorMessage: nodeError,
+                  durationMs: Date.now() - nodeStartTime,
+                  executionOrder: nodeOrder,
+                },
+              })
+            })
+          }
 
           // Handle IF_ELSE branching: skip nodes on the non-taken branch
           if (node.type === NodeType.IF_ELSE || node.type === NodeType.SWITCH) {
@@ -248,20 +344,50 @@ export const executeWorkflow = inngest.createFunction(
         // Each node receives the SAME input context (snapshot before this level)
         // Their outputs are merged after all complete
         const contextSnapshot = { ...context }
+        const parallelStartTimes = executableNodes.map(() => Date.now())
 
         const results = await Promise.all(
-          executableNodes.map((node) => {
+          executableNodes.map(async (node, idx) => {
             const executor = resolveExecutor(node.type as NodeType)
-            return executor({
-              data: node.data as Record<string, unknown>,
-              nodeId: node.id,
-              userId,
-              context: contextSnapshot,
-              step,
-              publish,
-              workflowNodes,
-              workflowConnections,
-            })
+            parallelStartTimes[idx] = Date.now()
+            let nodeStatus = "success"
+            let nodeError = ""
+            let nodeOutput: Record<string, unknown> = {}
+            try {
+              nodeOutput = await executor({
+                data: node.data as Record<string, unknown>,
+                nodeId: node.id,
+                userId,
+                context: contextSnapshot,
+                step,
+                publish,
+                workflowNodes,
+                workflowConnections,
+              })
+              return nodeOutput
+            } catch (err) {
+              nodeStatus = "failed"
+              nodeError = err instanceof Error ? err.message : String(err)
+              throw err
+            } finally {
+              nodeOrder++
+              await step.run(`snapshot-node-${node.id}`, async () => {
+                return prisma.nodeExecution.create({
+                  data: {
+                    executionId: executionDbId,
+                    nodeId: node.id,
+                    nodeName: (node.data as Record<string, string>)?.label || "",
+                    nodeType: node.type,
+                    status: nodeStatus,
+                    inputJson: truncateJson(contextSnapshot),
+                    outputJson: truncateJson(nodeOutput),
+                    errorMessage: nodeError,
+                    durationMs: Date.now() - parallelStartTimes[idx],
+                    executionOrder: nodeOrder,
+                  },
+                })
+              })
+            }
           })
         )
 

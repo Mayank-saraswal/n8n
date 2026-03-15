@@ -31,6 +31,7 @@ import { razorpayExecutor } from "../components/razorpay/executor";
 import { switchExecutor } from "../components/switch/executor";
 import { waitExecutor } from "../components/wait/executor";
 import { mergeExecutor } from "../components/merge/executor";
+import { errorTriggerExecutor } from "../components/error-trigger/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -65,6 +66,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.SWITCH]: switchExecutor,
     [NodeType.WAIT]: waitExecutor,
     [NodeType.MERGE]: mergeExecutor,
+    [NodeType.ERROR_TRIGGER]: errorTriggerExecutor,
 
 }
 
