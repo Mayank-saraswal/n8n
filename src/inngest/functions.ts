@@ -42,18 +42,24 @@ export const executeWorkflow = inngest.createFunction(
   {
     id: "execute-workflow",
     retries: process.env.NODE_ENV === "production" ? 3 : 0,
+    concurrency: {
+      limit: 10,
+      key: "event.data.workflowId",
+    },
     onFailure: async ({ event, step }) => {
 
-      return await prisma.execution.update({
-        where: {
-          inngestEventId: event.data.event.id,
-        },
-        data: {
-          status: ExecutionStatus.FAILED,
-          error: event.data.error.message,
-          errorStack: event.data.error.stack,
+      return await step.run("mark-execution-failed", async () => {
+        return prisma.execution.update({
+          where: {
+            inngestEventId: event.data.event.id,
+          },
+          data: {
+            status: ExecutionStatus.FAILED,
+            error: event.data.error.message,
+            errorStack: event.data.error.stack,
 
-        },
+          },
+        });
       });
     }
 

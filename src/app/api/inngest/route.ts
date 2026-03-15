@@ -6,6 +6,7 @@ import { gmailWatchRenewal } from "@/inngest/functions/gmail-watch-renewal";
 import { gmailTriggerHandler } from "@/inngest/functions/gmail-trigger-handler";
 
 export const runtime = "nodejs"
+export const maxDuration = 800
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
