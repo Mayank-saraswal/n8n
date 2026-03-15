@@ -198,7 +198,7 @@ export const shiprocketExecutor: NodeExecutor<ShiprocketData> = async ({
               billing_email: r(config.billingEmail),
               billing_phone: r(config.billingPhone),
               billing_alternate_phone: r(config.billingAlternatePhone),
-              shipping_is_billing: config.shippingIsBilling,
+              shipping_is_billing: config.shippingIsBilling ? 1 : 0,
               order_items: items,
               payment_method: r(config.paymentMethod),
               sub_total: Number(r(config.subTotal)) || 0,
@@ -208,8 +208,9 @@ export const shiprocketExecutor: NodeExecutor<ShiprocketData> = async ({
               weight: Number(r(config.weight)) || 0,
             }
 
-            if (r(config.codAmount) && r(config.codAmount) !== "0") {
-              orderBody.cod_amount = Number(r(config.codAmount))
+            const resolvedCodAmount = r(config.codAmount)
+            if (resolvedCodAmount && resolvedCodAmount !== "0") {
+              orderBody.cod_amount = Number(resolvedCodAmount)
             }
 
             if (!config.shippingIsBilling) {
@@ -247,9 +248,14 @@ export const shiprocketExecutor: NodeExecutor<ShiprocketData> = async ({
           case ShiprocketOperation.CANCEL_ORDER: {
             const ids = r(config.shiprocketOrderId)
             if (!ids) throw new NonRetriableError("Shiprocket Order ID is required for CANCEL_ORDER")
-            const responseData = await shiprocketRequest("POST", "/orders/cancel", token, {
+            const cancelBody: Record<string, unknown> = {
               ids: [Number(ids)],
-            })
+            }
+            const resolvedReason = r(config.cancelReason)
+            if (resolvedReason) {
+              cancelBody.reason = resolvedReason
+            }
+            const responseData = await shiprocketRequest("POST", "/orders/cancel", token, cancelBody)
             return {
               operation: "CANCEL_ORDER",
               orderId: ids,
@@ -514,6 +520,11 @@ export const shiprocketExecutor: NodeExecutor<ShiprocketData> = async ({
               breadth: Number(r(config.breadth)) || 0,
               height: Number(r(config.height)) || 0,
               weight: Number(r(config.weight)) || 0,
+            }
+
+            const resolvedReturnPickup = r(config.returnPickupLocation)
+            if (resolvedReturnPickup) {
+              returnBody.pickup_location = resolvedReturnPickup
             }
 
             const responseData = await shiprocketRequest("POST", "/orders/create/return", token, returnBody)
