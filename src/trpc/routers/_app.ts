@@ -24,6 +24,7 @@ import { razorpayRouter } from '@/server/routers/razorpay.router';
 import { slackRouter } from '@/server/routers/slack.router';
 import { switchRouter } from '@/server/routers/switch.router';
 import { waitRouter } from '@/server/routers/wait.router';
+import { mergeRouter } from '@/server/routers/merge.router';
 export const appRouter = createTRPCRouter({
   workflows: workflowsRouter,
   credentials:credentialsRouter,
@@ -44,6 +45,7 @@ export const appRouter = createTRPCRouter({
   slack: slackRouter,
   switch: switchRouter,
   wait: waitRouter,
+  merge: mergeRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;

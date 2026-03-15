@@ -104,6 +104,7 @@ model workflow {
   gmailWatchers     GmailWatcher[]
   switchNodes       SwitchNode[]
   waitNodes         WaitNode[]
+  mergeNodes        MergeNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -140,6 +141,7 @@ enum NodeType {
   RAZORPAY
   SWITCH
   WAIT
+  MERGE
 }
 
 enum HttpMethod {
@@ -805,6 +807,55 @@ model WaitNode {
   updatedAt        DateTime @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+model MergeNode {
+  id           String @id @default(cuid())
+  nodeId       String @unique
+  workflowId   String
+
+  // How many input branches to wait for (2-10)
+  inputCount   Int    @default(2)
+
+  // Merge strategy:
+  // "position"   — zip by index position
+  // "combine"    — combine all fields from all branches into one object (default)
+  // "crossJoin"  — cartesian product of all items
+  // "keyMatch"   — inner join by a key field
+  // "keyDiff"    — outer difference — items in branch1 NOT in branch2
+  mergeMode    String @default("combine")
+
+  // For keyMatch and keyDiff modes:
+  // The dot-path field to match on e.g. "orderId" or "email"
+  // Supports {{variables}} — resolved at runtime
+  matchKey1    String @default("")
+  matchKey2    String @default("")
+
+  // For position mode:
+  // "shortest" — zip to shortest branch length
+  // "longest"  — pad shorter branches with null
+  positionFill String @default("shortest")
+
+  // Branch variable name selection
+  // branchKey1/branchKey2 — variable names of the first/second branch (e.g. "gmail", "slack")
+  // branchKeys — comma-separated list for 3+ branch modes (e.g. "gmail,slack,notion")
+  branchKey1   String @default("")
+  branchKey2   String @default("")
+  branchKeys   String @default("")
+
+  // Wait for ALL branches to complete before merging
+  waitForAll   Boolean @default(true)
+
+  // Output variable name
+  variableName String @default("merge")
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workflow     workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@index([workflowId])
   @@index([nodeId])
