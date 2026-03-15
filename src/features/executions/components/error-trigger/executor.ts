@@ -1,27 +1,12 @@
 import type { NodeExecutor } from "@/features/executions/types"
-import { errorTriggerChannel } from "@/inngest/channels/error-trigger"
 
-export const errorTriggerExecutor: NodeExecutor = async ({
-  nodeId,
-  context,
-  step,
-  publish,
-}) => {
-  await publish(
-    errorTriggerChannel().status({
-      nodeId,
-      status: "loading",
-    })
-  )
-
-  const result = await step.run(`error-trigger-${nodeId}`, async () => context)
-
-  await publish(
-    errorTriggerChannel().status({
-      nodeId,
-      status: "success",
-    })
-  )
-
-  return result
+/**
+ * Error Trigger executor — pass-through only.
+ * This node never runs in the normal execution flow.
+ * It fires via the separate executeErrorTriggeredWorkflow
+ * Inngest function when any node throws NonRetriableError.
+ * No channel publishing needed here.
+ */
+export const errorTriggerExecutor: NodeExecutor = async ({ context }) => {
+  return context
 }
