@@ -7,7 +7,7 @@ type CalloutType = "info" | "warning" | "danger" | "tip";
 
 const config: Record<
   CalloutType,
-  { border: string; bg: string; icon: React.ElementType; iconColor: string }
+  { border: string; bg: string; icon: React.ComponentType<{ className?: string }>; iconColor: string }
 > = {
   info: {
     border: "border-l-blue-500",
