@@ -267,19 +267,14 @@ export async function runCodeSandbox(
         info: (...args: unknown[]) => logFn("[INFO]", ...args),
       },
       fetch: safeFetch,
-      // Standard safe globals
+      // Standard safe globals — only inject primitives that the vm context
+      // does NOT provide on its own. Array, Object, String, Number, Boolean,
+      // RegExp, Map, Set, Promise are NOT injected here because
+      // vm.createContext() already provides fresh V8-internal versions.
+      // Injecting the host's versions would leak the host prototype chain.
       JSON,
       Math,
       Date,
-      Array,
-      Object,
-      String: globalThis.String,
-      Number: globalThis.Number,
-      Boolean: globalThis.Boolean,
-      RegExp,
-      Map,
-      Set,
-      Promise,
       parseInt: globalThis.parseInt,
       parseFloat: globalThis.parseFloat,
       isNaN: globalThis.isNaN,
