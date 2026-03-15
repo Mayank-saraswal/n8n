@@ -344,7 +344,7 @@ export const executeWorkflow = inngest.createFunction(
         // Each node receives the SAME input context (snapshot before this level)
         // Their outputs are merged after all complete
         const contextSnapshot = { ...context }
-        const parallelStartTimes = executableNodes.map(() => Date.now())
+        const parallelStartTimes: number[] = new Array(executableNodes.length)
 
         const results = await Promise.all(
           executableNodes.map(async (node, idx) => {
