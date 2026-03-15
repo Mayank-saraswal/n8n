@@ -100,10 +100,11 @@ export async function POST(
           continue
         }
 
-        // Handle "messages" field — incoming messages
         if (field === "messages") {
           const messages =
             (value.messages as Array<Record<string, unknown>>) ?? []
+          const statuses =
+            (value.statuses as Array<Record<string, unknown>>) ?? []
           const contacts =
             (value.contacts as Array<Record<string, unknown>>) ?? []
           const metadata = value.metadata as Record<string, unknown> | undefined
@@ -116,60 +117,87 @@ export async function POST(
             continue
           }
 
-          for (const message of messages) {
-            const messageType = message.type as string
+          // Process incoming messages
+          for (const msg of messages) {
+            const msgType = msg.type as string
 
             // Filter by messageTypes if configured
             if (
               messageTypes.length > 0 &&
-              !messageTypes.includes(messageType)
+              !messageTypes.includes(msgType)
             ) {
               continue
             }
 
-            // Ignore own messages (status messages from bot)
+            // Ignore own messages (prevents infinite loops)
             if (
               trigger.ignoreOwnMessages &&
-              (message as Record<string, unknown>).from ===
-                metadata?.phone_number_id
+              msg.from === metadata?.phone_number_id
             ) {
               continue
             }
 
-            const contact = contacts[0] ?? {}
+            const contact = contacts[0] as Record<string, unknown> | undefined
+            const profile = contact?.profile as Record<string, unknown> | undefined
+
+            // Extract text body
+            const textObj = msg.text as Record<string, unknown> | undefined
+
+            // Extract media fields (image, audio, video, document, sticker)
+            const mediaObj = (msg[msgType] ?? {}) as Record<string, unknown>
+
+            // Extract location fields
+            const locObj = msg.location as Record<string, unknown> | undefined
+
+            // Extract interactive reply
+            const interactive = msg.interactive as Record<string, unknown> | undefined
+            const buttonReply = interactive?.button_reply as Record<string, unknown> | undefined
+            const listReply = interactive?.list_reply as Record<string, unknown> | undefined
+
+            // Extract reaction
+            const reactionObj = msg.reaction as Record<string, unknown> | undefined
 
             await sendWorkflowExecution({
               workflowId: trigger.workflow.id,
               initialData: {
                 [variableName]: {
                   eventType: "message",
-                  messageType,
-                  message,
-                  contact,
-                  metadata: metadata ?? {},
-                  rawEntry: entry,
+                  messageId: msg.id ?? null,
+                  from: msg.from ?? null,
+                  senderName: profile?.name ?? contact?.wa_id ?? null,
+                  type: msgType,
+                  timestamp: msg.timestamp ?? null,
+                  phoneNumberId: metadata?.phone_number_id ?? null,
+                  // Text
+                  text: textObj?.body ?? null,
+                  // Media (image, audio, video, document, sticker)
+                  mediaId: mediaObj?.id ?? null,
+                  caption: mediaObj?.caption ?? null,
+                  filename: mediaObj?.filename ?? null,
+                  // Location
+                  latitude: locObj?.latitude ?? null,
+                  longitude: locObj?.longitude ?? null,
+                  locationName: locObj?.name ?? null,
+                  address: locObj?.address ?? null,
+                  // Interactive button reply
+                  buttonId: buttonReply?.id ?? null,
+                  buttonTitle: buttonReply?.title ?? null,
+                  // Interactive list reply
+                  listId: listReply?.id ?? null,
+                  listTitle: listReply?.title ?? null,
+                  // Reaction
+                  emoji: reactionObj?.emoji ?? null,
+                  reactedToMsgId: reactionObj?.message_id ?? null,
+                  // Raw message for advanced use
+                  raw: msg,
                   headers,
                   receivedAt,
                 },
               },
             })
           }
-        }
 
-        // Handle "statuses" within messages field — message status updates
-        if (field === "messages") {
-          const statuses =
-            (value.statuses as Array<Record<string, unknown>>) ?? []
-          const metadata = value.metadata as Record<string, unknown> | undefined
-
-          // Filter by phoneNumberId if configured
-          if (
-            trigger.phoneNumberId &&
-            metadata?.phone_number_id !== trigger.phoneNumberId
-          ) {
-            continue
-          }
-
+          // Process status updates
           if (
             activeEvents.length === 0 ||
             activeEvents.includes("message_status")
@@ -191,10 +219,8 @@ export async function POST(
               })
             }
           }
-        }
-
-        // Handle other fields (errors, etc.)
-        if (field !== "messages") {
+        } else {
+          // Handle other fields (errors, etc.)
           await sendWorkflowExecution({
             workflowId: trigger.workflow.id,
             initialData: {

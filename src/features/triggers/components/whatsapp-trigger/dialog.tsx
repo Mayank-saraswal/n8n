@@ -72,10 +72,12 @@ export const WhatsAppTriggerDialog = ({
   )
 
   const [phoneNumberId, setPhoneNumberId] = useState("")
+  const [variableName, setVariableName] = useState("whatsappTrigger")
 
   useEffect(() => {
     if (triggerConfig) {
       setPhoneNumberId(triggerConfig.phoneNumberId)
+      setVariableName(triggerConfig.variableName || "whatsappTrigger")
     }
   }, [triggerConfig])
 
@@ -116,6 +118,7 @@ export const WhatsAppTriggerDialog = ({
       phoneNumberId,
       activeEvents: [],
       messageTypes: [],
+      variableName,
     })
   }
 
@@ -204,6 +207,31 @@ export const WhatsAppTriggerDialog = ({
               </p>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="whatsapp-variable-name">
+                Variable Name
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="whatsapp-variable-name"
+                  value={variableName}
+                  onChange={(e) => setVariableName(e.target.value)}
+                  placeholder="whatsappTrigger"
+                  className="font-mono text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSave}
+                >
+                  Save
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Name used to reference trigger data in downstream nodes.
+              </p>
+            </div>
+
             <div className="rounded-lg bg-muted p-4 space-y-2">
               <h4 className="font-medium text-sm">Setup instructions:</h4>
               <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
@@ -222,27 +250,39 @@ export const WhatsAppTriggerDialog = ({
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>
                   <code className="bg-background px-1 py-0.5 rounded">
-                    {"{{whatsappTrigger.messageType}}"}
+                    {`{{${variableName}.from}}`}
+                  </code>
+                  - Sender phone number
+                </li>
+                <li>
+                  <code className="bg-background px-1 py-0.5 rounded">
+                    {`{{${variableName}.senderName}}`}
+                  </code>
+                  - Sender profile name
+                </li>
+                <li>
+                  <code className="bg-background px-1 py-0.5 rounded">
+                    {`{{${variableName}.type}}`}
                   </code>
                   - Message type (text, image, audio, etc.)
                 </li>
                 <li>
                   <code className="bg-background px-1 py-0.5 rounded">
-                    {"{{whatsappTrigger.message}}"}
+                    {`{{${variableName}.text}}`}
                   </code>
-                  - Full message object
+                  - Text body (for text messages)
                 </li>
                 <li>
                   <code className="bg-background px-1 py-0.5 rounded">
-                    {"{{whatsappTrigger.contact}}"}
+                    {`{{${variableName}.mediaId}}`}
                   </code>
-                  - Sender contact info
+                  - Media ID (for image/audio/video/document)
                 </li>
                 <li>
                   <code className="bg-background px-1 py-0.5 rounded">
-                    {"{{json whatsappTrigger}}"}
+                    {`{{json ${variableName}.raw}}`}
                   </code>
-                  - Full event data as JSON
+                  - Full raw message as JSON
                 </li>
               </ul>
             </div>
