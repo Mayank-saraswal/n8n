@@ -115,6 +115,7 @@ export const RazorpayTriggerDialog = ({
         activeEvents: [],
       })
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, isLoading, triggerConfig, nodeId, workflowId])
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
