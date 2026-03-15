@@ -1,8 +1,8 @@
-import vm from "vm"
 import { NonRetriableError } from "inngest"
 import type { NodeExecutor } from "@/features/executions/types"
 import prisma from "@/lib/db"
 import { codeChannel } from "@/inngest/channels/code"
+import { runCodeSandbox } from "@/features/executions/lib/code-sandbox"
 
 export const codeExecutor: NodeExecutor = async ({
   nodeId,
@@ -31,58 +31,92 @@ export const codeExecutor: NodeExecutor = async ({
     throw new NonRetriableError("Code node has no code to execute")
   }
 
-  const result = await step.run(`code-${nodeId}-execute`, async () => {
-    // Create sandbox with $input = full context
-    // Security: Only expose safe built-ins. Do NOT expose require, import,
-    // process, __dirname, __filename, fetch, fs, path, child_process.
-    const sandbox = {
-      $input: context,
-      $json: context,
-      console: {
-        log: (...args: any[]) => console.log("[CodeNode]", ...args),
-        error: (...args: any[]) => console.error("[CodeNode]", ...args),
-      },
-      result: undefined as any,
-    }
+  try {
+    const result = await step.run(`code-${nodeId}-execute`, async () => {
+      const timeout = codeNode.timeout ?? 5000
+      const outputMode = codeNode.outputMode ?? "append"
+      const allowedDomains = codeNode.allowedDomains ?? ""
 
-    // Wrap user code to capture return value
-    const wrappedCode = `
-      (function() {
-        ${codeNode.code}
-      })()
-    `
+      try {
+        const { output, logs } = await runCodeSandbox({
+          code: codeNode.code,
+          context,
+          language: codeNode.language ?? "javascript",
+          timeout,
+          allowedDomains,
+        })
 
-    try {
-      const script = new vm.Script(wrappedCode)
-      const vmContext = vm.createContext(sandbox)
-      const output = script.runInContext(vmContext, { timeout: 5000 })
+        // Log captured console output
+        for (const line of logs) {
+          console.log(`[CodeNode ${nodeId}]`, line)
+        }
 
-      // If user returned something, use it. Otherwise pass context through.
-      if (output !== undefined && output !== null) {
-        if (Array.isArray(output)) {
+        // Apply output based on outputMode
+        if (outputMode === "raw") {
+          // Raw mode: return the output directly as the full context
+          if (output !== undefined && output !== null && typeof output === "object" && !Array.isArray(output)) {
+            return output as Record<string, unknown>
+          }
+          return { codeOutput: output ?? null }
+        }
+
+        if (outputMode === "replace") {
+          // Replace mode: output replaces context entirely
+          if (output !== undefined && output !== null && typeof output === "object" && !Array.isArray(output)) {
+            return output as Record<string, unknown>
+          }
+          return { codeOutput: output ?? null }
+        }
+
+        // Default: "append" mode — merge into existing context
+        if (output !== undefined && output !== null) {
+          if (Array.isArray(output)) {
+            return { ...context, codeOutput: output }
+          }
+          if (typeof output === "object") {
+            return { ...context, ...output }
+          }
           return { ...context, codeOutput: output }
         }
-        if (typeof output === "object") {
-          return { ...context, ...output }
+
+        return context
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err)
+        if (message.includes("timed out") || message.includes("Script execution timed out")) {
+          throw new NonRetriableError(
+            `Code node timed out after ${timeout}ms`
+          )
         }
-        return { ...context, codeOutput: output }
+        throw new NonRetriableError(`Code execution error: ${message}`)
       }
-
-      return context
-    } catch (err: any) {
-      if (err.code === "ERR_SCRIPT_EXECUTION_TIMEOUT") {
-        throw new NonRetriableError("Code node timed out after 5 seconds")
-      }
-      throw new NonRetriableError(`Code execution error: ${err.message}`)
-    }
-  })
-
-  await publish(
-    codeChannel().status({
-      nodeId,
-      status: "success",
     })
-  )
 
-  return result as Record<string, unknown>
+    await publish(
+      codeChannel().status({
+        nodeId,
+        status: "success",
+      })
+    )
+
+    return result as Record<string, unknown>
+  } catch (err) {
+    if (codeNode.continueOnFail) {
+      await publish(
+        codeChannel().status({
+          nodeId,
+          status: "success",
+        })
+      )
+      const message = err instanceof Error ? err.message : String(err)
+      return { ...context, codeError: message }
+    }
+
+    await publish(
+      codeChannel().status({
+        nodeId,
+        status: "error",
+      })
+    )
+    throw err
+  }
 }

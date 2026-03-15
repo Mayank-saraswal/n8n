@@ -489,12 +489,17 @@ model GoogleDriveNode {
 }
 
 model CodeNode {
-  id         String   @id @default(cuid())
-  nodeId     String   @unique
-  workflowId String
-  code       String   @db.Text
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String   @id @default(cuid())
+  nodeId         String   @unique
+  workflowId     String
+  code           String   @db.Text
+  language       String   @default("javascript")
+  outputMode     String   @default("append")
+  timeout        Int      @default(5000)
+  continueOnFail Boolean  @default(false)
+  allowedDomains String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 

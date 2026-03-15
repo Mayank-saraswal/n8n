@@ -24,6 +24,11 @@ export const codeRouter = createTRPCRouter({
         nodeId: z.string(),
         workflowId: z.string(),
         code: z.string(),
+        language: z.string().default("javascript"),
+        outputMode: z.enum(["append", "replace", "raw"]).default("append"),
+        timeout: z.number().int().min(100).max(30000).default(5000),
+        continueOnFail: z.boolean().default(false),
+        allowedDomains: z.string().default(""),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -42,8 +47,20 @@ export const codeRouter = createTRPCRouter({
           nodeId: input.nodeId,
           workflowId: input.workflowId,
           code: input.code,
+          language: input.language,
+          outputMode: input.outputMode,
+          timeout: input.timeout,
+          continueOnFail: input.continueOnFail,
+          allowedDomains: input.allowedDomains,
         },
-        update: { code: input.code },
+        update: {
+          code: input.code,
+          language: input.language,
+          outputMode: input.outputMode,
+          timeout: input.timeout,
+          continueOnFail: input.continueOnFail,
+          allowedDomains: input.allowedDomains,
+        },
       })
     }),
 
