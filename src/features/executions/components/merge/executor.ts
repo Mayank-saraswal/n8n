@@ -106,7 +106,7 @@ export const mergeExecutor: NodeExecutor = async ({
   const result = await step.run(`merge-${nodeId}-execute`, async () => {
     switch (mode) {
       case "position": {
-        const fill = (config.positionFill === "longest" ? "longest" : "shortest") as "shortest" | "longest"
+        const fill = config.positionFill === "longest" ? "longest" : "shortest"
         return mergeByPosition(branchValues, fill)
       }
 
