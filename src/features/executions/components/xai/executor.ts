@@ -1,3 +1,4 @@
+import type { LanguageModel } from "ai";
 import type { NodeExecutor } from "@/features/executions/types";
 import { NonRetriableError } from "inngest";
 import { createXai } from "@ai-sdk/xai";
@@ -98,7 +99,7 @@ export const xAiExecutor: NodeExecutor<XaiData> = async ({
             "xai-generate-text",
             generateText,
             {
-                model: xai("grok-2") as any,
+                model: xai("grok-2") as LanguageModel,
                 prompt: userPrompt,
                 system: systemPrompt,
                 experimental_telemetry: {
