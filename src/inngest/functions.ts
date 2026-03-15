@@ -281,6 +281,7 @@ export const executeWorkflow = inngest.createFunction(
           if (executedByLoop.has(node.id)) continue
 
           const executor = resolveExecutor(node.type as NodeType)
+          const inputSnapshot = { ...context }
           const nodeStartTime = Date.now()
           let nodeOutput: Record<string, unknown> = {}
           let nodeStatus = "success"
@@ -308,10 +309,10 @@ export const executeWorkflow = inngest.createFunction(
                 data: {
                   executionId: executionDbId,
                   nodeId: node.id,
-                  nodeName: (node.data as Record<string, string>)?.label || "",
+                  nodeName: node.name,
                   nodeType: node.type,
                   status: nodeStatus,
-                  inputJson: truncateJson(context),
+                  inputJson: truncateJson(inputSnapshot),
                   outputJson: truncateJson(nodeOutput),
                   errorMessage: nodeError,
                   durationMs: Date.now() - nodeStartTime,
@@ -390,7 +391,7 @@ export const executeWorkflow = inngest.createFunction(
                   data: {
                     executionId: executionDbId,
                     nodeId: node.id,
-                    nodeName: (node.data as Record<string, string>)?.label || "",
+                    nodeName: node.name,
                     nodeType: node.type,
                     status: nodeStatus,
                     inputJson: truncateJson(contextSnapshot),
