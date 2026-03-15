@@ -25,6 +25,7 @@ import { slackRouter } from '@/server/routers/slack.router';
 import { switchRouter } from '@/server/routers/switch.router';
 import { waitRouter } from '@/server/routers/wait.router';
 import { mergeRouter } from '@/server/routers/merge.router';
+import { errorTriggerRouter } from '@/server/routers/error-trigger.router';
 export const appRouter = createTRPCRouter({
   workflows: workflowsRouter,
   credentials:credentialsRouter,
@@ -46,6 +47,7 @@ export const appRouter = createTRPCRouter({
   switch: switchRouter,
   wait: waitRouter,
   merge: mergeRouter,
+  errorTrigger: errorTriggerRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;

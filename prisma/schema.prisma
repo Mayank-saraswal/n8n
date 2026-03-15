@@ -105,6 +105,7 @@ model workflow {
   switchNodes       SwitchNode[]
   waitNodes         WaitNode[]
   mergeNodes        MergeNode[]
+  errorTriggerNodes ErrorTriggerNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -142,6 +143,7 @@ enum NodeType {
   SWITCH
   WAIT
   MERGE
+  ERROR_TRIGGER
 }
 
 enum HttpMethod {
@@ -267,6 +269,34 @@ model Execution {
   error          String?         @db.Text
   errorStack     String?         @db.Text
   status         ExecutionStatus @default(RUNNING)
+  nodeExecutions NodeExecution[]
+}
+
+model NodeExecution {
+  id             String    @id @default(cuid())
+  executionId    String
+  execution      Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  nodeId         String
+  nodeName       String    @default("")
+  nodeType       String    @default("")
+
+  status         String    @default("success")
+
+  inputJson      String    @default("") @db.Text
+  outputJson     String    @default("") @db.Text
+
+  errorMessage   String    @default("")
+
+  durationMs     Int       @default(0)
+
+  executionOrder Int       @default(0)
+
+  createdAt      DateTime  @default(now())
+
+  @@index([executionId])
+  @@index([nodeId])
+  @@index([executionId, executionOrder])
 }
 
 enum IfElseOperator {
@@ -859,4 +889,20 @@ model MergeNode {
 
   @@index([workflowId])
   @@index([nodeId])
+}
+
+model ErrorTriggerNode {
+  id           String   @id @default(cuid())
+  nodeId       String   @unique
+  workflowId   String
+
+  variableName String   @default("errorTrigger")
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workflow     workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([nodeId])
+  @@index([workflowId])
 }

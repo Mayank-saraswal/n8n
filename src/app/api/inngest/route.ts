@@ -1,6 +1,6 @@
 import { serve } from "inngest/next";
 import { inngest } from "@/inngest/client";
-import { executeWorkflow } from "@/inngest/functions";
+import { executeWorkflow, executeErrorTriggeredWorkflow } from "@/inngest/functions";
 import { schedulePoller } from "@/inngest/functions/schedule-poller";
 import { gmailWatchRenewal } from "@/inngest/functions/gmail-watch-renewal";
 import { gmailTriggerHandler } from "@/inngest/functions/gmail-trigger-handler";
@@ -11,5 +11,5 @@ export const maxDuration = 800
 export const { GET, POST, PUT } = serve({
   client: inngest,
 
-  functions: [executeWorkflow, schedulePoller, gmailWatchRenewal, gmailTriggerHandler],
+  functions: [executeWorkflow, executeErrorTriggeredWorkflow, schedulePoller, gmailWatchRenewal, gmailTriggerHandler],
 });

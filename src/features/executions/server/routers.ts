@@ -24,7 +24,10 @@ export const executionRouter = createTRPCRouter({
                         id: true,
                         name: true,
                     }
-                }
+                },
+                nodeExecutions: {
+                    orderBy: { executionOrder: 'asc' },
+                },
             }
         });
     }),

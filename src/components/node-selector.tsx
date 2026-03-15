@@ -1,7 +1,7 @@
 "use client"
 import { createId} from "@paralleldrive/cuid2"
 import { useReactFlow } from "@xyflow/react"
-import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, GitForkIcon, SlidersHorizontalIcon, TableIcon, CodeIcon, RepeatIcon, TimerIcon, MergeIcon} from "lucide-react"
+import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, GitForkIcon, SlidersHorizontalIcon, TableIcon, CodeIcon, RepeatIcon, TimerIcon, MergeIcon, AlertTriangleIcon} from "lucide-react"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { 
@@ -58,6 +58,12 @@ const triggerNodes: NodeTypeOptions[] = [
         label:"Schedule",
         description:"Run a workflow on a time-based schedule",
         icon:ClockIcon
+    },
+    {
+        type:NodeType.ERROR_TRIGGER,
+        label:"Error Trigger",
+        description:"Fires when any node in this workflow fails",
+        icon:AlertTriangleIcon,
     },
 ]
 

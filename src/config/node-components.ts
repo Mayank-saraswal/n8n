@@ -32,6 +32,7 @@ import { RazorpayNode } from "@/features/executions/components/razorpay/node";
 import { SwitchNode } from "@/features/executions/components/switch/node";
 import { WaitNode } from "@/features/executions/components/wait/node";
 import { MergeNode } from "@/features/executions/components/merge/node";
+import { ErrorTriggerNode } from "@/features/triggers/components/error-trigger/node";
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -66,6 +67,7 @@ export const nodeComponents = {
     [NodeType.SWITCH]: SwitchNode,
     [NodeType.WAIT]: WaitNode,
     [NodeType.MERGE]: MergeNode,
+    [NodeType.ERROR_TRIGGER]: ErrorTriggerNode,
     //change later
 
 
