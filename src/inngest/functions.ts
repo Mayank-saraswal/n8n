@@ -181,6 +181,7 @@ export const executeWorkflow = inngest.createFunction(
       errorTriggerChannel(),
       razorpayTriggerChannel(),
       whatsappTriggerChannel(),
+      msg91Channel(),
       shiprocketChannel(),
 
     ]

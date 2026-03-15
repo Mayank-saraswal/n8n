@@ -3,7 +3,8 @@ ALTER TYPE "NodeType" ADD VALUE IF NOT EXISTS 'SHIPROCKET';
 ALTER TYPE "CredentialType" ADD VALUE IF NOT EXISTS 'SHIPROCKET';
 
 -- CreateEnum
-CREATE TYPE "ShiprocketOperation" AS ENUM (
+DO $$ BEGIN
+  CREATE TYPE "ShiprocketOperation" AS ENUM (
   'CREATE_ORDER','GET_ORDER','CANCEL_ORDER','UPDATE_ORDER',
   'GET_ORDER_TRACKING','CLONE_ORDER','GENERATE_AWB','GET_ORDERS_LIST',
   'TRACK_SHIPMENT','ASSIGN_COURIER','GENERATE_LABEL','GENERATE_MANIFEST',
@@ -12,9 +13,12 @@ CREATE TYPE "ShiprocketOperation" AS ENUM (
   'CREATE_PRODUCT','GET_PRODUCTS',
   'GET_PICKUP_LOCATIONS','CREATE_PICKUP_LOCATION'
 );
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateTable
-CREATE TABLE "ShiprocketNode" (
+CREATE TABLE IF NOT EXISTS "ShiprocketNode" (
   "id"                   TEXT         NOT NULL,
   "nodeId"               TEXT         NOT NULL,
   "workflowId"           TEXT         NOT NULL,
@@ -90,15 +94,15 @@ CREATE TABLE "ShiprocketNode" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ShiprocketNode_nodeId_key"
+CREATE UNIQUE INDEX IF NOT EXISTS "ShiprocketNode_nodeId_key"
   ON "ShiprocketNode"("nodeId");
 
 -- CreateIndex
-CREATE INDEX "ShiprocketNode_workflowId_idx"
+CREATE INDEX IF NOT EXISTS "ShiprocketNode_workflowId_idx"
   ON "ShiprocketNode"("workflowId");
 
 -- CreateIndex
-CREATE INDEX "ShiprocketNode_nodeId_idx"
+CREATE INDEX IF NOT EXISTS "ShiprocketNode_nodeId_idx"
   ON "ShiprocketNode"("nodeId");
 
 -- AddForeignKey
