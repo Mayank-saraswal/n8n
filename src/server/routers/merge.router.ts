@@ -31,6 +31,9 @@ export const mergeRouter = createTRPCRouter({
         matchKey1: z.string().max(500).default(""),
         matchKey2: z.string().max(500).default(""),
         positionFill: z.enum(["shortest", "longest"]).default("shortest"),
+        branchKey1: z.string().max(200).default(""),
+        branchKey2: z.string().max(200).default(""),
+        branchKeys: z.string().max(2000).default(""),
         waitForAll: z.boolean().default(true),
         variableName: z.string().max(200).default("merge"),
       })

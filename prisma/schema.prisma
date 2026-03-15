@@ -839,6 +839,13 @@ model MergeNode {
   // "longest"  — pad shorter branches with null
   positionFill String @default("shortest")
 
+  // Branch variable name selection
+  // branchKey1/branchKey2 — variable names of the first/second branch (e.g. "gmail", "slack")
+  // branchKeys — comma-separated list for 3+ branch modes (e.g. "gmail,slack,notion")
+  branchKey1   String @default("")
+  branchKey2   String @default("")
+  branchKeys   String @default("")
+
   // Wait for ALL branches to complete before merging
   waitForAll   Boolean @default(true)
 

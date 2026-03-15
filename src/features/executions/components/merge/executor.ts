@@ -70,14 +70,35 @@ export const mergeExecutor: NodeExecutor = async ({
     })
   )
 
-  // Gather branch data from context.
-  // Upstream node outputs are stored as top-level keys in context.
-  // We collect all non-internal context values as potential branch data.
-  const branchValues: unknown[] = []
-  for (const [key, value] of Object.entries(context)) {
-    // Skip internal keys and the merge node's own output key
-    if (key === "branch" || key === "error" || key === variableName) continue
-    branchValues.push(value)
+  // Gather branch data from context using configured variable names.
+  // This ensures keyMatch/keyDiff/crossJoin operate on the correct branches,
+  // not on all context values including trigger and sequential node outputs.
+  const ctx = context as Record<string, unknown>
+
+  let branchValues: unknown[]
+
+  const rawBranchKeys = (config.branchKeys || "").trim()
+  const key1 = (config.branchKey1 || "").trim()
+  const key2 = (config.branchKey2 || "").trim()
+
+  if (rawBranchKeys) {
+    // User specified all branch keys explicitly (for 3+ branch modes)
+    branchValues = rawBranchKeys
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean)
+      .map((k) => ctx[k])
+      .filter((v) => v !== undefined)
+  } else if (key1 || key2) {
+    // User specified individual branch keys (for 2-branch modes)
+    branchValues = [key1 ? ctx[key1] : undefined, key2 ? ctx[key2] : undefined]
+      .filter((v) => v !== undefined)
+  } else {
+    // Fallback: collect all non-internal context values.
+    // Less precise but maintains backward compatibility.
+    branchValues = Object.entries(ctx)
+      .filter(([k]) => k !== "branch" && k !== "error" && k !== variableName)
+      .map(([, v]) => v)
   }
 
   let mergeResult: unknown
@@ -94,37 +115,38 @@ export const mergeExecutor: NodeExecutor = async ({
       }
 
       case "keyMatch": {
-        let key1 = config.matchKey1 || ""
-        let key2 = config.matchKey2 || ""
+        let k1 = config.matchKey1 || ""
+        let k2 = config.matchKey2 || ""
 
         // Resolve templates in key paths
-        if (key1.includes("{{")) {
-          key1 = resolveTemplate(key1, context) as string
+        if (k1.includes("{{")) {
+          k1 = resolveTemplate(k1, context) as string
         }
-        if (key2.includes("{{")) {
-          key2 = resolveTemplate(key2, context) as string
+        if (k2.includes("{{")) {
+          k2 = resolveTemplate(k2, context) as string
         }
 
-        // keyMatch uses the first two branch values
-        const b1 = branchValues[0]
-        const b2 = branchValues[1]
-        return keyMatch(b1, b2, key1, key2)
+        // Use configured branch keys when available
+        const b1 = key1 ? ctx[key1] : branchValues[0]
+        const b2 = key2 ? ctx[key2] : branchValues[1]
+        return keyMatch(b1, b2, k1, k2)
       }
 
       case "keyDiff": {
-        let key1 = config.matchKey1 || ""
-        let key2 = config.matchKey2 || ""
+        let k1 = config.matchKey1 || ""
+        let k2 = config.matchKey2 || ""
 
-        if (key1.includes("{{")) {
-          key1 = resolveTemplate(key1, context) as string
+        if (k1.includes("{{")) {
+          k1 = resolveTemplate(k1, context) as string
         }
-        if (key2.includes("{{")) {
-          key2 = resolveTemplate(key2, context) as string
+        if (k2.includes("{{")) {
+          k2 = resolveTemplate(k2, context) as string
         }
 
-        const b1 = branchValues[0]
-        const b2 = branchValues[1]
-        return keyDiff(b1, b2, key1, key2)
+        // Use configured branch keys when available
+        const b1 = key1 ? ctx[key1] : branchValues[0]
+        const b2 = key2 ? ctx[key2] : branchValues[1]
+        return keyDiff(b1, b2, k1, k2)
       }
 
       case "combine":

@@ -37,6 +37,9 @@ export interface MergeConfig {
   matchKey1: string
   matchKey2: string
   positionFill: "shortest" | "longest"
+  branchKey1: string
+  branchKey2: string
+  branchKeys: string
   waitForAll: boolean
   variableName: string
 }
@@ -47,6 +50,9 @@ const DEFAULT_CONFIG: MergeConfig = {
   matchKey1: "",
   matchKey2: "",
   positionFill: "shortest",
+  branchKey1: "",
+  branchKey2: "",
+  branchKeys: "",
   waitForAll: true,
   variableName: "merge",
 }
@@ -107,6 +113,9 @@ export const MergeDialog = ({
         matchKey1: dbConfig.matchKey1,
         matchKey2: dbConfig.matchKey2,
         positionFill: dbConfig.positionFill as MergeConfig["positionFill"],
+        branchKey1: dbConfig.branchKey1 ?? "",
+        branchKey2: dbConfig.branchKey2 ?? "",
+        branchKeys: dbConfig.branchKeys ?? "",
         waitForAll: dbConfig.waitForAll,
         variableName: dbConfig.variableName,
       })
@@ -276,6 +285,49 @@ export const MergeDialog = ({
                 </div>
               </div>
             )}
+
+            {/* Branch Variable Names */}
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label>Branch 1 Variable Name</Label>
+                <Input
+                  placeholder="e.g. gmail"
+                  className="font-mono text-sm"
+                  value={config.branchKey1}
+                  onChange={(e) =>
+                    setConfig((c) => ({ ...c, branchKey1: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Branch 2 Variable Name</Label>
+                <Input
+                  placeholder="e.g. slack"
+                  className="font-mono text-sm"
+                  value={config.branchKey2}
+                  onChange={(e) =>
+                    setConfig((c) => ({ ...c, branchKey2: e.target.value }))
+                  }
+                />
+              </div>
+              {config.inputCount > 2 && (
+                <div className="space-y-2">
+                  <Label>All Branch Keys (comma-separated)</Label>
+                  <Input
+                    placeholder="e.g. gmail,slack,notion"
+                    className="font-mono text-sm"
+                    value={config.branchKeys}
+                    onChange={(e) =>
+                      setConfig((c) => ({ ...c, branchKeys: e.target.value }))
+                    }
+                  />
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground">
+                Specify which upstream variable names to merge. Leave empty to
+                auto-detect all branches.
+              </p>
+            </div>
 
             {/* Wait for All */}
             <div className="flex items-center gap-3">
