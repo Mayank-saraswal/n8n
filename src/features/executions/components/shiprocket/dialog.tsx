@@ -378,6 +378,7 @@ export const ShiprocketDialog = ({
       nodeId,
       workflowId,
       ...values,
+      operation: operation as ShiprocketOp,
     })
     onSubmit(values)
   }
