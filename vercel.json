@@ -1,10 +1,10 @@
 {
   "functions": {
     "src/app/api/inngest/route.ts": {
-      "maxDuration": 250
+      "maxDuration": 60
     },
     "src/app/api/**/*.ts": {
-      "maxDuration": 250
+      "maxDuration": 60
     }
   }
 }
