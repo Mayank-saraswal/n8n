@@ -18,9 +18,34 @@ COPY . .
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build the Next.js app
-# NEXT_TELEMETRY_DISABLED skips telemetry during build
+# Dummy env vars so Next.js can build without real credentials
+# Real values are injected at runtime by Azure Container Apps
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV DATABASE_URL="postgresql://dummy:dummy@dummy:5432/dummy"
+ENV DIRECT_DATABASE_URL="postgresql://dummy:dummy@dummy:5432/dummy"
+ENV BETTER_AUTH_SECRET="dummy-secret-for-build-only"
+ENV BETTER_AUTH_URL="https://dummy.azurecontainerapps.io"
+ENV NEXT_PUBLIC_BETTER_AUTH_URL="https://dummy.azurecontainerapps.io"
+ENV NEXT_PUBLIC_APP_URL="https://dummy.azurecontainerapps.io"
+ENV GOOGLE_CLIENT_ID="dummy"
+ENV GOOGLE_CLIENT_SECRET="dummy"
+ENV GOOGLE_GMAIL_CLIENT_ID="dummy"
+ENV GOOGLE_GMAIL_CLIENT_SECRET="dummy"
+ENV GOOGLE_SHEETS_CLIENT_ID="dummy"
+ENV GOOGLE_SHEETS_CLIENT_SECRET="dummy"
+ENV GOOGLE_DRIVE_CLIENT_ID="dummy"
+ENV GOOGLE_DRIVE_CLIENT_SECRET="dummy"
+ENV GITHUB_CLIENT_ID="dummy"
+ENV GITHUB_CLIENT_SECRET="dummy"
+ENV INNGEST_SIGNING_KEY="signkey-prod-dummy"
+ENV INNGEST_EVENT_KEY="dummy"
+ENV ENCRYPTION_KEY="dummy-encryption-key-32-characters!!"
+ENV SENTRY_AUTH_TOKEN="dummy"
+ENV POLAR_ACCESS_TOKEN="dummy"
+ENV POLAR_WEBHOOK_SECRET="dummy"
+ENV GROQ_API_KEY="dummy"
+ENV GOOGLE_GENERATIVE_AI_API_KEY="dummy"
+
 RUN npm run build
 
 # Production image — minimal size
