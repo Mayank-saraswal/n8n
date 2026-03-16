@@ -108,7 +108,7 @@ export default function NodesOverviewPage() {
 
       <h1 className="text-4xl font-bold tracking-tight">All Nodes</h1>
       <p className="mt-3 text-lg text-muted-foreground">
-        Nodebase has <strong>29 nodes</strong> across 7 categories.
+        Nodebase has <strong>40+ nodes</strong> across 8 categories.
         Each node performs a specific action — from calling an API to sending a
         WhatsApp message. This page gives you a quick overview of every node available.
       </p>
@@ -151,6 +151,26 @@ export default function NodesOverviewPage() {
           icon={Clock}
         />
         <NodeCard
+          id="razorpay-trigger"
+          title="Razorpay Trigger"
+          desc="Receive Razorpay webhook events — payments, refunds, subscriptions, disputes, and more."
+          logo="/logos/razorpay.svg"
+          operations="25 event types"
+        />
+        <NodeCard
+          id="whatsapp-trigger"
+          title="WhatsApp Trigger"
+          desc="Receive incoming WhatsApp messages and status updates via Meta Business API."
+          logo="/logos/whatsapp.svg"
+          operations="12 message types"
+        />
+        <NodeCard
+          id="error-trigger"
+          title="Error Trigger"
+          desc="Fires when any node in a workflow throws a non-retriable error. Build robust error-handling workflows."
+          icon={Zap}
+        />
+        <NodeCard
           id="google-form-trigger"
           title="Google Form Trigger"
           desc="Start a workflow when someone submits a Google Form."
@@ -188,6 +208,48 @@ export default function NodesOverviewPage() {
           {"{{query.source}}"}
         </code>
       </p>
+
+      {/* ━━━━━━ INDIA STACK ━━━━━━ */}
+      <SectionHeader
+        id="india-stack"
+        title="🇮🇳 India Stack Nodes"
+        description="Purpose-built nodes for Indian D2C businesses — messaging, logistics, and payments."
+      />
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <NodeCard
+          id="msg91-overview"
+          title="MSG91"
+          desc="Send SMS, OTP, WhatsApp, voice OTPs, and email via India's most popular messaging API."
+          logo="/logos/msg91.svg"
+          credential="MSG91"
+          operations="14 operations"
+        />
+        <NodeCard
+          id="shiprocket-overview"
+          title="Shiprocket"
+          desc="Create orders, generate AWBs, request pickups, track shipments, and manage returns."
+          logo="/logos/shiprocket.svg"
+          credential="SHIPROCKET"
+          operations="23 operations"
+        />
+      </div>
+
+      <Callout type="tip">
+        See the dedicated{" "}
+        <a href="/docs/nodes/msg91" className="underline font-medium">
+          MSG91
+        </a>
+        ,{" "}
+        <a href="/docs/nodes/shiprocket" className="underline font-medium">
+          Shiprocket
+        </a>
+        , and{" "}
+        <a href="/docs/nodes/razorpay" className="underline font-medium">
+          Razorpay
+        </a>{" "}
+        pages for full operation details, field references, and workflow examples.
+      </Callout>
 
       {/* ━━━━━━ AI NODES ━━━━━━ */}
       <SectionHeader
@@ -275,8 +337,11 @@ export default function NodesOverviewPage() {
       </p>
 
       <Callout type="tip">
-        <strong>Example workflow:</strong> Webhook → Gemini (&quot;Summarize this
-        feedback: {"{{body.feedback}}"}&quot;) → Slack (post summary)
+        See the dedicated{" "}
+        <a href="/docs/nodes/ai" className="underline font-medium">
+          AI Nodes
+        </a>{" "}
+        page for provider comparison, use-case recommendations, and complete workflow examples.
       </Callout>
 
       {/* ━━━━━━ MESSAGING ━━━━━━ */}
@@ -305,9 +370,10 @@ export default function NodesOverviewPage() {
         <NodeCard
           id="slack"
           title="Slack"
-          desc="Post messages to Slack channels via incoming webhooks. Max 2,000 characters."
+          desc="Post messages, manage channels, react, upload files, and manage users — full Slack Bot API."
           logo="/logos/slack.svg"
-          operations="Webhook URL"
+          credential="Bot Token or Webhook"
+          operations="25 operations"
         />
         <NodeCard
           id="telegram"
@@ -484,6 +550,13 @@ export default function NodesOverviewPage() {
           operations="15 operators"
         />
         <NodeCard
+          id="switch"
+          title="Switch"
+          desc="Route to one of N named branches based on a value match. Includes a default branch."
+          icon={GitBranch}
+          operations="2-10 branches"
+        />
+        <NodeCard
           id="set-variable"
           title="Set Variable"
           desc="Create or rename variables to organize data. Set multiple key-value pairs."
@@ -492,18 +565,42 @@ export default function NodesOverviewPage() {
         <NodeCard
           id="code-overview"
           title="Code"
-          desc="Write custom JavaScript in a sandboxed environment. 5s timeout, access $input."
+          desc="Write custom JavaScript with the $ helper API — fetch, date, currency utilities."
           icon={Code}
           operations="Sandboxed JS"
         />
         <NodeCard
           id="loop-overview"
           title="Loop"
-          desc="Iterate over an array and run downstream nodes for each item. Max 100 iterations."
+          desc="Iterate over an array and run downstream nodes for each item."
           icon={Repeat}
-          operations="Max 100 items"
+        />
+        <NodeCard
+          id="wait-overview"
+          title="Wait"
+          desc="Pause a workflow for a duration, until a datetime, or until a webhook resume."
+          icon={Clock}
+          operations="3 modes"
+        />
+        <NodeCard
+          id="merge-overview"
+          title="Merge"
+          desc="Combine data from multiple branches — Combine, Position, Cross Join, Key Match, Key Diff."
+          icon={GitBranch}
+          operations="5 strategies"
         />
       </div>
+
+      <Callout type="tip">
+        See dedicated pages for{" "}
+        <a href="/docs/nodes/if-else" className="underline font-medium">If / Else</a>,{" "}
+        <a href="/docs/nodes/switch" className="underline font-medium">Switch</a>,{" "}
+        <a href="/docs/nodes/wait" className="underline font-medium">Wait</a>,{" "}
+        <a href="/docs/nodes/merge" className="underline font-medium">Merge</a>,{" "}
+        <a href="/docs/nodes/set-variable" className="underline font-medium">Set Variable</a>, and{" "}
+        <a href="/docs/nodes/error-trigger" className="underline font-medium">Error Trigger</a>{" "}
+        for full details, operator references, and workflow examples.
+      </Callout>
 
       <h3 id="if-else-operators" className="mt-6 text-lg font-semibold">
         If / Else — Available Operators
