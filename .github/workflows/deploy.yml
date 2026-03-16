@@ -62,10 +62,9 @@ jobs:
     steps:
       - name: Done
         run: |
-          echo "✅ Image pushed to Azure Container Registry successfully."
-          echo "📦 Image: nodebaseacr.azurecr.io/nodebase:sha-${{ github.sha }}"
-          echo "🚀 Azure Container App will auto-redeploy via ACR webhook."
-          echo "🌐 Your app will be live in ~2 minutes at your Azure URL."
+          echo "Image pushed to Azure Container Registry."
+          echo "Image: nodebaseacr.azurecr.io/nodebase:sha-${{ github.sha }}"
+          echo "Azure Container App will auto-redeploy via ACR webhook."
 
   build-check:
     name: Validate build (PR only)
@@ -96,6 +95,6 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          DATABASE_URL: "postgresql://dummy:dummy@dummy:5432/dummy"
+          DATABASE_URL: "postgresql://dbadmin:Mayank@2027@nodebase-db-prod.postgres.database.azure.com:6432/postgres?sslmode=require&pgbouncer=true&connection_limit=1&pool_timeout=20"
           BETTER_AUTH_SECRET: "dummy-secret-for-build"
-          NEXT_PUBLIC_APP_URL: "https://dummy.azurecontainerapps.io"
+          NEXT_PUBLIC_APP_URL: "https://nodebase-app.agreeablebeach-f1713ef7.eastasia.azurecontainerapps.io"

@@ -47,3 +47,5 @@ next-env.d.ts
 
 node.md
 limitations.md
+.env*.local
+scripts/set-azure-env-vars.sh
