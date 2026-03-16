@@ -1,0 +1,6 @@
+FROM postgres:16-alpine
+
+# Optional: Add any custom initialization scripts here
+# COPY ./init-scripts/ /docker-entrypoint-initdb.d/
+
+EXPOSE 5432
