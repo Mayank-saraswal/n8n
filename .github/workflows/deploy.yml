@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     # Only build and push on main branch pushes (not PRs)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
 
     outputs:
       image-tag: ${{ steps.meta.outputs.version }}
@@ -58,6 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-push
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions: {}
 
     steps:
       - name: Log in to Azure
@@ -86,6 +89,8 @@ jobs:
     name: Validate build (PR only)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
