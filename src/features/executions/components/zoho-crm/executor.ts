@@ -27,6 +27,45 @@ const DEFAULT_ZOHO_VARIABLE_NAME = "zoho"
 // Zoho's lead conversion API accepts a default deal stage when createDeal is enabled.
 const DEFAULT_CONVERT_LEAD_STAGE = "Qualification"
 
+function parseCustomFields(
+  raw: string,
+  context: Record<string, unknown>,
+  operationName: string
+): Record<string, unknown> {
+  const resolved = resolveTemplate(raw, context) as string
+  if (!resolved || resolved.trim() === "{}") return {}
+  try {
+    const parsed = JSON.parse(resolved)
+    if (typeof parsed !== "object" || Array.isArray(parsed) || parsed === null) {
+      throw new Error("not an object")
+    }
+    return parsed as Record<string, unknown>
+  } catch {
+    throw new NonRetriableError(
+      `Zoho CRM ${operationName}: Custom Fields contains invalid JSON. ` +
+      `Expected format: {"Field_Name": "value"}. Got: ${resolved.substring(0, 100)}`
+    )
+  }
+}
+
+function parseAmount(
+  raw: string,
+  context: Record<string, unknown>,
+  fieldLabel: string,
+  operationName: string
+): number | undefined {
+  const resolved = resolveTemplate(raw, context) as string
+  if (!resolved) return undefined
+  const num = parseFloat(resolved)
+  if (isNaN(num)) {
+    throw new NonRetriableError(
+      `Zoho CRM ${operationName}: ${fieldLabel} "${resolved}" is not a valid number. ` +
+      `Use a number or a template variable that resolves to a number (e.g. {{razorpayTrigger.payload.payment.entity.amount}}).`
+    )
+  }
+  return num
+}
+
 async function refreshZohoToken(
   clientId: string,
   clientSecret: string,
@@ -132,10 +171,11 @@ async function zohoApi(
   return data
 }
 
-export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, publish, userId }) => {
+export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, publish }) => {
   const config = await step.run(`zoho-crm-${nodeId}-load`, async () =>
     prisma.zohoCrmNode.findUnique({
       where: { nodeId },
+      include: { credential: true },
     })
   )
 
@@ -144,29 +184,20 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
       throw new NonRetriableError("Zoho CRM node not configured")
     }
 
-    if (!config.credentialId) {
-      throw new NonRetriableError("Zoho CRM: No credential connected. Add a Zoho CRM credential first.")
+    if (!config.credentialId || !config.credential) {
+      throw new NonRetriableError(
+        "Zoho CRM: No credential connected. Add a Zoho CRM credential from the credentials page."
+      )
     }
 
     return { valid: true }
   })
 
   return await step.run(`zoho-crm-${nodeId}-execute`, async () => {
-    await publish(zohoCrmChannel().status({ status: "loading", nodeId }))
+    await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "loading", nodeId }) as never)
 
     try {
-      const credential = await prisma.credential.findUnique({
-        where: {
-          id: config!.credentialId!,
-          userId,
-        },
-      })
-
-      if (!credential) {
-        throw new NonRetriableError("Zoho CRM: No credential connected. Add a Zoho CRM credential first.")
-      }
-
-      const { clientId, clientSecret, refreshToken, region } = JSON.parse(decrypt(credential.value)) as {
+      const { clientId, clientSecret, refreshToken, region } = JSON.parse(decrypt(config!.credential!.value)) as {
         clientId: string
         clientSecret: string
         refreshToken: string
@@ -185,7 +216,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
             throw new NonRetriableError("Zoho CRM CREATE_LEAD: Last Name is required")
           }
 
-          const customFields = JSON.parse(r(config!.customFields) || "{}") as Record<string, unknown>
+          const customFields = parseCustomFields(config!.customFields, context, "CREATE_LEAD")
 
           const res = await zohoApi("POST", "/Leads", accessToken, region, {
             data: [{
@@ -200,9 +231,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
               Lead_Source: r(config!.leadSource) || undefined,
               Lead_Status: r(config!.leadStatus) || undefined,
               Industry: r(config!.industry) || undefined,
-              Annual_Revenue: r(config!.annualRevenue)
-                ? parseFloat(r(config!.annualRevenue))
-                : undefined,
+              Annual_Revenue: parseAmount(config!.annualRevenue, context, "Annual Revenue", "CREATE_LEAD"),
               No_of_Employees: r(config!.noOfEmployees) ? parseInt(r(config!.noOfEmployees), 10) : undefined,
               Rating: r(config!.rating) || undefined,
               Description: r(config!.description) || undefined,
@@ -241,7 +270,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
             throw new NonRetriableError("Zoho CRM UPDATE_LEAD: Record ID is required")
           }
 
-          const customFields = JSON.parse(r(config!.customFields) || "{}") as Record<string, unknown>
+          const customFields = parseCustomFields(config!.customFields, context, "UPDATE_LEAD")
           const updateData: Record<string, unknown> = { id, ...customFields }
 
           if (r(config!.firstName)) updateData.First_Name = r(config!.firstName)
@@ -301,7 +330,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
             convertPayload.Deals = {
               Deal_Name: r(config!.dealName) || undefined,
               Closing_Date: r(config!.closingDate) || undefined,
-              Amount: r(config!.dealAmount) ? parseFloat(r(config!.dealAmount)) : undefined,
+              Amount: parseAmount(config!.dealAmount, context, "Amount", "CONVERT_LEAD"),
               Stage: r(config!.dealStage) || DEFAULT_CONVERT_LEAD_STAGE,
             }
           }
@@ -329,7 +358,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
             throw new NonRetriableError("Zoho CRM CREATE_CONTACT: Last Name is required")
           }
 
-          const customFields = JSON.parse(r(config!.customFields) || "{}") as Record<string, unknown>
+          const customFields = parseCustomFields(config!.customFields, context, "CREATE_CONTACT")
 
           const res = await zohoApi("POST", "/Contacts", accessToken, region, {
             data: [{
@@ -377,7 +406,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
             throw new NonRetriableError("Zoho CRM UPDATE_CONTACT: Record ID is required")
           }
 
-          const customFields = JSON.parse(r(config!.customFields) || "{}") as Record<string, unknown>
+          const customFields = parseCustomFields(config!.customFields, context, "UPDATE_CONTACT")
           const updateData: Record<string, unknown> = { id, ...customFields }
 
           if (r(config!.firstName)) updateData.First_Name = r(config!.firstName)
@@ -385,6 +414,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
           if (r(config!.email)) updateData.Email = r(config!.email)
           if (r(config!.phone)) updateData.Phone = r(config!.phone)
           if (r(config!.mobile)) updateData.Mobile = r(config!.mobile)
+          if (r(config!.title)) updateData.Title = r(config!.title)
           if (r(config!.description)) updateData.Description = r(config!.description)
 
           const res = await zohoApi("PUT", "/Contacts", accessToken, region, { data: [updateData] })
@@ -444,16 +474,16 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
         case "CREATE_DEAL": {
           if (!r(config!.dealName)) throw new NonRetriableError("Zoho CRM CREATE_DEAL: Deal Name is required")
           if (!r(config!.dealStage)) throw new NonRetriableError("Zoho CRM CREATE_DEAL: Stage is required")
-          const customFields = JSON.parse(r(config!.customFields) || "{}") as Record<string, unknown>
+          const customFields = parseCustomFields(config!.customFields, context, "CREATE_DEAL")
           const res = await zohoApi("POST", "/Deals", accessToken, region, {
             data: [{
               Deal_Name: r(config!.dealName),
               Stage: r(config!.dealStage),
-              Amount: r(config!.dealAmount) ? parseFloat(r(config!.dealAmount)) : undefined,
+              Amount: parseAmount(config!.dealAmount, context, "Amount", "CREATE_DEAL"),
               Closing_Date: r(config!.closingDate) || undefined,
               Account_Name: r(config!.accountName) ? { name: r(config!.accountName) } : undefined,
               Contact_Name: r(config!.contactName) ? { name: r(config!.contactName) } : undefined,
-              Probability: r(config!.probability) ? parseFloat(r(config!.probability)) : undefined,
+              Probability: parseAmount(config!.probability, context, "Probability", "CREATE_DEAL"),
               Deal_Type: r(config!.dealType) || undefined,
               Lead_Source: r(config!.leadSource) || undefined,
               Description: r(config!.description) || undefined,
@@ -477,13 +507,15 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
         case "UPDATE_DEAL": {
           const id = r(config!.recordId)
           if (!id) throw new NonRetriableError("Zoho CRM UPDATE_DEAL: Deal Record ID is required")
-          const customFields = JSON.parse(r(config!.customFields) || "{}") as Record<string, unknown>
+          const customFields = parseCustomFields(config!.customFields, context, "UPDATE_DEAL")
           const updateData: Record<string, unknown> = { id, ...customFields }
           if (r(config!.dealName)) updateData.Deal_Name = r(config!.dealName)
           if (r(config!.dealStage)) updateData.Stage = r(config!.dealStage)
-          if (r(config!.dealAmount)) updateData.Amount = parseFloat(r(config!.dealAmount))
+          const dealAmount = parseAmount(config!.dealAmount, context, "Amount", "UPDATE_DEAL")
+          if (dealAmount !== undefined) updateData.Amount = dealAmount
           if (r(config!.closingDate)) updateData.Closing_Date = r(config!.closingDate)
-          if (r(config!.probability)) updateData.Probability = parseFloat(r(config!.probability))
+          const probability = parseAmount(config!.probability, context, "Probability", "UPDATE_DEAL")
+          if (probability !== undefined) updateData.Probability = probability
           if (r(config!.description)) updateData.Description = r(config!.description)
           const res = await zohoApi("PUT", "/Deals", accessToken, region, { data: [updateData] })
           result = { success: (res.data as { code: string }[])?.[0]?.code === "SUCCESS", dealId: id }
@@ -526,7 +558,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
 
         case "CREATE_ACCOUNT": {
           if (!r(config!.accountName)) throw new NonRetriableError("Zoho CRM CREATE_ACCOUNT: Account Name is required")
-          const customFields = JSON.parse(r(config!.customFields) || "{}") as Record<string, unknown>
+          const customFields = parseCustomFields(config!.customFields, context, "CREATE_ACCOUNT")
           const res = await zohoApi("POST", "/Accounts", accessToken, region, {
             data: [{
               Account_Name: r(config!.accountName),
@@ -537,6 +569,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
               Billing_City: r(config!.billingCity) || undefined,
               Billing_State: r(config!.billingState) || undefined,
               Billing_Country: r(config!.country) || undefined,
+              Owner: r(config!.accountOwner) ? { name: r(config!.accountOwner) } : undefined,
               ...customFields,
             }],
           })
@@ -557,12 +590,13 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
         case "UPDATE_ACCOUNT": {
           const id = r(config!.recordId)
           if (!id) throw new NonRetriableError("Zoho CRM UPDATE_ACCOUNT: Account Record ID is required")
-          const customFields = JSON.parse(r(config!.customFields) || "{}") as Record<string, unknown>
+          const customFields = parseCustomFields(config!.customFields, context, "UPDATE_ACCOUNT")
           const updateData: Record<string, unknown> = { id, ...customFields }
           if (r(config!.accountName)) updateData.Account_Name = r(config!.accountName)
           if (r(config!.phone)) updateData.Phone = r(config!.phone)
           if (r(config!.website)) updateData.Website = r(config!.website)
           if (r(config!.description)) updateData.Description = r(config!.description)
+          if (r(config!.accountOwner)) updateData.Owner = { name: r(config!.accountOwner) }
           const res = await zohoApi("PUT", "/Accounts", accessToken, region, { data: [updateData] })
           result = { success: (res.data as { code: string }[])?.[0]?.code === "SUCCESS", accountId: id }
           break
@@ -721,7 +755,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
         case "UPSERT_RECORD": {
           const module = r(config!.module) || "Leads"
           const dupField = r(config!.duplicateCheckField) || "Email"
-          const customFields = JSON.parse(r(config!.customFields) || "{}") as Record<string, unknown>
+          const customFields = parseCustomFields(config!.customFields, context, "UPSERT_RECORD")
           const res = await zohoApi("POST", `/${module}/upsert`, accessToken, region, {
             data: [{
               First_Name: r(config!.firstName) || undefined,
@@ -762,11 +796,11 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
 
       } // end switch
 
-      await publish(zohoCrmChannel().status({ status: "success", nodeId }))
+      await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "success", nodeId }) as never)
       return { ...context, [variableName]: result }
 
     } catch (err) {
-      await publish(zohoCrmChannel().status({ status: "error", nodeId }))
+      await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "error", nodeId }) as never)
 
       if (config?.continueOnFail) {
         return {

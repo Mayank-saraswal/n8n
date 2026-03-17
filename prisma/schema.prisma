@@ -154,6 +154,9 @@ enum NodeType {
   MSG91
   SHIPROCKET
   ZOHO_CRM
+  // In a future sprint: ZOHO_CRM_TRIGGER
+  // Registers a Zoho Notification API webhook for lead/contact/deal events.
+  // Ref: https://www.zoho.com/crm/developer/docs/api/v6/notifications/overview.html
 }
 
 enum HttpMethod {
@@ -205,10 +208,14 @@ model Credential {
   user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   Node   Node[]
   shiprocketNodes ShiprocketNode[]
+  zohoCrmNodes    ZohoCrmNode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
+  // TODO: @@map("Credenial") has a typo — should be "credential"
+  // Fixing requires: ALTER TABLE "Credenial" RENAME TO "credential";
+  // plus updating all existing FK references. Do in a dedicated migration sprint.
   @@map("Credenial")
 }
 
@@ -1149,6 +1156,7 @@ model ZohoCrmNode {
   nodeId       String           @unique
   workflowId   String
   credentialId String?
+  credential   Credential? @relation(fields: [credentialId], references: [id])
 
   operation    ZohoCrmOperation @default(CREATE_LEAD)
   variableName String           @default("zoho")
@@ -1277,6 +1285,8 @@ enum ShiprocketOperation {
   CREATE_PICKUP_LOCATION
 }
 
+// In a future sprint: ZOHO_CRM_TRIGGER
+// Registers Zoho Notification API watches and receives callbacks at /api/webhooks/zoho/{webhookId}.
 enum ZohoCrmOperation {
   CREATE_LEAD
   GET_LEAD

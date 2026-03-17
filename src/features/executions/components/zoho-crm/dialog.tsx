@@ -26,13 +26,13 @@ import { Separator } from "@/components/ui/separator"
 import { useTRPC } from "@/trpc/client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useCredentialsByType } from "@/features/credentials/hooks/use-credentials"
-import { CredentialType } from "@/generated/prisma"
+import { CredentialType, ZohoCrmOperation } from "@/generated/prisma"
 import { CheckIcon, Loader2Icon } from "lucide-react"
 import Link from "next/link"
 
 export interface ZohoCrmFormValues {
   credentialId?: string
-  operation?: string
+  operation: ZohoCrmOperation
   variableName?: string
   module?: string
   recordId?: string
@@ -205,7 +205,7 @@ export const ZohoCrmDialog = ({
   const [meetingStart, setMeetingStart] = useState(defaultValues.meetingStart || "")
   const [meetingEnd, setMeetingEnd] = useState(defaultValues.meetingEnd || "")
   const [meetingAgenda, setMeetingAgenda] = useState(defaultValues.meetingAgenda || "")
-  const [participants, setParticipants] = useState(defaultValues.participants || "[]")
+  const [participants, setParticipants] = useState(defaultValues.participants || "")
   const [noteTitle, setNoteTitle] = useState(defaultValues.noteTitle || "")
   const [noteContent, setNoteContent] = useState(defaultValues.noteContent || "")
   const [parentModule, setParentModule] = useState(defaultValues.parentModule || "Leads")
@@ -282,7 +282,13 @@ export const ZohoCrmDialog = ({
       setMeetingStart(config.meetingStart)
       setMeetingEnd(config.meetingEnd)
       setMeetingAgenda(config.meetingAgenda)
-      setParticipants(config.participants)
+      const rawParticipants = config.participants || "[]"
+      try {
+        const arr = JSON.parse(rawParticipants) as string[]
+        setParticipants(Array.isArray(arr) ? arr.join(", ") : "")
+      } catch {
+        setParticipants(rawParticipants === "[]" ? "" : rawParticipants)
+      }
       setNoteTitle(config.noteTitle)
       setNoteContent(config.noteContent)
       setParentModule(config.parentModule)
@@ -305,6 +311,7 @@ export const ZohoCrmDialog = ({
       setCredentialId(defaultValues.credentialId || "")
       setOperation((defaultValues.operation as ZohoOp) || "CREATE_LEAD")
       setVariableName(defaultValues.variableName || "zoho")
+      setParticipants(defaultValues.participants || "")
       setHydrated(true)
     }
   }, [open, config, defaultValues])
@@ -372,7 +379,9 @@ export const ZohoCrmDialog = ({
     meetingStart,
     meetingEnd,
     meetingAgenda,
-    participants,
+    participants: JSON.stringify(
+      participants.split(",").map((e) => e.trim()).filter(Boolean)
+    ),
     noteTitle,
     noteContent,
     parentModule,
@@ -404,13 +413,12 @@ export const ZohoCrmDialog = ({
         nodeId,
         workflowId,
         ...values,
-        operation,
       })
       onSubmit(values)
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [open, nodeId, workflowId, hydrated, values, operation])
+  }, [open, nodeId, workflowId, hydrated, values, upsertMutation.mutate])
 
   const showRecordId = RECORD_ID_OPS.includes(operation)
   const showAddress = ADDRESS_OPS.includes(operation)
@@ -585,6 +593,15 @@ export const ZohoCrmDialog = ({
                   <div className="space-y-2"><Label>No. of Employees</Label><Input value={noOfEmployees} onChange={(e) => setNoOfEmployees(e.target.value)} placeholder="{{variableName.fieldName}} or static value" /></div>
                   <div className="space-y-2"><Label>Rating</Label><Input value={rating} onChange={(e) => setRating(e.target.value)} placeholder="{{variableName.fieldName}} or static value" /></div>
                 </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="{{variableName.fieldName}} or static value"
+                    rows={3}
+                  />
+                </div>
               </>
             )}
 
@@ -595,7 +612,38 @@ export const ZohoCrmDialog = ({
               </div>
             )}
 
-            {["CREATE_DEAL", "UPDATE_DEAL", "UPDATE_DEAL_STAGE", "CONVERT_LEAD"].includes(operation) && (
+            {["CREATE_CONTACT", "UPDATE_CONTACT"].includes(operation) && (
+              <>
+                <div className="space-y-2">
+                  <Label>Job Title</Label>
+                  <Input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="{{variableName.fieldName}} or static value"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Lead Source</Label>
+                  <Input
+                    value={leadSource}
+                    onChange={(e) => setLeadSource(e.target.value)}
+                    placeholder="{{variableName.fieldName}} or static value"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="{{variableName.fieldName}} or static value"
+                    rows={3}
+                  />
+                </div>
+              </>
+            )}
+
+            {( ["CREATE_DEAL", "UPDATE_DEAL", "UPDATE_DEAL_STAGE"].includes(operation) ||
+              (operation === "CONVERT_LEAD" && createDeal)) && (
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2"><Label>Deal Name</Label><Input value={dealName} onChange={(e) => setDealName(e.target.value)} placeholder="{{variableName.fieldName}} or static value" /></div>
@@ -615,6 +663,57 @@ export const ZohoCrmDialog = ({
                   <div className="space-y-2"><Label>Probability</Label><Input value={probability} onChange={(e) => setProbability(e.target.value)} placeholder="{{variableName.fieldName}} or static value" /></div>
                 </div>
                 <div className="space-y-2"><Label>Deal Type</Label><Input value={dealType} onChange={(e) => setDealType(e.target.value)} placeholder="{{variableName.fieldName}} or static value" /></div>
+                {["CREATE_DEAL", "UPDATE_DEAL"].includes(operation) && (
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="{{variableName.fieldName}} or static value"
+                      rows={3}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {["CREATE_ACCOUNT", "UPDATE_ACCOUNT"].includes(operation) && (
+              <>
+                <div className="space-y-2">
+                  <Label>Account Owner</Label>
+                  <Input
+                    value={accountOwner}
+                    onChange={(e) => setAccountOwner(e.target.value)}
+                    placeholder="{{variableName.fieldName}} or owner name"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Billing City</Label>
+                    <Input
+                      value={billingCity}
+                      onChange={(e) => setBillingCity(e.target.value)}
+                      placeholder="{{variableName.fieldName}} or static value"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Billing State</Label>
+                    <Input
+                      value={billingState}
+                      onChange={(e) => setBillingState(e.target.value)}
+                      placeholder="{{variableName.fieldName}} or static value"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="{{variableName.fieldName}} or static value"
+                    rows={3}
+                  />
+                </div>
               </>
             )}
 
@@ -665,7 +764,15 @@ export const ZohoCrmDialog = ({
                   <div className="space-y-2"><Label>End DateTime</Label><Input type="datetime-local" value={meetingEnd} onChange={(e) => setMeetingEnd(e.target.value)} /></div>
                 </div>
                 <div className="space-y-2"><Label>Agenda</Label><Textarea value={meetingAgenda} onChange={(e) => setMeetingAgenda(e.target.value)} placeholder="{{variableName.fieldName}} or static value" /></div>
-                <div className="space-y-2"><Label>Participants (comma-separated emails)</Label><Input value={participants} onChange={(e) => setParticipants(e.target.value)} placeholder="a@x.com,b@y.com" /></div>
+                <div className="space-y-2">
+                  <Label>Participants (comma-separated emails)</Label>
+                  <Input
+                    value={participants}
+                    onChange={(e) => setParticipants(e.target.value)}
+                    placeholder="rahul@brand.com, priya@brand.com"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Separate multiple emails with commas</p>
+                </div>
               </>
             )}
 
@@ -691,15 +798,26 @@ export const ZohoCrmDialog = ({
                   <div className="space-y-2"><Label>Search Term</Label><Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="{{variableName.fieldName}} or static value" /></div>
                   <div className="space-y-2"><Label>Criteria</Label><Input value={criteria} onChange={(e) => setCriteria(e.target.value)} placeholder="(Email:equals:test@example.com)" /></div>
                 </div>
-                {operation === "SEARCH_CONTACTS" && (
+                {["SEARCH_CONTACTS", "SEARCH_LEADS"].includes(operation) && (
                   <div className="space-y-2">
                     <Label>Search Field</Label>
                     <Select value={searchField} onValueChange={setSearchField}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Email">Email</SelectItem>
-                        <SelectItem value="Phone">Phone</SelectItem>
-                        <SelectItem value="Mobile">Mobile</SelectItem>
+                        {operation === "SEARCH_LEADS" ? (
+                          <>
+                            <SelectItem value="Email">Email</SelectItem>
+                            <SelectItem value="Phone">Phone</SelectItem>
+                            <SelectItem value="Company">Company</SelectItem>
+                            <SelectItem value="Last_Name">Last Name</SelectItem>
+                          </>
+                        ) : (
+                          <>
+                            <SelectItem value="Email">Email</SelectItem>
+                            <SelectItem value="Phone">Phone</SelectItem>
+                            <SelectItem value="Mobile">Mobile</SelectItem>
+                          </>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -722,6 +840,19 @@ export const ZohoCrmDialog = ({
                   <Switch checked={overwrite} onCheckedChange={setOverwrite} />
                 </div>
               </>
+            )}
+
+            {["GET_CONTACT_DEALS", "GET_ACTIVITIES", "GET_NOTES"].includes(operation) && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Page</Label>
+                  <Input type="number" min={1} value={page} onChange={(e) => setPage(Number(e.target.value || 1))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Per Page</Label>
+                  <Input type="number" min={1} max={200} value={perPage} onChange={(e) => setPerPage(Number(e.target.value || 10))} />
+                </div>
+              </div>
             )}
 
             {showUpsert && (

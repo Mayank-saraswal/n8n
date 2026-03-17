@@ -46,9 +46,9 @@ const ZohoCrmNode = memo((props: NodeProps<ZohoCrmNodeType>) => {
 
   const nodeStatus = useNodeStatus({
     nodeId: props.id,
-    channel: ZOHO_CRM_CHANNEL,
+    channel: `${ZOHO_CRM_CHANNEL}:${props.id}`,
     topic: "status",
-    refreshToken: fetchZohoCrmRealtimeToken,
+    refreshToken: () => fetchZohoCrmRealtimeToken(props.id),
   })
 
   const handleOpenSettings = () => setDialogOpen(true)
@@ -77,7 +77,7 @@ const ZohoCrmNode = memo((props: NodeProps<ZohoCrmNodeType>) => {
         onSubmit={handleSubmit}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        defaultValues={props.data}
+        defaultValues={props.data as Partial<ZohoCrmFormValues>}
         nodeId={props.id}
         workflowId={workflowId}
       />
