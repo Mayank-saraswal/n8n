@@ -4,7 +4,6 @@ import { TRPCReactProvider } from "@/trpc/client";
 import { Toaster } from "@/components/ui/sonner";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Provider } from "jotai";
-import { Analytics } from '@vercel/analytics/next';
 
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -45,7 +44,6 @@ export default function RootLayout({
                 disableTransitionOnChange
               >
                 {children}
-                <Analytics />
                 <Toaster />
               </ThemeProvider>
             </Provider>
