@@ -2,17 +2,14 @@
 
 import { inngest } from "@/inngest/client"
 import { getSubscriptionToken, Realtime } from "@inngest/realtime"
-import { zohoCrmChannel } from "./channels"
+import { zohoCrmChannel, zohoCrmChannelName } from "./channels"
 
-export type ZohoCrmToken = Realtime.Token<
-  ReturnType<typeof zohoCrmChannel>,
-  ["status"]
->
-
-export async function fetchZohoCrmRealtimeToken(nodeId: string): Promise<ZohoCrmToken> {
+export async function fetchZohoCrmRealtimeToken(nodeId: string) {
   const token = await getSubscriptionToken(inngest, {
-    channel: zohoCrmChannel(nodeId),
+    channel: zohoCrmChannelName(nodeId),
     topics: ["status"],
   })
   return token
 }
+
+export type ZohoCrmToken = Awaited<ReturnType<typeof fetchZohoCrmRealtimeToken>>
