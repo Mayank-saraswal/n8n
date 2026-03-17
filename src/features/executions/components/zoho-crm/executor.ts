@@ -1,6 +1,6 @@
 import { NonRetriableError, RetryAfterError } from "inngest"
 import type { NodeExecutor } from "@/features/executions/types"
-import { resolveTemplate } from "@/features/executions/lib/template-resolver"
+import { resolveTemplate } from "@/features/executions/lib/resolve-template"
 import prisma from "@/lib/db"
 import { decrypt } from "@/lib/encryption"
 import { zohoCrmChannel } from "./channels"
@@ -194,7 +194,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
   })
 
   return await step.run(`zoho-crm-${nodeId}-execute`, async () => {
-    await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "loading", nodeId }) as never)
+    await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "loading", nodeId }))
 
     try {
       const { clientId, clientSecret, refreshToken, region } = JSON.parse(decrypt(config!.credential!.value)) as {
@@ -796,11 +796,11 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
 
       } // end switch
 
-      await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "success", nodeId }) as never)
+      await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "success", nodeId }))
       return { ...context, [variableName]: result }
 
     } catch (err) {
-      await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "error", nodeId }) as never)
+      await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "error", nodeId }))
 
       if (config?.continueOnFail) {
         return {
