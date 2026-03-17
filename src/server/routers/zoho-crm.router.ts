@@ -149,7 +149,7 @@ export const zohoCrmRouter = createTRPCRouter({
     .input(z.object({ nodeId: z.string() }))
     .query(async ({ input }) => {
       const token = await getSubscriptionToken(inngest, {
-        channel: zohoCrmChannel(input.nodeId),
+        channel: zohoCrmChannel(input.nodeId)(),
         topics: ["status"],
       })
       return { token }

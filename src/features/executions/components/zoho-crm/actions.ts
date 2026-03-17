@@ -11,7 +11,7 @@ export type ZohoCrmToken = Realtime.Token<
 
 export async function fetchZohoCrmRealtimeToken(nodeId: string): Promise<ZohoCrmToken> {
   const token = await getSubscriptionToken(inngest, {
-    channel: zohoCrmChannel(nodeId),
+    channel: zohoCrmChannel(nodeId)(),
     topics: ["status"],
   })
   return token
