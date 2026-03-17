@@ -12,6 +12,11 @@ export const auth = betterAuth({
     enabled:true,
     autoSignIn:true
  },
+ trustedOrigins: [
+    "https://nodebase.tech",
+    "https://www.nodebase.tech",
+    "https://nodebase-app.bravefield-c424876c.eastasia.azurecontainerapps.io"
+ ],
  socialProviders:{
    github:{
       clientId:process.env.GITHUB_CLIENT_ID as string,
@@ -22,7 +27,6 @@ export const auth = betterAuth({
       clientSecret:process.env.GOOGLE_CLIENT_SECRET as string
    }
  },
-
  plugins:[
    polar({
       client: polarcliet,
