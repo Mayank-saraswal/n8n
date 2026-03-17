@@ -1,6 +1,6 @@
 import { NonRetriableError, RetryAfterError } from "inngest"
 import type { NodeExecutor } from "@/features/executions/types"
-import { resolveTemplate } from "@/features/executions/lib/resolve-template"
+import { resolveTemplate } from "@/features/executions/lib/template-resolver"
 import prisma from "@/lib/db"
 import { decrypt } from "@/lib/encryption"
 import { zohoCrmChannel } from "./channels"
