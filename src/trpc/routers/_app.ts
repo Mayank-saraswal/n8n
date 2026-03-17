@@ -30,6 +30,7 @@ import { razorpayTriggerRouter } from '@/server/routers/razorpay-trigger.router'
 import { whatsappTriggerRouter } from '@/server/routers/whatsapp-trigger.router';
 import { msg91Router } from '@/server/routers/msg91.router';
 import { shiprocketRouter } from '@/server/routers/shiprocket.router';
+import { zohoCrmRouter } from '@/server/routers/zoho-crm.router';
 export const appRouter = createTRPCRouter({
   workflows: workflowsRouter,
   credentials:credentialsRouter,
@@ -56,6 +57,7 @@ export const appRouter = createTRPCRouter({
   whatsappTrigger: whatsappTriggerRouter,
   msg91: msg91Router,
   shiprocket: shiprocketRouter,
+  zohoCrm: zohoCrmRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;
