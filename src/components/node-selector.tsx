@@ -256,6 +256,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Zoho CRM",
         description:"Create leads, contacts, deals, tasks, and more in Zoho CRM",
         icon:"/logos/zoho.svg"
+    },
+    {
+        type:NodeType.HUBSPOT,
+        label:"HubSpot",
+        description:"35 CRM operations across contacts, companies, deals, tickets",
+        icon:"/logos/hubspot.svg"
     }
 
 ]

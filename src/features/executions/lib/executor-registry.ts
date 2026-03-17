@@ -37,6 +37,7 @@ import { whatsappTriggerExecutor } from "@/features/triggers/components/whatsapp
 import { msg91Executor } from "../components/msg91/executor";
 import { shiprocketExecutor } from "../components/shiprocket/executor";
 import { zohoCrmExecutor } from "../components/zoho-crm/executor";
+import { hubspotExecutor } from "../components/hubspot/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -77,6 +78,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MSG91]: msg91Executor,
     [NodeType.SHIPROCKET]: shiprocketExecutor,
     [NodeType.ZOHO_CRM]: zohoCrmExecutor,
+    [NodeType.HUBSPOT]: hubspotExecutor,
 
 }
 
