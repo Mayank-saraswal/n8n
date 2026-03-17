@@ -170,7 +170,7 @@ export function LoginForm(){
                                     render={({field})=>(
                                         <FormItem>
                                             <FormLabel>
-                                                Email
+                                                Password
                                             </FormLabel>
                                             <FormControl>
                                                 <Input

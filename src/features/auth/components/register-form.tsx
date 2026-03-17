@@ -90,7 +90,7 @@ export function RegisterForm() {
                     router.push("/")
                 },
                 onError: (ctx) => {
-                    toast.error(ctx.error.message);
+                    toast.error(ctx.error.message ||"Failed to create account");
                 }
         }
         )
