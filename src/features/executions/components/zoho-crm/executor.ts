@@ -23,6 +23,10 @@ const ZOHO_ACCOUNTS_BASE: Record<string, string> = {
   uk: "https://accounts.zoho.uk",
 }
 
+const DEFAULT_ZOHO_VARIABLE_NAME = "zoho"
+// Zoho's lead conversion API accepts a default deal stage when createDeal is enabled.
+const DEFAULT_CONVERT_LEAD_STAGE = "Qualification"
+
 async function refreshZohoToken(
   clientId: string,
   clientSecret: string,
@@ -172,7 +176,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
       const accessToken = await refreshZohoToken(clientId, clientSecret, refreshToken, region)
 
       const r = (field: string) => resolveTemplate(field, context) as string
-      const variableName = config!.variableName || "zoho"
+      const variableName = config!.variableName || DEFAULT_ZOHO_VARIABLE_NAME
       let result: unknown
 
       switch (config!.operation) {
@@ -298,7 +302,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
               Deal_Name: r(config!.dealName) || undefined,
               Closing_Date: r(config!.closingDate) || undefined,
               Amount: r(config!.dealAmount) ? parseFloat(r(config!.dealAmount)) : undefined,
-              Stage: r(config!.dealStage) || "Qualification",
+              Stage: r(config!.dealStage) || DEFAULT_CONVERT_LEAD_STAGE,
             }
           }
 
@@ -445,7 +449,10 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
 
       const message = error instanceof Error ? error.message : "Unknown error"
       if (config?.continueOnFail) {
-        return { ...context, [config.variableName || "zoho"]: { success: false, error: message } }
+        return {
+          ...context,
+          [config.variableName || DEFAULT_ZOHO_VARIABLE_NAME]: { success: false, error: message },
+        }
       }
 
       throw error
