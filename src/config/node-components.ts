@@ -37,6 +37,7 @@ import { RazorpayTriggerNode } from "@/features/triggers/components/razorpay-tri
 import { WhatsAppTriggerNode } from "@/features/triggers/components/whatsapp-trigger/node";
 import { Msg91Node } from "@/features/executions/components/msg91/node";
 import { ShiprocketNode } from "@/features/executions/components/shiprocket/node";
+import ZohoCrmNode from "@/features/executions/components/zoho-crm/node";
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -76,6 +77,7 @@ export const nodeComponents = {
     [NodeType.WHATSAPP_TRIGGER]: WhatsAppTriggerNode,
     [NodeType.MSG91]: Msg91Node,
     [NodeType.SHIPROCKET]: ShiprocketNode,
+    [NodeType.ZOHO_CRM]: ZohoCrmNode,
     //change later
 
 

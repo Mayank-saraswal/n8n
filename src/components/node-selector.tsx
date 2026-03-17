@@ -250,6 +250,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Shiprocket",
         description:"Indian shipping — orders, tracking, returns, labels",
         icon:"/logos/shiprocket.svg"
+    },
+    {
+        type:NodeType.ZOHO_CRM,
+        label:"Zoho CRM",
+        description:"Create leads, contacts, deals, tasks, and more in Zoho CRM",
+        icon:"/logos/zoho.svg"
     }
 
 ]

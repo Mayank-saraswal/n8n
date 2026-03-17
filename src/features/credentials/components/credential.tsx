@@ -33,6 +33,10 @@ const formSchema = z.object({
     msg91AuthKey: z.string().optional(),
     shiprocketEmail: z.string().optional(),
     shiprocketPassword: z.string().optional(),
+    zohoClientId: z.string().optional(),
+    zohoClientSecret: z.string().optional(),
+    zohoRefreshToken: z.string().optional(),
+    zohoRegion: z.enum(["in", "com", "eu", "au", "jp", "uk"]).optional(),
     slackAuthType: z.enum(["bot_token", "webhook"]).optional(),
     slackBotToken: z.string().optional(),
     slackWebhookUrl: z.string().optional(),
@@ -116,6 +120,29 @@ const formSchema = z.object({
                 code: z.ZodIssueCode.custom,
                 message: "Password is required",
                 path: ["shiprocketPassword"],
+            })
+        }
+    }
+    if (data.type === CredentialType.ZOHO_CRM) {
+        if (!data.zohoClientId) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Client ID is required",
+                path: ["zohoClientId"],
+            })
+        }
+        if (!data.zohoClientSecret) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Client Secret is required",
+                path: ["zohoClientSecret"],
+            })
+        }
+        if (!data.zohoRefreshToken) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Refresh Token is required",
+                path: ["zohoRefreshToken"],
             })
         }
     }
@@ -227,6 +254,11 @@ const credentialTypeOptions = [
         value: CredentialType.SHIPROCKET,
         label: "Shiprocket",
         logo: "/logos/shiprocket.svg"
+    },
+    {
+        value: CredentialType.ZOHO_CRM,
+        label: "Zoho CRM",
+        logo: "/logos/zoho.svg"
     },
 
 ]
@@ -347,10 +379,37 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
         return { slackAuthType: "bot_token" as const, slackBotToken: "", slackWebhookUrl: "" }
     }, [initialData])
 
+    const zohoDefaults = useMemo(() => {
+        if (initialData?.type === CredentialType.ZOHO_CRM && initialData.value) {
+            try {
+                const parsed = JSON.parse(initialData.value)
+                return {
+                    zohoClientId: parsed.clientId ?? "",
+                    zohoClientSecret: parsed.clientSecret ?? "",
+                    zohoRefreshToken: parsed.refreshToken ?? "",
+                    zohoRegion: parsed.region ?? "in",
+                }
+            } catch {
+                return {
+                    zohoClientId: "",
+                    zohoClientSecret: "",
+                    zohoRefreshToken: "",
+                    zohoRegion: "in" as const,
+                }
+            }
+        }
+        return {
+            zohoClientId: "",
+            zohoClientSecret: "",
+            zohoRefreshToken: "",
+            zohoRegion: "in" as const,
+        }
+    }, [initialData])
+
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: initialData
-            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...msg91Defaults, ...shiprocketDefaults, ...slackDefaults }
+            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...msg91Defaults, ...shiprocketDefaults, ...slackDefaults, ...zohoDefaults }
             : {
                 name: "",
                 type: CredentialType.OPENAI,
@@ -365,6 +424,10 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                 msg91AuthKey: "",
                 shiprocketEmail: "",
                 shiprocketPassword: "",
+                zohoClientId: "",
+                zohoClientSecret: "",
+                zohoRefreshToken: "",
+                zohoRegion: "in",
                 slackAuthType: "bot_token",
                 slackBotToken: "",
                 slackWebhookUrl: "",
@@ -381,6 +444,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const isRazorpay = watchType === CredentialType.RAZORPAY
     const isMsg91 = watchType === CredentialType.MSG91
     const isShiprocket = watchType === CredentialType.SHIPROCKET
+    const isZohoCrm = watchType === CredentialType.ZOHO_CRM
     const isSlack = watchType === CredentialType.SLACK
     const watchSlackAuthType = form.watch("slackAuthType")
 
@@ -433,6 +497,15 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             })
         }
 
+        if (values.type === CredentialType.ZOHO_CRM) {
+            submitValues.value = JSON.stringify({
+                clientId: values.zohoClientId,
+                clientSecret: values.zohoClientSecret,
+                refreshToken: values.zohoRefreshToken,
+                region: values.zohoRegion || "in",
+            })
+        }
+
         // For Slack, encode based on auth type
         if (values.type === CredentialType.SLACK) {
             if (values.slackAuthType === "bot_token") {
@@ -448,7 +521,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             }
         }
 
-        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, msg91AuthKey, shiprocketEmail, shiprocketPassword, slackAuthType, slackBotToken, slackWebhookUrl, ...payload } = submitValues
+        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, msg91AuthKey, shiprocketEmail, shiprocketPassword, zohoClientId, zohoClientSecret, zohoRefreshToken, zohoRegion, slackAuthType, slackBotToken, slackWebhookUrl, ...payload } = submitValues
 
         if (isEdit && initialData?.id) {
             await updateCredential.mutate({
@@ -524,6 +597,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                     form.setValue("value", "razorpay-credential")
                                                 } else if (val === CredentialType.MSG91) {
                                                     form.setValue("value", "msg91-credential")
+                                                } else if (val === CredentialType.ZOHO_CRM) {
+                                                    form.setValue("value", "zoho-crm-credential")
                                                 } else if (val === CredentialType.SLACK) {
                                                     form.setValue("value", "slack-credential")
                                                 } else if (val === CredentialType.GOOGLE_SHEETS || val === CredentialType.GOOGLE_DRIVE) {
@@ -536,8 +611,9 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                       currentValue === "whatsapp-credential" ||
                                                       currentValue === "notion-credential" ||
                                                       currentValue === "razorpay-credential" ||
-                                                      currentValue === "msg91-credential" ||
-                                                      currentValue === "slack-credential" ||
+                                                       currentValue === "msg91-credential" ||
+                                                       currentValue === "zoho-crm-credential" ||
+                                                       currentValue === "slack-credential" ||
                                                       currentValue.startsWith("{")
                                                     ) {
                                                       form.setValue("value", "")
@@ -835,6 +911,85 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                             </li>
                                             <li>Use the same email and password here</li>
                                             <li>Shiprocket uses JWT auth — credentials are used to generate a token</li>
+                                        </ol>
+                                    </div>
+                                </>
+                            ) : isZohoCrm ? (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="zohoClientId"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Client ID</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Zoho OAuth Client ID" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="zohoClientSecret"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Client Secret</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" placeholder="Zoho OAuth Client Secret" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="zohoRefreshToken"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Refresh Token</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" placeholder="Zoho OAuth Refresh Token" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="zohoRegion"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Region</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value ?? "in"}>
+                                                    <FormControl>
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Select region" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="in">India (in)</SelectItem>
+                                                        <SelectItem value="com">Global USA (com)</SelectItem>
+                                                        <SelectItem value="eu">Europe (eu)</SelectItem>
+                                                        <SelectItem value="au">Australia (au)</SelectItem>
+                                                        <SelectItem value="jp">Japan (jp)</SelectItem>
+                                                        <SelectItem value="uk">United Kingdom (uk)</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-2">How to get your Zoho CRM credentials</p>
+                                        <ol className="list-decimal list-inside space-y-1">
+                                            <li>Go to https://api-console.zoho.in (India) or https://api-console.zoho.com (other regions)</li>
+                                            <li>Click "ADD CLIENT" → choose "Server-based Applications"</li>
+                                            <li>Set Authorized Redirect URI to any valid URL (e.g. https://your-domain.com)</li>
+                                            <li>Copy your Client ID and Client Secret</li>
+                                            <li>Use scopes: ZohoCRM.modules.ALL,ZohoCRM.settings.ALL,ZohoCRM.users.READ</li>
+                                            <li>Generate auth URL, authorize, and copy the refresh_token from response</li>
                                         </ol>
                                     </div>
                                 </>

@@ -152,7 +152,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
   })
 
   return await step.run(`zoho-crm-${nodeId}-execute`, async () => {
-    await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "loading", nodeId }) as never)
+    await publish(zohoCrmChannel().status({ status: "loading", nodeId }))
 
     try {
       const credential = await prisma.credential.findUnique({
@@ -640,7 +640,16 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
         case "CREATE_MEETING": {
           if (!r(config!.subject)) throw new NonRetriableError("Zoho CRM CREATE_MEETING: Subject is required")
           if (!r(config!.meetingStart)) throw new NonRetriableError("Zoho CRM CREATE_MEETING: Start DateTime is required")
-          const participantEmails = JSON.parse(r(config!.participants) || "[]") as string[]
+          const participantsRaw = r(config!.participants) || "[]"
+          let participantEmails: string[] = []
+          try {
+            participantEmails = JSON.parse(participantsRaw) as string[]
+          } catch {
+            participantEmails = participantsRaw
+              .split(",")
+              .map((email) => email.trim())
+              .filter(Boolean)
+          }
           const res = await zohoApi("POST", "/Events", accessToken, region, {
             data: [{
               Event_Title: r(config!.subject),
@@ -753,11 +762,11 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
 
       } // end switch
 
-      await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "success", nodeId }) as never)
+      await publish(zohoCrmChannel().status({ status: "success", nodeId }))
       return { ...context, [variableName]: result }
 
     } catch (err) {
-      await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "error", nodeId }) as never)
+      await publish(zohoCrmChannel().status({ status: "error", nodeId }))
 
       if (config?.continueOnFail) {
         return {
