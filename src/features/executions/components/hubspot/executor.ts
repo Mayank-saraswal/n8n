@@ -142,7 +142,7 @@ function parseCustomProperties(customProps: string): Record<string, unknown> {
 
 export const hubspotExecutor: NodeExecutor = async ({ nodeId, context, step, publish }) => {
   await publish(
-    hubspotChannel().status({
+    hubspotChannel(nodeId).status({
       nodeId,
       status: "loading",
     })
@@ -605,7 +605,7 @@ export const hubspotExecutor: NodeExecutor = async ({ nodeId, context, step, pub
   }
 
   await publish(
-    hubspotChannel().status({
+    hubspotChannel(nodeId).status({
       nodeId,
       status: "success",
     })

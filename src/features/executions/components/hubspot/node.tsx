@@ -29,41 +29,45 @@ const OPERATION_LABELS: Partial<Record<HubspotOperation, string>> = {
   [HubspotOperation.DELETE_CONTACT]: "Delete Contact",
   [HubspotOperation.SEARCH_CONTACTS]: "Search Contacts",
   [HubspotOperation.UPSERT_CONTACT]: "Upsert Contact",
+  [HubspotOperation.GET_CONTACT_ASSOCIATIONS]: "Get Contact Associations",
   [HubspotOperation.CREATE_COMPANY]: "Create Company",
+  [HubspotOperation.GET_COMPANY]: "Get Company",
+  [HubspotOperation.UPDATE_COMPANY]: "Update Company",
+  [HubspotOperation.DELETE_COMPANY]: "Delete Company",
+  [HubspotOperation.SEARCH_COMPANIES]: "Search Companies",
   [HubspotOperation.CREATE_DEAL]: "Create Deal",
-  [HubspotOperation.CREATE_TICKET]: "Create Ticket",
+  [HubspotOperation.GET_DEAL]: "Get Deal",
+  [HubspotOperation.UPDATE_DEAL]: "Update Deal",
+  [HubspotOperation.DELETE_DEAL]: "Delete Deal",
   [HubspotOperation.SEARCH_DEALS]: "Search Deals",
+  [HubspotOperation.UPDATE_DEAL_STAGE]: "Update Deal Stage",
+  [HubspotOperation.CREATE_TICKET]: "Create Ticket",
+  [HubspotOperation.GET_TICKET]: "Get Ticket",
+  [HubspotOperation.UPDATE_TICKET]: "Update Ticket",
+  [HubspotOperation.DELETE_TICKET]: "Delete Ticket",
+  [HubspotOperation.SEARCH_TICKETS]: "Search Tickets",
   [HubspotOperation.CREATE_NOTE]: "Create Note",
   [HubspotOperation.CREATE_TASK]: "Create Task",
+  [HubspotOperation.CREATE_CALL]: "Create Call",
+  [HubspotOperation.CREATE_EMAIL_LOG]: "Create Email Log",
   [HubspotOperation.CREATE_ASSOCIATION]: "Create Association",
+  [HubspotOperation.DELETE_ASSOCIATION]: "Delete Association",
+  [HubspotOperation.ADD_CONTACT_TO_LIST]: "Add Contact To List",
+  [HubspotOperation.REMOVE_CONTACT_FROM_LIST]: "Remove Contact From List",
+  [HubspotOperation.GET_LIST_CONTACTS]: "Get List Contacts",
   [HubspotOperation.SEARCH_OBJECTS]: "Search Objects",
+  [HubspotOperation.GET_PROPERTIES]: "Get Properties",
+}
+
+function formatOperation(op: HubspotOperation) {
+  if (OPERATION_LABELS[op]) return OPERATION_LABELS[op] as string
+  return op.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function getDescription(data: HubspotNodeData) {
   const op = data.operation
   if (!op) return "Click to configure"
-  const label = OPERATION_LABELS[op] || op.replace(/_/g, " ")
-  const recordOps: HubspotOperation[] = [
-    HubspotOperation.GET_CONTACT,
-    HubspotOperation.UPDATE_CONTACT,
-    HubspotOperation.DELETE_CONTACT,
-    HubspotOperation.GET_COMPANY,
-    HubspotOperation.UPDATE_COMPANY,
-    HubspotOperation.DELETE_COMPANY,
-    HubspotOperation.GET_DEAL,
-    HubspotOperation.UPDATE_DEAL,
-    HubspotOperation.DELETE_DEAL,
-    HubspotOperation.GET_TICKET,
-    HubspotOperation.UPDATE_TICKET,
-    HubspotOperation.DELETE_TICKET,
-  ]
-  if (data.recordId && op && recordOps.includes(op)) {
-    return `${label}: ${String(data.recordId).slice(0, 24)}`
-  }
-  if (data.searchQuery && op && op.toString().includes("SEARCH")) {
-    return `${label} – ${String(data.searchQuery).slice(0, 24)}`
-  }
-  return label
+  return formatOperation(op)
 }
 
 export const HubspotNode = memo((props: NodeProps<HubspotNodeType>) => {
@@ -74,9 +78,9 @@ export const HubspotNode = memo((props: NodeProps<HubspotNodeType>) => {
 
   const nodeStatus = useNodeStatus({
     nodeId: props.id,
-    channel: HUBSPOT_CHANNEL_NAME,
+    channel: `${HUBSPOT_CHANNEL_NAME}:${props.id}`,
     topic: "status",
-    refreshToken: fetchHubspotRealtimeToken,
+    refreshToken: () => fetchHubspotRealtimeToken(props.id),
   })
 
   const handleOpenSettings = () => setDialogOpen(true)

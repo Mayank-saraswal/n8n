@@ -6,9 +6,9 @@ import { getSubscriptionToken, Realtime } from "@inngest/realtime"
 
 export type HubspotToken = Realtime.Token<ReturnType<typeof hubspotChannel>, ["status"]>
 
-export async function fetchHubspotRealtimeToken(): Promise<HubspotToken> {
+export async function fetchHubspotRealtimeToken(nodeId: string): Promise<HubspotToken> {
   const token = await getSubscriptionToken(inngest, {
-    channel: hubspotChannel(),
+    channel: hubspotChannel(nodeId),
     topics: ["status"],
   })
   return token
