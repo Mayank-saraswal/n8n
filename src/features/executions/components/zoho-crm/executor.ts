@@ -6,6 +6,18 @@ import prisma from "@/lib/db"
 import { decrypt } from "@/lib/encryption"
 import { zohoCrmChannel } from "./channels"
 
+type ZohoCrmChannelInstance = Realtime.Channel.Definition.AsChannel<ReturnType<typeof zohoCrmChannel>>
+type ZohoCrmStatusPayload = Parameters<ZohoCrmChannelInstance["status"]>[0]
+type ZohoCrmStatus = ZohoCrmStatusPayload["status"]
+type ZohoCrmChannelWithTopic = ZohoCrmChannelInstance & {
+  topic: (id: "status") => { data: (payload: ZohoCrmStatusPayload) => Realtime.Message.Input }
+}
+
+const getZohoCrmChannelWithTopic = (nodeId: string): ZohoCrmChannelWithTopic =>
+  // The Inngest types expose per-topic publishers but omit the .topic helper on the channel object.
+  // Cast once here to avoid sprinkling assertions at each publish site.
+  zohoCrmChannel(nodeId) as unknown as ZohoCrmChannelWithTopic
+
 const ZOHO_API_BASE: Record<string, string> = {
   in: "https://www.zohoapis.in/crm/v6",
   com: "https://www.zohoapis.com/crm/v6",
@@ -195,17 +207,7 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
   })
 
   return await step.run(`zoho-crm-${nodeId}-execute`, async () => {
-    type PublishInput = Parameters<typeof publish>[0]
-    type ZohoCrmChannelInstance = Realtime.Channel.Definition.AsChannel<ReturnType<typeof zohoCrmChannel>>
-    type ZohoCrmStatusPayload = Parameters<ZohoCrmChannelInstance["status"]>[0]
-    type ZohoCrmStatus = ZohoCrmStatusPayload["status"]
-    type ZohoCrmChannelWithTopic = ZohoCrmChannelInstance & {
-      topic: (id: "status") => { data: (payload: ZohoCrmStatusPayload) => PublishInput }
-    }
-
-    // Inngest typings expose topic publishers on the channel but omit the .topic helper;
-    // narrow once here to avoid repeating the cast at each publish site.
-    const channelWithStatus = zohoCrmChannel(nodeId) as unknown as ZohoCrmChannelWithTopic
+    const channelWithStatus = getZohoCrmChannelWithTopic(nodeId)
     const publishStatus = (status: ZohoCrmStatus) =>
       publish(channelWithStatus.topic("status").data({ status, nodeId }))
 
