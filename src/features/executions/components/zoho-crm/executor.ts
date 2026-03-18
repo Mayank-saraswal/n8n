@@ -198,13 +198,18 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
     type PublishInput = Parameters<typeof publish>[0]
     type ZohoCrmChannelInstance = Realtime.Channel.Definition.AsChannel<ReturnType<typeof zohoCrmChannel>>
     type ZohoCrmStatusPayload = Parameters<ZohoCrmChannelInstance["status"]>[0]
+    type ZohoCrmStatus = ZohoCrmStatusPayload["status"]
     type ZohoCrmChannelWithTopic = ZohoCrmChannelInstance & {
       topic: (id: "status") => { data: (payload: ZohoCrmStatusPayload) => PublishInput }
     }
 
+    // Inngest typings expose topic publishers on the channel but omit the .topic helper;
+    // narrow once here to avoid repeating the cast at each publish site.
     const channelWithStatus = zohoCrmChannel(nodeId) as unknown as ZohoCrmChannelWithTopic
+    const publishStatus = (status: ZohoCrmStatus) =>
+      publish(channelWithStatus.topic("status").data({ status, nodeId }))
 
-    await publish(channelWithStatus.topic("status").data({ status: "loading", nodeId }))
+    await publishStatus("loading")
 
     try {
       const { clientId, clientSecret, refreshToken, region } = JSON.parse(decrypt(config!.credential!.value)) as {
@@ -806,11 +811,11 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
 
       } // end switch
 
-      await publish(channelWithStatus.topic("status").data({ status: "success", nodeId }))
+      await publishStatus("success")
       return { ...context, [variableName]: result }
 
     } catch (err) {
-      await publish(channelWithStatus.topic("status").data({ status: "error", nodeId }))
+      await publishStatus("error")
 
       if (config?.continueOnFail) {
         return {

@@ -11,7 +11,7 @@ export async function fetchZohoCrmRealtimeToken(nodeId: string): Promise<ZohoCrm
     channel: zohoCrmChannelName(nodeId),
     topics: ["status"],
   })
-  // getSubscriptionToken loses topic-specific typing when invoked with a channel name string;
-  // narrow for callers based on the channel definition.
+  // getSubscriptionToken accepts a channel name string but drops the topic-typed payload when doing so;
+  // narrow back to the zohoCrmChannel definition so downstream calls keep the status payload typing.
   return token as ZohoCrmToken
 }
