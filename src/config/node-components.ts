@@ -39,6 +39,7 @@ import { Msg91Node } from "@/features/executions/components/msg91/node";
 import { ShiprocketNode } from "@/features/executions/components/shiprocket/node";
 import ZohoCrmNode from "@/features/executions/components/zoho-crm/node";
 import { HubspotNode } from "@/features/executions/components/hubspot/node";
+import { FreshdeskNode } from "@/features/executions/components/freshdesk/node";
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -80,6 +81,7 @@ export const nodeComponents = {
     [NodeType.SHIPROCKET]: ShiprocketNode,
     [NodeType.ZOHO_CRM]: ZohoCrmNode,
     [NodeType.HUBSPOT]: HubspotNode,
+    [NodeType.FRESHDESK]: FreshdeskNode,
     //change later
 
 

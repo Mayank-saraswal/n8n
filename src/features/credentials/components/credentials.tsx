@@ -151,6 +151,7 @@ const credentialsLogos: Record<CredentialType, string> = {
   [CredentialType.SHIPROCKET]: "/logos/shiprocket.svg",
   [CredentialType.ZOHO_CRM]: "/logos/zoho.svg",
   [CredentialType.HUBSPOT]: "/logos/hubspot.svg",
+  [CredentialType.FRESHDESK]: "/logos/freshdesk.svg",
 }
 
 export const CredentialsItem = ({
