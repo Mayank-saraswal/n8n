@@ -1,9 +1,31 @@
 import { NonRetriableError, RetryAfterError } from "inngest"
+import type { Realtime } from "@inngest/realtime"
 import type { NodeExecutor } from "@/features/executions/types"
 import { resolveTemplate } from "@/features/executions/lib/template-resolver"
 import prisma from "@/lib/db"
 import { decrypt } from "@/lib/encryption"
 import { zohoCrmChannel } from "./channels"
+
+// Channel + topic typing helpers derived from the zohoCrmChannel definition.
+type ZohoCrmChannelDefinition = Realtime.Channel.Definition.AsChannel<ReturnType<typeof zohoCrmChannel>>
+type ZohoCrmStatusPayload = Parameters<ZohoCrmChannelDefinition["status"]>[0]
+type ZohoCrmStatus = ZohoCrmStatusPayload["status"]
+type ZohoCrmTopicSignature = (id: "status") => { data: (payload: ZohoCrmStatusPayload) => Realtime.Message.Input }
+type ZohoCrmTopicHelper = ZohoCrmChannelDefinition extends { topic: infer T } ? T : ZohoCrmTopicSignature
+type ZohoCrmChannelWithTopic = ZohoCrmChannelDefinition & { topic: ZohoCrmTopicHelper }
+
+const getZohoCrmChannelWithTopic = (nodeId: string): ZohoCrmChannelWithTopic => {
+  const hasTopicHelper = (channel: unknown): channel is ZohoCrmChannelWithTopic =>
+    typeof (channel as { topic?: unknown })?.topic === "function"
+
+  // The Inngest channel type omits the `.topic` helper even though it exists at runtime;
+  // this guard localizes the workaround and will surface a clear error if the helper disappears.
+  const channel = zohoCrmChannel(nodeId)
+  if (!hasTopicHelper(channel)) {
+    throw new Error("Zoho CRM channel is missing the expected .topic helper")
+  }
+  return channel
+}
 
 const ZOHO_API_BASE: Record<string, string> = {
   in: "https://www.zohoapis.in/crm/v6",
@@ -194,7 +216,11 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
   })
 
   return await step.run(`zoho-crm-${nodeId}-execute`, async () => {
-    await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "loading", nodeId }))
+    const channelWithStatus = getZohoCrmChannelWithTopic(nodeId)
+    const publishStatus = (status: ZohoCrmStatus) =>
+      publish(channelWithStatus.topic("status").data({ status, nodeId }))
+
+    await publishStatus("loading")
 
     try {
       const { clientId, clientSecret, refreshToken, region } = JSON.parse(decrypt(config!.credential!.value)) as {
@@ -796,11 +822,11 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
 
       } // end switch
 
-      await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "success", nodeId }))
+      await publishStatus("success")
       return { ...context, [variableName]: result }
 
     } catch (err) {
-      await publish(zohoCrmChannel(nodeId).topic("status").data({ status: "error", nodeId }))
+      await publishStatus("error")
 
       if (config?.continueOnFail) {
         return {
