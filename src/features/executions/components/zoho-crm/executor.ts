@@ -194,7 +194,14 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
   })
 
   return await step.run(`zoho-crm-${nodeId}-execute`, async () => {
-    await publish((zohoCrmChannel(nodeId) as any).topic("status").data({ status: "loading", nodeId }))
+    type PublishInput = Parameters<typeof publish>[0]
+    const channelWithStatus = zohoCrmChannel(nodeId) as ReturnType<typeof zohoCrmChannel> & {
+      topic: (id: "status") => {
+        data: (payload: { status: "loading" | "success" | "error"; nodeId: string }) => PublishInput
+      }
+    }
+
+    await publish(channelWithStatus.topic("status").data({ status: "loading", nodeId }))
 
     try {
       const { clientId, clientSecret, refreshToken, region } = JSON.parse(decrypt(config!.credential!.value)) as {
@@ -796,11 +803,11 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
 
       } // end switch
 
-      await publish((zohoCrmChannel(nodeId) as any).topic("status").data({ status: "success", nodeId }))
+      await publish(channelWithStatus.topic("status").data({ status: "success", nodeId }))
       return { ...context, [variableName]: result }
 
     } catch (err) {
-      await publish((zohoCrmChannel(nodeId) as any).topic("status").data({ status: "error", nodeId }))
+      await publish(channelWithStatus.topic("status").data({ status: "error", nodeId }))
 
       if (config?.continueOnFail) {
         return {
