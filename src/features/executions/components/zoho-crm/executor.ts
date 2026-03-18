@@ -13,10 +13,15 @@ type ZohoCrmChannelWithTopic = ZohoCrmChannelInstance & {
   topic: (id: "status") => { data: (payload: ZohoCrmStatusPayload) => Realtime.Message.Input }
 }
 
-const getZohoCrmChannelWithTopic = (nodeId: string): ZohoCrmChannelWithTopic =>
-  // The Inngest types expose per-topic publishers but omit the .topic helper on the channel object.
-  // Cast once here to avoid sprinkling assertions at each publish site.
-  zohoCrmChannel(nodeId) as unknown as ZohoCrmChannelWithTopic
+const getZohoCrmChannelWithTopic = (nodeId: string): ZohoCrmChannelWithTopic => {
+  // The Inngest channel type omits the `.topic` helper even though it exists at runtime.
+  // Guard at runtime so we fail fast if the helper disappears in future versions.
+  const channel = zohoCrmChannel(nodeId)
+  if (typeof (channel as { topic?: unknown }).topic !== "function") {
+    throw new Error("Zoho CRM channel is missing the expected .topic helper")
+  }
+  return channel as unknown as ZohoCrmChannelWithTopic
+}
 
 const ZOHO_API_BASE: Record<string, string> = {
   in: "https://www.zohoapis.in/crm/v6",
