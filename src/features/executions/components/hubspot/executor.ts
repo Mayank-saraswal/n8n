@@ -2,7 +2,7 @@ import { NonRetriableError, RetryAfterError } from "inngest"
 import type { NodeExecutor } from "@/features/executions/types"
 import prisma from "@/lib/db"
 import { decrypt, encrypt } from "@/lib/encryption"
-import { resolveTemplate } from "@/features/executions/lib/resolve-template"
+import { resolveTemplate } from "@/features/executions/lib/template-resolver"
 import { hubspotChannel } from "@/inngest/channels/hubspot"
 import { HubspotOperation } from "@/generated/prisma"
 
@@ -217,11 +217,12 @@ export const hubspotExecutor: NodeExecutor = async ({ nodeId, context, step, pub
       ...customProps,
     })
 
-  let result: Record<string, unknown> = {}
+   let result: Record<string, unknown> = {}
+    try {
+        result = await step.run(`hubspot-${nodeId}-execute`, async () => {
+        await publish(hubspotChannel(nodeId).status({ nodeId, status: "loading" }))
 
-  try {
-    result = await step.run(`hubspot-${nodeId}-execute`, async () => {
-      await publish(hubspotChannel(nodeId).topic("status").data({ nodeId, status: "loading" }))
+
       switch (config.operation) {
         case HubspotOperation.CREATE_CONTACT: {
           const properties = buildContactProps()
@@ -573,32 +574,24 @@ export const hubspotExecutor: NodeExecutor = async ({ nodeId, context, step, pub
         default:
           throw new NonRetriableError(`HubSpot: Unsupported operation ${config.operation}`)
       }
+      await publish(hubspotChannel(nodeId).status({ nodeId, status: "success" }))
     })
+    return result
+ 
+ 
   } catch (err) {
-    if (err instanceof NonRetriableError || err instanceof RetryAfterError) {
-      if (config?.continueOnFail) {
-        result = {
-          operation: config.operation,
-          success: false,
-          error: err.message,
-        }
-      } else {
-        throw err
-      }
-    } else {
-      if (config?.continueOnFail) {
-        result = {
-          operation: config?.operation,
+    await publish(hubspotChannel(nodeId).status({ nodeId, status: "error" }))
+    if (config?.continueOnFail) {
+      return {
+        ...context,
+        [(config?.variableName || "hubspot") as string]: {
           success: false,
           error: err instanceof Error ? err.message : String(err),
-        }
-      } else {
-        throw err instanceof Error ? err : new Error(String(err))
+        },
       }
     }
+    throw err instanceof Error ? err : new Error(String(err))
   }
-
-  await publish(hubspotChannel(nodeId).topic("status").data({ nodeId, status: "success" }))
 
   return {
     ...context,

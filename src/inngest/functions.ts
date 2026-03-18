@@ -41,6 +41,7 @@ import { razorpayTriggerChannel } from "./channels/razorpay-trigger"
 import { whatsappTriggerChannel } from "./channels/whatsapp-trigger";
 import { msg91Channel } from "./channels/msg91";
 import { shiprocketChannel } from "./channels/shiprocket";
+import { hubspotChannel } from "@/inngest/channels/hubspot"
 import { zohoCrmChannel } from "@/features/executions/components/zoho-crm/channels";
 
 const MAX_JSON_LENGTH = 100_000;
@@ -184,6 +185,7 @@ export const executeWorkflow = inngest.createFunction(
       whatsappTriggerChannel(),
       msg91Channel(),
       shiprocketChannel(),
+      hubspotChannel(),
       zohoCrmChannel(),
 
     ]

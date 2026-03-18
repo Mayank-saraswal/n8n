@@ -14,5 +14,5 @@ export async function fetchZohoCrmRealtimeToken(nodeId: string): Promise<ZohoCrm
     channel: zohoCrmChannel(nodeId),
     topics: ["status"],
   })
-  return token
+  return token as unknown as ZohoCrmToken
 }
