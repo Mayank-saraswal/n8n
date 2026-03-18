@@ -112,6 +112,7 @@ model workflow {
   shiprocketNodes    ShiprocketNode[]
   zohoCrmNodes       ZohoCrmNode[]
   hubspotNodes       HubspotNode[]
+  freshdeskNodes     FreshdeskNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -156,6 +157,7 @@ enum NodeType {
   SHIPROCKET
   ZOHO_CRM
   HUBSPOT
+  FRESHDESK
   // In a future sprint: ZOHO_CRM_TRIGGER
   // Registers a Zoho Notification API webhook for lead/contact/deal events.
   // Ref: https://www.zoho.com/crm/developer/docs/api/v6/notifications/overview.html
@@ -212,6 +214,7 @@ model Credential {
   shiprocketNodes ShiprocketNode[]
   zohoCrmNodes    ZohoCrmNode[]
   hubspotNodes    HubspotNode[]
+  freshdeskNodes  FreshdeskNode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -242,6 +245,7 @@ enum CredentialType {
   SHIPROCKET
   ZOHO_CRM
   HUBSPOT
+  FRESHDESK
 }
 
 model Node {
@@ -1488,4 +1492,152 @@ enum ZohoCrmOperation {
   UPSERT_RECORD
   SEARCH_RECORDS
   GET_FIELDS
+}
+
+enum FreshdeskOperation {
+  // ── TICKETS ──────────────────────────────────────────────
+  CREATE_TICKET
+  GET_TICKET
+  UPDATE_TICKET
+  DELETE_TICKET
+  LIST_TICKETS
+  SEARCH_TICKETS
+  GET_TICKET_FIELDS
+  RESTORE_TICKET
+
+  // ── TICKET NOTES ─────────────────────────────────────────
+  ADD_NOTE
+  LIST_NOTES
+  UPDATE_NOTE
+  DELETE_NOTE
+
+  // ── CONTACTS ─────────────────────────────────────────────
+  CREATE_CONTACT
+  GET_CONTACT
+  UPDATE_CONTACT
+  DELETE_CONTACT
+  LIST_CONTACTS
+  SEARCH_CONTACTS
+  MERGE_CONTACT
+
+  // ── COMPANIES ────────────────────────────────────────────
+  CREATE_COMPANY
+  GET_COMPANY
+  UPDATE_COMPANY
+  DELETE_COMPANY
+  LIST_COMPANIES
+
+  // ── AGENTS ───────────────────────────────────────────────
+  LIST_AGENTS
+  GET_AGENT
+  UPDATE_AGENT
+
+  // ── CONVERSATIONS ────────────────────────────────────────
+  LIST_CONVERSATIONS
+  SEND_REPLY
+  CREATE_OUTBOUND_EMAIL
+
+  // ── GENERIC ──────────────────────────────────────────────
+  GET_TICKET_STATS
+}
+
+model FreshdeskNode {
+  id           String             @id @default(cuid())
+  nodeId       String             @unique
+  workflowId   String
+  credentialId String?
+  credential   Credential?        @relation(fields: [credentialId], references: [id])
+
+  operation    FreshdeskOperation @default(CREATE_TICKET)
+  variableName String             @default("freshdesk")
+
+  // ── TICKET FIELDS ─────────────────────────────────────────
+  subject      String             @default("") @db.Text
+  description  String             @default("") @db.Text
+  descriptionHtml String          @default("") @db.Text
+  email        String             @default("") @db.Text
+  name         String             @default("") @db.Text
+  phone        String             @default("") @db.Text
+  mobilePhone  String             @default("") @db.Text
+  subject2     String             @default("") @db.Text
+  ticketId     String             @default("") @db.Text
+
+  // Priority: 1=Low, 2=Medium, 3=High, 4=Urgent
+  priority     Int                @default(2)
+
+  // Status: 2=Open, 3=Pending, 4=Resolved, 5=Closed
+  status       Int                @default(2)
+
+  // Source: 1=Email, 2=Portal, 3=Phone, 7=Chat, 9=Twitter DM, 10=WhatsApp
+  source       Int                @default(2)
+
+  // Type: Question, Incident, Problem, Feature Request, Refund Request, etc.
+  ticketType   String             @default("")
+
+  responderId  String             @default("") @db.Text
+  groupId      String             @default("") @db.Text
+  productId    String             @default("") @db.Text
+  companyId    String             @default("") @db.Text
+  fwdEmail     String             @default("") @db.Text
+
+  // Tags — comma-separated list
+  tags         String             @default("") @db.Text
+
+  // Custom fields JSON — { "cf_order_id": "ORD-123" }
+  customFields String             @default("{}") @db.Text
+
+  // ── NOTE FIELDS ───────────────────────────────────────────
+  noteId       String             @default("") @db.Text
+  noteBody     String             @default("") @db.Text
+  notePrivate  Boolean            @default(false)
+  noteUserId   String             @default("") @db.Text
+
+  // ── CONTACT FIELDS ────────────────────────────────────────
+  contactId    String             @default("") @db.Text
+  contactEmail String             @default("") @db.Text
+  contactName  String             @default("") @db.Text
+  contactPhone String             @default("") @db.Text
+  contactMobile String            @default("") @db.Text
+  contactJobTitle String          @default("") @db.Text
+  contactTimeZone String          @default("") @db.Text
+  contactLanguage String          @default("") @db.Text
+  contactTags  String             @default("") @db.Text
+  contactCompanyId String         @default("") @db.Text
+  mergeTargetId String            @default("") @db.Text
+
+  // ── COMPANY FIELDS ────────────────────────────────────────
+  companyName  String             @default("") @db.Text
+  companyDomain String            @default("") @db.Text
+  companyDescription String       @default("") @db.Text
+  companyNote  String             @default("") @db.Text
+
+  // ── AGENT FIELDS ──────────────────────────────────────────
+  agentId      String             @default("") @db.Text
+
+  // ── REPLY FIELDS ──────────────────────────────────────────
+  replyBody    String             @default("") @db.Text
+  replyFrom    String             @default("") @db.Text
+  replyTo      String             @default("") @db.Text
+  replyCc      String             @default("") @db.Text
+  replyBcc     String             @default("") @db.Text
+
+  // ── SEARCH / FILTER FIELDS ────────────────────────────────
+  searchQuery  String             @default("") @db.Text
+  filterBy     String             @default("")
+  orderBy      String             @default("created_at")
+  orderType    String             @default("desc")
+  page         Int                @default(1)
+  perPage      Int                @default(30)
+  updatedSince String             @default("") @db.Text
+  includeStats Boolean            @default(false)
+
+  continueOnFail Boolean          @default(false)
+
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  workflow     workflow           @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
 }

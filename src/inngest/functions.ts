@@ -42,6 +42,7 @@ import { whatsappTriggerChannel } from "./channels/whatsapp-trigger";
 import { msg91Channel } from "./channels/msg91";
 import { shiprocketChannel } from "./channels/shiprocket";
 import { zohoCrmChannel } from "@/features/executions/components/zoho-crm/channels";
+import { freshdeskChannel } from "./channels/freshdesk";
 
 const MAX_JSON_LENGTH = 100_000;
 
@@ -185,6 +186,7 @@ export const executeWorkflow = inngest.createFunction(
       msg91Channel(),
       shiprocketChannel(),
       zohoCrmChannel(),
+      freshdeskChannel(),
 
     ]
   },

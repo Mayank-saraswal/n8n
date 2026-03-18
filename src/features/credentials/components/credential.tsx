@@ -45,6 +45,8 @@ const formSchema = z.object({
     hubspotExpiresAt: z.string().optional(),
     hubspotPortalId: z.string().optional(),
     hubspotHubId: z.string().optional(),
+    freshdeskApiKey: z.string().optional(),
+    freshdeskDomain: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.type === CredentialType.GMAIL) {
         if (!data.gmailEmail) {
@@ -167,6 +169,22 @@ const formSchema = z.object({
             })
         }
     }
+    if (data.type === CredentialType.FRESHDESK) {
+        if (!data.freshdeskApiKey) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "API Key is required",
+                path: ["freshdeskApiKey"],
+            })
+        }
+        if (!data.freshdeskDomain) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Domain is required",
+                path: ["freshdeskDomain"],
+            })
+        }
+    }
     if (data.type === CredentialType.SLACK) {
         if (data.slackAuthType === "bot_token" && !data.slackBotToken) {
             ctx.addIssue({
@@ -285,6 +303,11 @@ const credentialTypeOptions = [
         value: CredentialType.HUBSPOT,
         label: "HubSpot",
         logo: "/logos/hubspot.svg"
+    },
+    {
+        value: CredentialType.FRESHDESK,
+        label: "Freshdesk",
+        logo: "/logos/freshdesk.svg"
     },
 
 ]
@@ -462,10 +485,25 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
         }
     }, [initialData])
 
+    const freshdeskDefaults = useMemo(() => {
+        if (initialData?.type === CredentialType.FRESHDESK && initialData.value) {
+            try {
+                const parsed = JSON.parse(initialData.value)
+                return {
+                    freshdeskApiKey: parsed.apiKey ?? "",
+                    freshdeskDomain: parsed.domain ?? "",
+                }
+            } catch {
+                return { freshdeskApiKey: "", freshdeskDomain: "" }
+            }
+        }
+        return { freshdeskApiKey: "", freshdeskDomain: "" }
+    }, [initialData])
+
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: initialData
-            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...msg91Defaults, ...shiprocketDefaults, ...slackDefaults, ...zohoDefaults, ...hubspotDefaults }
+            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...msg91Defaults, ...shiprocketDefaults, ...slackDefaults, ...zohoDefaults, ...hubspotDefaults, ...freshdeskDefaults }
             : {
                 name: "",
                 type: CredentialType.OPENAI,
@@ -492,6 +530,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                 hubspotExpiresAt: "",
                 hubspotPortalId: "",
                 hubspotHubId: "",
+                freshdeskApiKey: "",
+                freshdeskDomain: "",
             }
     })
 
@@ -508,6 +548,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const isZohoCrm = watchType === CredentialType.ZOHO_CRM
     const isSlack = watchType === CredentialType.SLACK
     const isHubspot = watchType === CredentialType.HUBSPOT
+    const isFreshdesk = watchType === CredentialType.FRESHDESK
     const watchSlackAuthType = form.watch("slackAuthType")
 
     const onSubmit = async (values: FormValues) => {
@@ -578,6 +619,14 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             })
         }
 
+        // For Freshdesk, encode apiKey + domain as JSON in the value field
+        if (values.type === CredentialType.FRESHDESK) {
+            submitValues.value = JSON.stringify({
+                apiKey: values.freshdeskApiKey,
+                domain: values.freshdeskDomain,
+            })
+        }
+
         // For Slack, encode based on auth type
         if (values.type === CredentialType.SLACK) {
             if (values.slackAuthType === "bot_token") {
@@ -593,7 +642,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             }
         }
 
-        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, msg91AuthKey, shiprocketEmail, shiprocketPassword, zohoClientId, zohoClientSecret, zohoRefreshToken, zohoRegion, slackAuthType, slackBotToken, slackWebhookUrl, hubspotAccessToken, hubspotRefreshToken, hubspotExpiresAt, hubspotPortalId, hubspotHubId, ...payload } = submitValues
+        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, msg91AuthKey, shiprocketEmail, shiprocketPassword, zohoClientId, zohoClientSecret, zohoRefreshToken, zohoRegion, slackAuthType, slackBotToken, slackWebhookUrl, hubspotAccessToken, hubspotRefreshToken, hubspotExpiresAt, hubspotPortalId, hubspotHubId, freshdeskApiKey, freshdeskDomain, ...payload } = submitValues
 
         if (isEdit && initialData?.id) {
             await updateCredential.mutate({
@@ -673,6 +722,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                     form.setValue("value", "zoho-crm-credential")
                                                 } else if (val === CredentialType.SLACK) {
                                                     form.setValue("value", "slack-credential")
+                                                } else if (val === CredentialType.FRESHDESK) {
+                                                    form.setValue("value", "freshdesk-credential")
                                                 } else if (val === CredentialType.GOOGLE_SHEETS || val === CredentialType.GOOGLE_DRIVE) {
                                                     form.setValue("value", "")
                                                 } else {
@@ -686,6 +737,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                        currentValue === "msg91-credential" ||
                                                        currentValue === "zoho-crm-credential" ||
                                                        currentValue === "slack-credential" ||
+                                                       currentValue === "freshdesk-credential" ||
                                                       currentValue.startsWith("{")
                                                     ) {
                                                       form.setValue("value", "")
@@ -1138,6 +1190,54 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                     <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
                                         <p className="font-medium mb-2">ℹ️ HubSpot OAuth tokens</p>
                                         <p>Use your HubSpot app to generate access and refresh tokens. Tokens are encrypted and refreshed automatically when close to expiry.</p>
+                                    </div>
+                                </>
+                            ) : isFreshdesk ? (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="freshdeskApiKey"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>API Key</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" placeholder="Your Freshdesk API Key" {...field} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Found in Freshdesk → Profile → Your API Key
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="freshdeskDomain"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Domain</FormLabel>
+                                                <FormControl>
+                                                    <Input type="text" placeholder="yourcompany (from yourcompany.freshdesk.com)" {...field} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    The subdomain part of your Freshdesk URL
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-2">ℹ️ How to get your Freshdesk credentials</p>
+                                        <ol className="list-decimal list-inside space-y-1">
+                                            <li>Log in to{" "}
+                                                <a href="https://freshdesk.com" target="_blank" rel="noopener noreferrer" className="underline">
+                                                    freshdesk.com
+                                                </a>
+                                            </li>
+                                            <li>Click your profile icon → Profile Settings</li>
+                                            <li>Your API Key is on the right side panel</li>
+                                            <li>Your domain is the &quot;yourcompany&quot; part of yourcompany.freshdesk.com</li>
+                                        </ol>
                                     </div>
                                 </>
                             ) : isSlack ? (
