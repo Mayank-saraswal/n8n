@@ -5,7 +5,7 @@ import prisma from "@/lib/db"
 import { ZohoCrmOperation } from "@/generated/prisma"
 import { inngest } from "@/inngest/client"
 import { getSubscriptionToken } from "@inngest/realtime"
-import { zohoCrmChannel } from "@/features/executions/components/zoho-crm/channels"
+import { zohoCrmChannel, zohoCrmChannelName } from "@/features/executions/components/zoho-crm/channels"
 
 export const zohoCrmRouter = createTRPCRouter({
   upsert: protectedProcedure
@@ -149,7 +149,7 @@ export const zohoCrmRouter = createTRPCRouter({
     .input(z.object({ nodeId: z.string() }))
     .query(async ({ input }) => {
       const token = await getSubscriptionToken(inngest, {
-        channel: zohoCrmChannel(input.nodeId)(),
+        channel: zohoCrmChannelName(input.nodeId),
         topics: ["status"],
       })
       return { token }
