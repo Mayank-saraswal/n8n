@@ -2,16 +2,15 @@
 
 import { inngest } from "@/inngest/client"
 import { getSubscriptionToken, Realtime } from "@inngest/realtime"
-import { zohoCrmChannel, zohoCrmChannelName } from "./channels"
+import { zohoCrmChannelName } from "./channels"
 
-export type ZohoCrmToken = Realtime.Token<ReturnType<typeof zohoCrmChannel>, ["status"]>
+type ZohoCrmChannelName = ReturnType<typeof zohoCrmChannelName>
+export type ZohoCrmToken = Realtime.Subscribe.Token<Realtime.Channel.AsChannel<ZohoCrmChannelName>, ["status"]>
 
 export async function fetchZohoCrmRealtimeToken(nodeId: string): Promise<ZohoCrmToken> {
-  const token = await getSubscriptionToken(inngest, {
+  const token = await getSubscriptionToken<ZohoCrmChannelName, ["status"], ZohoCrmToken>(inngest, {
     channel: zohoCrmChannelName(nodeId),
     topics: ["status"],
   })
-  // getSubscriptionToken accepts a channel name string but drops the topic-typed payload when doing so;
-  // narrow back to the zohoCrmChannel definition so downstream calls keep the status payload typing.
-  return token as ZohoCrmToken
+  return token
 }
