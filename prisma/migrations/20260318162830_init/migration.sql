@@ -1,11 +1,11 @@
 -- CreateEnum
-CREATE TYPE "NodeType" AS ENUM ('INITIAL', 'MANUAL_TRIGGER', 'HTTP_REQUEST', 'GOOGLE_FORM_TRIGGER', 'STRIPE_TRIGGER', 'WEBHOOK_TRIGGER', 'SCHEDULE_TRIGGER', 'ANTHROPIC', 'GEMINI', 'OPENAI', 'GROQ', 'XAI', 'DISCORD', 'SLACK', 'DEEPSEEK', 'PERPLEXITY', 'TELEGRAM', 'X', 'WORKDAY', 'IF_ELSE', 'GMAIL', 'SET_VARIABLE', 'GOOGLE_SHEETS', 'GOOGLE_DRIVE', 'CODE', 'WHATSAPP', 'LOOP', 'NOTION', 'RAZORPAY', 'SWITCH', 'WAIT', 'MERGE', 'ERROR_TRIGGER', 'RAZORPAY_TRIGGER', 'WHATSAPP_TRIGGER', 'MSG91', 'SHIPROCKET', 'ZOHO_CRM', 'HUBSPOT');
+CREATE TYPE "NodeType" AS ENUM ('INITIAL', 'MANUAL_TRIGGER', 'HTTP_REQUEST', 'GOOGLE_FORM_TRIGGER', 'STRIPE_TRIGGER', 'WEBHOOK_TRIGGER', 'SCHEDULE_TRIGGER', 'ANTHROPIC', 'GEMINI', 'OPENAI', 'GROQ', 'XAI', 'DISCORD', 'SLACK', 'DEEPSEEK', 'PERPLEXITY', 'TELEGRAM', 'X', 'WORKDAY', 'IF_ELSE', 'GMAIL', 'SET_VARIABLE', 'GOOGLE_SHEETS', 'GOOGLE_DRIVE', 'CODE', 'WHATSAPP', 'LOOP', 'NOTION', 'RAZORPAY', 'SWITCH', 'WAIT', 'MERGE', 'ERROR_TRIGGER', 'RAZORPAY_TRIGGER', 'WHATSAPP_TRIGGER', 'MSG91', 'SHIPROCKET', 'ZOHO_CRM', 'HUBSPOT', 'FRESHDESK');
 
 -- CreateEnum
 CREATE TYPE "HttpMethod" AS ENUM ('GET', 'POST', 'PUT', 'PATCH');
 
 -- CreateEnum
-CREATE TYPE "CredentialType" AS ENUM ('OPENAI', 'ANTHROPIC', 'GEMINI', 'DEEPSEEK', 'PERPLEXITY', 'XAI', 'GROQ', 'GMAIL', 'GMAIL_OAUTH', 'GOOGLE_SHEETS', 'GOOGLE_DRIVE', 'WHATSAPP', 'NOTION', 'RAZORPAY', 'SLACK', 'MSG91', 'SHIPROCKET', 'ZOHO_CRM', 'HUBSPOT');
+CREATE TYPE "CredentialType" AS ENUM ('OPENAI', 'ANTHROPIC', 'GEMINI', 'DEEPSEEK', 'PERPLEXITY', 'XAI', 'GROQ', 'GMAIL', 'GMAIL_OAUTH', 'GOOGLE_SHEETS', 'GOOGLE_DRIVE', 'WHATSAPP', 'NOTION', 'RAZORPAY', 'SLACK', 'MSG91', 'SHIPROCKET', 'ZOHO_CRM', 'HUBSPOT', 'FRESHDESK');
 
 -- CreateEnum
 CREATE TYPE "ExecutionStatus" AS ENUM ('RUNNING', 'SUCCESS', 'FAILED');
@@ -45,6 +45,9 @@ CREATE TYPE "ShiprocketOperation" AS ENUM ('CREATE_ORDER', 'GET_ORDER', 'CANCEL_
 
 -- CreateEnum
 CREATE TYPE "ZohoCrmOperation" AS ENUM ('CREATE_LEAD', 'GET_LEAD', 'UPDATE_LEAD', 'DELETE_LEAD', 'SEARCH_LEADS', 'CONVERT_LEAD', 'CREATE_CONTACT', 'GET_CONTACT', 'UPDATE_CONTACT', 'DELETE_CONTACT', 'SEARCH_CONTACTS', 'GET_CONTACT_DEALS', 'CREATE_DEAL', 'GET_DEAL', 'UPDATE_DEAL', 'DELETE_DEAL', 'SEARCH_DEALS', 'UPDATE_DEAL_STAGE', 'CREATE_ACCOUNT', 'GET_ACCOUNT', 'UPDATE_ACCOUNT', 'DELETE_ACCOUNT', 'SEARCH_ACCOUNTS', 'CREATE_TASK', 'CREATE_CALL_LOG', 'CREATE_MEETING', 'GET_ACTIVITIES', 'ADD_NOTE', 'GET_NOTES', 'UPSERT_RECORD', 'SEARCH_RECORDS', 'GET_FIELDS');
+
+-- CreateEnum
+CREATE TYPE "FreshdeskOperation" AS ENUM ('CREATE_TICKET', 'GET_TICKET', 'UPDATE_TICKET', 'DELETE_TICKET', 'LIST_TICKETS', 'SEARCH_TICKETS', 'GET_TICKET_FIELDS', 'RESTORE_TICKET', 'ADD_NOTE', 'LIST_NOTES', 'UPDATE_NOTE', 'DELETE_NOTE', 'CREATE_CONTACT', 'GET_CONTACT', 'UPDATE_CONTACT', 'DELETE_CONTACT', 'LIST_CONTACTS', 'SEARCH_CONTACTS', 'MERGE_CONTACT', 'CREATE_COMPANY', 'GET_COMPANY', 'UPDATE_COMPANY', 'DELETE_COMPANY', 'LIST_COMPANIES', 'LIST_AGENTS', 'GET_AGENT', 'UPDATE_AGENT', 'LIST_CONVERSATIONS', 'SEND_REPLY', 'CREATE_OUTBOUND_EMAIL', 'GET_TICKET_STATS');
 
 -- CreateTable
 CREATE TABLE "user" (
@@ -911,6 +914,74 @@ CREATE TABLE "HubspotNode" (
     CONSTRAINT "HubspotNode_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "FreshdeskNode" (
+    "id" TEXT NOT NULL,
+    "nodeId" TEXT NOT NULL,
+    "workflowId" TEXT NOT NULL,
+    "credentialId" TEXT,
+    "operation" "FreshdeskOperation" NOT NULL DEFAULT 'CREATE_TICKET',
+    "variableName" TEXT NOT NULL DEFAULT 'freshdesk',
+    "subject" TEXT NOT NULL DEFAULT '',
+    "description" TEXT NOT NULL DEFAULT '',
+    "descriptionHtml" TEXT NOT NULL DEFAULT '',
+    "email" TEXT NOT NULL DEFAULT '',
+    "name" TEXT NOT NULL DEFAULT '',
+    "phone" TEXT NOT NULL DEFAULT '',
+    "mobilePhone" TEXT NOT NULL DEFAULT '',
+    "subject2" TEXT NOT NULL DEFAULT '',
+    "ticketId" TEXT NOT NULL DEFAULT '',
+    "priority" INTEGER NOT NULL DEFAULT 2,
+    "status" INTEGER NOT NULL DEFAULT 2,
+    "source" INTEGER NOT NULL DEFAULT 2,
+    "ticketType" TEXT NOT NULL DEFAULT '',
+    "responderId" TEXT NOT NULL DEFAULT '',
+    "groupId" TEXT NOT NULL DEFAULT '',
+    "productId" TEXT NOT NULL DEFAULT '',
+    "companyId" TEXT NOT NULL DEFAULT '',
+    "fwdEmail" TEXT NOT NULL DEFAULT '',
+    "tags" TEXT NOT NULL DEFAULT '',
+    "customFields" TEXT NOT NULL DEFAULT '{}',
+    "noteId" TEXT NOT NULL DEFAULT '',
+    "noteBody" TEXT NOT NULL DEFAULT '',
+    "notePrivate" BOOLEAN NOT NULL DEFAULT false,
+    "noteUserId" TEXT NOT NULL DEFAULT '',
+    "contactId" TEXT NOT NULL DEFAULT '',
+    "contactEmail" TEXT NOT NULL DEFAULT '',
+    "contactName" TEXT NOT NULL DEFAULT '',
+    "contactPhone" TEXT NOT NULL DEFAULT '',
+    "contactMobile" TEXT NOT NULL DEFAULT '',
+    "contactJobTitle" TEXT NOT NULL DEFAULT '',
+    "contactTimeZone" TEXT NOT NULL DEFAULT '',
+    "contactLanguage" TEXT NOT NULL DEFAULT '',
+    "contactTags" TEXT NOT NULL DEFAULT '',
+    "contactCompanyId" TEXT NOT NULL DEFAULT '',
+    "mergeTargetId" TEXT NOT NULL DEFAULT '',
+    "companyName" TEXT NOT NULL DEFAULT '',
+    "companyDomain" TEXT NOT NULL DEFAULT '',
+    "companyDescription" TEXT NOT NULL DEFAULT '',
+    "companyNote" TEXT NOT NULL DEFAULT '',
+    "agentId" TEXT NOT NULL DEFAULT '',
+    "replyBody" TEXT NOT NULL DEFAULT '',
+    "replyFrom" TEXT NOT NULL DEFAULT '',
+    "replyTo" TEXT NOT NULL DEFAULT '',
+    "replyCc" TEXT NOT NULL DEFAULT '',
+    "replyBcc" TEXT NOT NULL DEFAULT '',
+    "searchQuery" TEXT NOT NULL DEFAULT '',
+    "filterBy" TEXT NOT NULL DEFAULT '',
+    "orderBy" TEXT NOT NULL DEFAULT 'created_at',
+    "orderType" TEXT NOT NULL DEFAULT 'desc',
+    "page" INTEGER NOT NULL DEFAULT 1,
+    "perPage" INTEGER NOT NULL DEFAULT 30,
+    "updatedSince" TEXT NOT NULL DEFAULT '',
+    "includeStats" BOOLEAN NOT NULL DEFAULT false,
+    "continueOnFail" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "FreshdeskNode_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "user_email_key" ON "user"("email");
 
@@ -1145,6 +1216,15 @@ CREATE INDEX "HubspotNode_workflowId_idx" ON "HubspotNode"("workflowId");
 -- CreateIndex
 CREATE INDEX "HubspotNode_nodeId_idx" ON "HubspotNode"("nodeId");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "FreshdeskNode_nodeId_key" ON "FreshdeskNode"("nodeId");
+
+-- CreateIndex
+CREATE INDEX "FreshdeskNode_workflowId_idx" ON "FreshdeskNode"("workflowId");
+
+-- CreateIndex
+CREATE INDEX "FreshdeskNode_nodeId_idx" ON "FreshdeskNode"("nodeId");
+
 -- AddForeignKey
 ALTER TABLE "session" ADD CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -1259,3 +1339,8 @@ ALTER TABLE "HubspotNode" ADD CONSTRAINT "HubspotNode_credentialId_fkey" FOREIGN
 -- AddForeignKey
 ALTER TABLE "HubspotNode" ADD CONSTRAINT "HubspotNode_workflowId_fkey" FOREIGN KEY ("workflowId") REFERENCES "workflow"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+-- AddForeignKey
+ALTER TABLE "FreshdeskNode" ADD CONSTRAINT "FreshdeskNode_credentialId_fkey" FOREIGN KEY ("credentialId") REFERENCES "Credenial"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "FreshdeskNode" ADD CONSTRAINT "FreshdeskNode_workflowId_fkey" FOREIGN KEY ("workflowId") REFERENCES "workflow"("id") ON DELETE CASCADE ON UPDATE CASCADE;

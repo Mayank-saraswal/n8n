@@ -38,6 +38,7 @@ import { msg91Executor } from "../components/msg91/executor";
 import { shiprocketExecutor } from "../components/shiprocket/executor";
 import { zohoCrmExecutor } from "../components/zoho-crm/executor";
 import { hubspotExecutor } from "../components/hubspot/executor";
+import { freshdeskExecutor } from "../components/freshdesk/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -79,6 +80,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.SHIPROCKET]: shiprocketExecutor,
     [NodeType.ZOHO_CRM]: zohoCrmExecutor,
     [NodeType.HUBSPOT]: hubspotExecutor,
+    [NodeType.FRESHDESK]: freshdeskExecutor,
 
 }
 

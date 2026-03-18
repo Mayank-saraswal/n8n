@@ -32,6 +32,7 @@ import { msg91Router } from '@/server/routers/msg91.router';
 import { shiprocketRouter } from '@/server/routers/shiprocket.router';
 import { zohoCrmRouter } from '@/server/routers/zoho-crm.router';
 import { hubspotRouter } from '@/server/routers/hubspot.router';
+import { freshdeskRouter } from '@/server/routers/freshdesk.router';
 export const appRouter = createTRPCRouter({
   workflows: workflowsRouter,
   credentials:credentialsRouter,
@@ -60,6 +61,7 @@ export const appRouter = createTRPCRouter({
   shiprocket: shiprocketRouter,
   zohoCrm: zohoCrmRouter,
   hubspot: hubspotRouter,
+  freshdesk: freshdeskRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;

@@ -262,6 +262,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"HubSpot",
         description:"35 CRM operations across contacts, companies, deals, tickets",
         icon:"/logos/hubspot.svg"
+    },
+    {
+        type:NodeType.FRESHDESK,
+        label:"Freshdesk",
+        description:"32 support ops — tickets, contacts, companies, agents",
+        icon:"/logos/freshdesk.svg"
     }
 
 ]
