@@ -6,6 +6,7 @@ import prisma from "@/lib/db"
 import { decrypt } from "@/lib/encryption"
 import { zohoCrmChannel } from "./channels"
 
+// Channel + topic typing helpers derived from the zohoCrmChannel definition.
 type ZohoCrmChannelDefinition = Realtime.Channel.Definition.AsChannel<ReturnType<typeof zohoCrmChannel>>
 type ZohoCrmStatusPayload = Parameters<ZohoCrmChannelDefinition["status"]>[0]
 type ZohoCrmStatus = ZohoCrmStatusPayload["status"]
@@ -17,8 +18,8 @@ const getZohoCrmChannelWithTopic = (nodeId: string): ZohoCrmChannelWithTopic => 
   const hasTopicHelper = (channel: unknown): channel is ZohoCrmChannelWithTopic =>
     typeof (channel as { topic?: unknown })?.topic === "function"
 
-  // The Inngest channel type omits the `.topic` helper even though it exists at runtime.
-  // Guard at runtime so we fail fast if the helper disappears in future versions.
+  // The Inngest channel type omits the `.topic` helper even though it exists at runtime;
+  // this guard localizes the workaround and will surface a clear error if the helper disappears.
   const channel = zohoCrmChannel(nodeId)
   if (!hasTopicHelper(channel)) {
     throw new Error("Zoho CRM channel is missing the expected .topic helper")
