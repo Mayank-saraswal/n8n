@@ -2,7 +2,7 @@ import { NonRetriableError, RetryAfterError } from "inngest"
 import type { NodeExecutor } from "@/features/executions/types"
 import prisma from "@/lib/db"
 import { decrypt, encrypt } from "@/lib/encryption"
-import { resolveTemplate } from "@/features/executions/lib/template-resolver"
+import { resolveTemplate } from "@/features/executions/lib/resolve-template"
 import { hubspotChannel } from "@/inngest/channels/hubspot"
 import { HubspotOperation } from "@/generated/prisma"
 
@@ -141,13 +141,6 @@ function parseCustomProperties(customProps: string): Record<string, unknown> {
 }
 
 export const hubspotExecutor: NodeExecutor = async ({ nodeId, context, step, publish }) => {
-  await publish(
-    hubspotChannel(nodeId).status({
-      nodeId,
-      status: "loading",
-    })
-  )
-
   const config = await step.run(`hubspot-${nodeId}-load`, async () =>
     prisma.hubspotNode.findUnique({
       where: { nodeId },
@@ -228,6 +221,7 @@ export const hubspotExecutor: NodeExecutor = async ({ nodeId, context, step, pub
 
   try {
     result = await step.run(`hubspot-${nodeId}-execute`, async () => {
+      await publish(hubspotChannel(nodeId).topic("status").data({ nodeId, status: "loading" }))
       switch (config.operation) {
         case HubspotOperation.CREATE_CONTACT: {
           const properties = buildContactProps()
@@ -604,12 +598,7 @@ export const hubspotExecutor: NodeExecutor = async ({ nodeId, context, step, pub
     }
   }
 
-  await publish(
-    hubspotChannel(nodeId).status({
-      nodeId,
-      status: "success",
-    })
-  )
+  await publish(hubspotChannel(nodeId).topic("status").data({ nodeId, status: "success" }))
 
   return {
     ...context,
