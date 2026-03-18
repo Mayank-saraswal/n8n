@@ -6,13 +6,12 @@ import prisma from "@/lib/db"
 import { decrypt } from "@/lib/encryption"
 import { zohoCrmChannel } from "./channels"
 
-type ZohoCrmChannelType = Realtime.Channel.Definition.AsChannel<ReturnType<typeof zohoCrmChannel>>
-type ZohoCrmStatusPayload = Parameters<ZohoCrmChannelType["status"]>[0]
+type ZohoCrmChannelDefinition = Realtime.Channel.Definition.AsChannel<ReturnType<typeof zohoCrmChannel>>
+type ZohoCrmStatusPayload = Parameters<ZohoCrmChannelDefinition["status"]>[0]
 type ZohoCrmStatus = ZohoCrmStatusPayload["status"]
-type ZohoCrmTopicHelper = ZohoCrmChannelType extends { topic: infer T }
-  ? T
-  : (id: "status") => { data: (payload: ZohoCrmStatusPayload) => Realtime.Message.Input }
-type ZohoCrmChannelWithTopic = ZohoCrmChannelType & { topic: ZohoCrmTopicHelper }
+type ZohoCrmTopicSignature = (id: "status") => { data: (payload: ZohoCrmStatusPayload) => Realtime.Message.Input }
+type ZohoCrmTopicHelper = ZohoCrmChannelDefinition extends { topic: infer T } ? T : ZohoCrmTopicSignature
+type ZohoCrmChannelWithTopic = ZohoCrmChannelDefinition & { topic: ZohoCrmTopicHelper }
 
 const getZohoCrmChannelWithTopic = (nodeId: string): ZohoCrmChannelWithTopic => {
   const hasTopicHelper = (channel: unknown): channel is ZohoCrmChannelWithTopic =>
