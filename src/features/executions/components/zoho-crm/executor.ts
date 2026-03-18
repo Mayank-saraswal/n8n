@@ -1,4 +1,5 @@
 import { NonRetriableError, RetryAfterError } from "inngest"
+import type { Realtime } from "@inngest/realtime"
 import type { NodeExecutor } from "@/features/executions/types"
 import { resolveTemplate } from "@/features/executions/lib/template-resolver"
 import prisma from "@/lib/db"
@@ -195,11 +196,13 @@ export const zohoCrmExecutor: NodeExecutor = async ({ nodeId, context, step, pub
 
   return await step.run(`zoho-crm-${nodeId}-execute`, async () => {
     type PublishInput = Parameters<typeof publish>[0]
-    const channelWithStatus = zohoCrmChannel(nodeId) as ReturnType<typeof zohoCrmChannel> & {
-      topic: (id: "status") => {
-        data: (payload: { status: "loading" | "success" | "error"; nodeId: string }) => PublishInput
-      }
+    type ZohoCrmChannelInstance = Realtime.Channel.Definition.AsChannel<ReturnType<typeof zohoCrmChannel>>
+    type ZohoCrmStatusPayload = Parameters<ZohoCrmChannelInstance["status"]>[0]
+    type ZohoCrmChannelWithTopic = ZohoCrmChannelInstance & {
+      topic: (id: "status") => { data: (payload: ZohoCrmStatusPayload) => PublishInput }
     }
+
+    const channelWithStatus = zohoCrmChannel(nodeId) as unknown as ZohoCrmChannelWithTopic
 
     await publish(channelWithStatus.topic("status").data({ status: "loading", nodeId }))
 
