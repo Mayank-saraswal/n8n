@@ -3,6 +3,9 @@ import { createTRPCRouter, protectedProcedure } from "@/trpc/init"
 import prisma from "@/lib/db"
 import { TRPCError } from "@trpc/server"
 import { HubspotOperation } from "@/generated/prisma"
+import { inngest } from "@/inngest/client"
+import { getSubscriptionToken } from "@inngest/realtime"
+import { HUBSPOT_CHANNEL_NAME } from "@/inngest/channels/hubspot"
 
 const hubspotOperationSchema = z.nativeEnum(HubspotOperation)
 
@@ -140,5 +143,15 @@ export const hubspotRouter = createTRPCRouter({
       return prisma.hubspotNode.delete({
         where: { nodeId: input.nodeId },
       })
+    }),
+
+  getToken: protectedProcedure
+    .input(z.object({ nodeId: z.string() }))
+    .query(async ({ input }) => {
+      const token = await getSubscriptionToken(inngest, {
+        channel: `${HUBSPOT_CHANNEL_NAME}:${input.nodeId}`,
+        topics: ["status"],
+      })
+      return { token }
     }),
 })
