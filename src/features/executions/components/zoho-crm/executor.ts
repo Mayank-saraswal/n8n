@@ -17,7 +17,7 @@ const getZohoCrmChannelWithTopic = (nodeId: string): ZohoCrmChannelWithTopic => 
   // The Inngest channel type omits the `.topic` helper even though it exists at runtime.
   // Guard at runtime so we fail fast if the helper disappears in future versions.
   const channel = zohoCrmChannel(nodeId)
-  if (typeof (channel as { topic?: unknown }).topic !== "function") {
+  if (!("topic" in channel) || typeof (channel as { topic: unknown }).topic !== "function") {
     throw new Error("Zoho CRM channel is missing the expected .topic helper")
   }
   return channel as unknown as ZohoCrmChannelWithTopic
