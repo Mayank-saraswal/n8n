@@ -40,6 +40,11 @@ const formSchema = z.object({
     slackAuthType: z.enum(["bot_token", "webhook"]).optional(),
     slackBotToken: z.string().optional(),
     slackWebhookUrl: z.string().optional(),
+    hubspotAccessToken: z.string().optional(),
+    hubspotRefreshToken: z.string().optional(),
+    hubspotExpiresAt: z.string().optional(),
+    hubspotPortalId: z.string().optional(),
+    hubspotHubId: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.type === CredentialType.GMAIL) {
         if (!data.gmailEmail) {
@@ -143,6 +148,22 @@ const formSchema = z.object({
                 code: z.ZodIssueCode.custom,
                 message: "Refresh Token is required",
                 path: ["zohoRefreshToken"],
+            })
+        }
+    }
+    if (data.type === CredentialType.HUBSPOT) {
+        if (!data.hubspotAccessToken) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Access Token is required",
+                path: ["hubspotAccessToken"],
+            })
+        }
+        if (!data.hubspotRefreshToken) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Refresh Token is required",
+                path: ["hubspotRefreshToken"],
             })
         }
     }
@@ -259,6 +280,11 @@ const credentialTypeOptions = [
         value: CredentialType.ZOHO_CRM,
         label: "Zoho CRM",
         logo: "/logos/zoho.svg"
+    },
+    {
+        value: CredentialType.HUBSPOT,
+        label: "HubSpot",
+        logo: "/logos/hubspot.svg"
     },
 
 ]
@@ -406,10 +432,40 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
         }
     }, [initialData])
 
+    const hubspotDefaults = useMemo(() => {
+        if (initialData?.type === CredentialType.HUBSPOT && initialData.value) {
+            try {
+                const parsed = JSON.parse(initialData.value)
+                return {
+                    hubspotAccessToken: parsed.accessToken ?? "",
+                    hubspotRefreshToken: parsed.refreshToken ?? "",
+                    hubspotExpiresAt: parsed.expiresAt ? String(parsed.expiresAt) : "",
+                    hubspotPortalId: parsed.portalId ?? "",
+                    hubspotHubId: parsed.hubId ?? parsed.portalId ?? "",
+                }
+            } catch {
+                return {
+                    hubspotAccessToken: "",
+                    hubspotRefreshToken: "",
+                    hubspotExpiresAt: "",
+                    hubspotPortalId: "",
+                    hubspotHubId: "",
+                }
+            }
+        }
+        return {
+            hubspotAccessToken: "",
+            hubspotRefreshToken: "",
+            hubspotExpiresAt: "",
+            hubspotPortalId: "",
+            hubspotHubId: "",
+        }
+    }, [initialData])
+
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: initialData
-            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...msg91Defaults, ...shiprocketDefaults, ...slackDefaults, ...zohoDefaults }
+            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...msg91Defaults, ...shiprocketDefaults, ...slackDefaults, ...zohoDefaults, ...hubspotDefaults }
             : {
                 name: "",
                 type: CredentialType.OPENAI,
@@ -431,6 +487,11 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                 slackAuthType: "bot_token",
                 slackBotToken: "",
                 slackWebhookUrl: "",
+                hubspotAccessToken: "",
+                hubspotRefreshToken: "",
+                hubspotExpiresAt: "",
+                hubspotPortalId: "",
+                hubspotHubId: "",
             }
     })
 
@@ -446,6 +507,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const isShiprocket = watchType === CredentialType.SHIPROCKET
     const isZohoCrm = watchType === CredentialType.ZOHO_CRM
     const isSlack = watchType === CredentialType.SLACK
+    const isHubspot = watchType === CredentialType.HUBSPOT
     const watchSlackAuthType = form.watch("slackAuthType")
 
     const onSubmit = async (values: FormValues) => {
@@ -506,6 +568,16 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             })
         }
 
+        if (values.type === CredentialType.HUBSPOT) {
+            submitValues.value = JSON.stringify({
+                accessToken: values.hubspotAccessToken,
+                refreshToken: values.hubspotRefreshToken,
+                expiresAt: values.hubspotExpiresAt ? Number(values.hubspotExpiresAt) : undefined,
+                portalId: values.hubspotPortalId,
+                hubId: values.hubspotHubId || values.hubspotPortalId,
+            })
+        }
+
         // For Slack, encode based on auth type
         if (values.type === CredentialType.SLACK) {
             if (values.slackAuthType === "bot_token") {
@@ -521,7 +593,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             }
         }
 
-        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, msg91AuthKey, shiprocketEmail, shiprocketPassword, zohoClientId, zohoClientSecret, zohoRefreshToken, zohoRegion, slackAuthType, slackBotToken, slackWebhookUrl, ...payload } = submitValues
+        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, msg91AuthKey, shiprocketEmail, shiprocketPassword, zohoClientId, zohoClientSecret, zohoRefreshToken, zohoRegion, slackAuthType, slackBotToken, slackWebhookUrl, hubspotAccessToken, hubspotRefreshToken, hubspotExpiresAt, hubspotPortalId, hubspotHubId, ...payload } = submitValues
 
         if (isEdit && initialData?.id) {
             await updateCredential.mutate({
@@ -991,6 +1063,81 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                             <li>Use scopes: ZohoCRM.modules.ALL,ZohoCRM.settings.ALL,ZohoCRM.users.READ</li>
                                             <li>Generate auth URL, authorize, and copy the refresh_token from response</li>
                                         </ol>
+                                    </div>
+                                </>
+                            ) : isHubspot ? (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="hubspotAccessToken"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Access Token</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" placeholder="HubSpot OAuth access token" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="hubspotRefreshToken"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Refresh Token</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" placeholder="HubSpot OAuth refresh token" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="hubspotExpiresAt"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Expires At (ms since epoch)</FormLabel>
+                                                <FormControl>
+                                                    <Input type="text" placeholder="e.g. 1735689600000" {...field} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Optional — used to auto-refresh when the token is near expiry.
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="hubspotPortalId"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Portal ID</FormLabel>
+                                                <FormControl>
+                                                    <Input type="text" placeholder="HubSpot portal ID" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="hubspotHubId"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Hub ID (optional)</FormLabel>
+                                                <FormControl>
+                                                    <Input type="text" placeholder="Hub ID (defaults to portal ID)" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-2">ℹ️ HubSpot OAuth tokens</p>
+                                        <p>Use your HubSpot app to generate access and refresh tokens. Tokens are encrypted and refreshed automatically when close to expiry.</p>
                                     </div>
                                 </>
                             ) : isSlack ? (
