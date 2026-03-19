@@ -15,6 +15,7 @@ import { slackExecutor } from "../components/slack/executor";
 import { perplexityExecutor } from "../components/perplexity/executor";
 import { deepseekExecutor } from "../components/deepseek/executor";
 import { groqExecutor } from "../components/groq/executor";
+import { aiExecutor } from "../components/ai/executor";
 import { telegramExecutor } from "../components/telegram/executor";
 import { xExecutor } from "../components/x/executor";
 import { workdayExecutor } from "../components/workday/executor";
@@ -48,15 +49,15 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.STRIPE_TRIGGER]: stripeTriggerExecutor,
     [NodeType.WEBHOOK_TRIGGER]: webhookTriggerExecutor,
     [NodeType.SCHEDULE_TRIGGER]: scheduleTriggerExecutor,
-    [NodeType.GEMINI]: geminiExecutor,
-    [NodeType.ANTHROPIC]: anthropicExecutor,
-    [NodeType.OPENAI]: openAiExecutor,
-    [NodeType.XAI]: xAiExecutor,
+    [NodeType.GEMINI]: aiExecutor,
+    [NodeType.ANTHROPIC]: aiExecutor,
+    [NodeType.OPENAI]: aiExecutor,
+    [NodeType.XAI]: aiExecutor,
     [NodeType.DISCORD]: discordExecutor,
     [NodeType.SLACK]: slackExecutor,
-    [NodeType.PERPLEXITY]: perplexityExecutor,
-    [NodeType.DEEPSEEK]: deepseekExecutor,
-    [NodeType.GROQ]: groqExecutor,
+    [NodeType.PERPLEXITY]: aiExecutor,
+    [NodeType.DEEPSEEK]: aiExecutor,
+    [NodeType.GROQ]: aiExecutor,
     [NodeType.TELEGRAM]: telegramExecutor,
     [NodeType.X]: xExecutor,
     [NodeType.WORKDAY]: workdayExecutor,

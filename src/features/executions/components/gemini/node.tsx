@@ -1,77 +1,21 @@
 "use client"
-import{useReactFlow, type Node , type NodeProps } from "@xyflow/react"
-import { memo , useState } from "react"
-import { BaseExecutionNode } from "../base-execution-node"  
-import { GlobeIcon } from "lucide-react"
-import { GeminiFormValues, GeminiDialog } from "./dialog"
-import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-node-status"
-import { fetchGeminiRealtimeToken} from "./actions"
+import { memo } from "react"
+import type { NodeProps, Node } from "@xyflow/react"
+import { AIBaseNode } from "../ai/node"
+import { fetchGeminiRealtimeToken } from "./actions"
 import { GEMINI_CHANNEL_NAME } from "@/inngest/channels/gemini"
 
-type GeminiNodeData ={
-    credentialId?:string
-//    model?:string;
-   variableName?:string
-   systemPrompt?: string;
-   userPrompt?: string;
-    
-}
+type GeminiNodeData = Record<string, unknown>
+type GeminiNodeType = Node<GeminiNodeData>
 
-type GeminiNodeType = Node<GeminiNodeData>;
-export const GeminiNode = memo((props:NodeProps<GeminiNodeType>)=>{
-    const [dialogOpen , setDialogOpen] = useState(false)
-    const {setNodes} = useReactFlow()
-
-    
-
-    const nodeStatus = useNodeStatus({
-        nodeId: props.id,
-        channel:GEMINI_CHANNEL_NAME,
-        topic:"status",
-        refreshToken : fetchGeminiRealtimeToken
-    })
-    const handleOpenSettings = ()=>setDialogOpen(true)
-    const handleSubmit =(values:GeminiFormValues) =>{
-    setNodes((nodes)=>nodes.map((node)=>{
-        if(node.id === props.id) {
-            return {
-                ...node,
-                data:{
-                    ...node.data,
-                    ...values
-                }
-            }
-        }
-        return node
-    }))
-            
-    }
-    const nodeData = props.data 
-    const description = nodeData?.userPrompt
-    ?` "gemini-2.0-flash" :${nodeData.userPrompt.slice(0,50)}...`:"Not configured"
-    
-    return(
-        <>
-        <GeminiDialog
-        onSubmit={handleSubmit}
-        
-        open =  {dialogOpen}
-        onOpenChange={setDialogOpen} 
-        defaultValues={nodeData}   
-        />
-        <BaseExecutionNode
-        {...props}
-        name="Gemini"
-        id={props.id}
-        status={nodeStatus}
-        icon= "/logos/gemini.svg"
-        description={description}
-        onSettings={handleOpenSettings}
-        onDoubleClick = {handleOpenSettings}
-        
-        />
-        </>
-    )
-})
-
+export const GeminiNode = memo((props: NodeProps<GeminiNodeType>) => (
+  <AIBaseNode
+    {...props}
+    provider="GEMINI"
+    displayName="Google Gemini"
+    icon="/logos/gemini.svg"
+    channelName={GEMINI_CHANNEL_NAME}
+    refreshToken={fetchGeminiRealtimeToken}
+  />
+))
 GeminiNode.displayName = "GeminiNode"

@@ -43,6 +43,8 @@ import { msg91Channel } from "./channels/msg91";
 import { shiprocketChannel } from "./channels/shiprocket";
 import { zohoCrmChannel } from "@/features/executions/components/zoho-crm/channels";
 import { freshdeskChannel } from "./channels/freshdesk";
+import { aiChannel } from "./channels/ai";
+
 
 const MAX_JSON_LENGTH = 100_000;
 
@@ -187,6 +189,7 @@ export const executeWorkflow = inngest.createFunction(
       shiprocketChannel(),
       zohoCrmChannel(),
       freshdeskChannel(),
+      aiChannel(),
 
     ]
   },
