@@ -108,30 +108,58 @@ export async function exchangeCodeForTokens(code: string): Promise<GoogleTokenRe
 // ── Refresh access token using stored refresh_token ──────────────────────
 
 export async function refreshGoogleAccessToken(refreshToken: string): Promise<string> {
-  const response = await fetch(GOOGLE_TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: getGoogleClientId(),
-      client_secret: getGoogleClientSecret(),
-      refresh_token: refreshToken,
-      grant_type: "refresh_token",
-    }),
-  })
+  // Try available clients in order: Unified -> Gmail -> Sheets -> Drive
+  const clients = [
+    { id: process.env.GOOGLE_CLIENT_ID, secret: process.env.GOOGLE_CLIENT_SECRET },
+    { id: process.env.GOOGLE_GMAIL_CLIENT_ID, secret: process.env.GOOGLE_GMAIL_CLIENT_SECRET },
+    { id: process.env.GOOGLE_SHEETS_CLIENT_ID, secret: process.env.GOOGLE_SHEETS_CLIENT_SECRET },
+    { id: process.env.GOOGLE_DRIVE_CLIENT_ID, secret: process.env.GOOGLE_DRIVE_CLIENT_SECRET },
+  ].filter((c) => c.id && c.secret)
 
-  if (!response.ok) {
-    const err = await response.text()
-    if (response.status === 400 || response.status === 401) {
-      throw new Error(
-        "Google refresh token is invalid or revoked. " +
-          "Please reconnect your Google account in Settings → Credentials."
-      )
-    }
-    throw new Error(`Failed to refresh Google access token: ${err}`)
+  // Remove exact duplicates
+  const uniqueClients = clients.filter(
+    (v, i, a) => a.findIndex((t) => t.id === v.id) === i
+  )
+
+  if (uniqueClients.length === 0) {
+    throw new Error("Google OAuth: No client ID / secret configured in environment.")
   }
 
-  const data = (await response.json()) as { access_token: string; expires_in: number }
-  return data.access_token
+  let lastError = ""
+  let lastStatus = 0
+
+  for (const client of uniqueClients) {
+    const response = await fetch(GOOGLE_TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: client.id!,
+        client_secret: client.secret!,
+        refresh_token: refreshToken,
+        grant_type: "refresh_token",
+      }),
+    })
+
+    if (response.ok) {
+      const data = (await response.json()) as { access_token: string; expires_in: number }
+      return data.access_token
+    }
+
+    lastStatus = response.status
+    lastError = await response.text()
+
+    // If it's a 400/401, it might be the wrong client ID for this specific refresh token.
+    // Continue loop to try the next legacy client ID.
+  }
+
+  // If all failed, throw error for the last attempt
+  if (lastStatus === 400 || lastStatus === 401) {
+    throw new Error(
+      "Google refresh token is invalid or revoked. " +
+        "Please reconnect your Google account in Settings → Credentials."
+    )
+  }
+  throw new Error(`Failed to refresh Google access token: ${lastError}`)
 }
 
 // ── Get user info (email, name, picture) ─────────────────────────────────
