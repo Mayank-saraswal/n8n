@@ -4,6 +4,8 @@ import { resolveTemplate } from "@/features/executions/lib/template-resolver"
 import prisma from "@/lib/db"
 import { decrypt } from "@/lib/encryption"
 import { aiChannel } from "@/inngest/channels/ai"
+import { uploadMedia } from "@/lib/media-service"
+import { AICallInput, AIOperation, AIProvider, callProvider } from "./lib/providers"
 
 function tryParseJson<T>(str: string, fallback: T): T {
   try {
@@ -47,7 +49,7 @@ export const aiExecutor: NodeExecutor<AiNodeData> = async ({
 
   // ── Step 3: Execute ────────────────────────────────────────────────────────
   return await step.run(`ai-${nodeId}-execute`, async () => {
-    await publish(aiChannel(nodeId).topic("status").data({ status: "loading", nodeId }))
+    await publish(aiChannel(nodeId).status({ status: "loading", nodeId }))
 
     const r = (field: string) => resolveTemplate(field, context)
 
@@ -143,14 +145,59 @@ export const aiExecutor: NodeExecutor<AiNodeData> = async ({
       const msg = err instanceof Error ? err.message : String(err)
       // Rate-limit detection
       if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
-        await publish(aiChannel(nodeId).topic("status").data({ status: "error", nodeId }))
+        await publish(aiChannel(nodeId).status({ status: "error", nodeId }))
         throw new RetryAfterError(`AI rate limit: ${msg}`, "60s")
       }
-      await publish(aiChannel(nodeId).topic("status").data({ status: "error", nodeId }))
+      await publish(aiChannel(nodeId).status({ status: "error", nodeId }))
       throw new NonRetriableError(`AI call failed: ${msg}`)
     }
 
-    await publish(aiChannel(nodeId).topic("status").data({ status: "success", nodeId }))
+    // ── Media upload: persist generated images to Azure Blob immediately ──
+    // This prevents temp DALL-E/Gemini URLs from expiring before consumer nodes run.
+    const executionId = (context.__executionId as string) ?? undefined
+    const mediaOpts = {
+      userId,
+      workflowId: config.workflowId,
+      executionId,
+    }
+
+    let persistedImageUrls: string[] = []
+    let persistedImageUrl = ""
+
+    if (output.imageUrls && output.imageUrls.length > 0) {
+      const uploadPromises = (output.imageUrls as string[]).map(
+        async (imgSrc: string, i: number) => {
+          try {
+            const result = await uploadMedia(imgSrc, "image/png", {
+              ...mediaOpts,
+              filename: `generated-image-${i}.png`,
+            })
+            return result.url
+          } catch (err) {
+            // Log but don't crash — return original URL as fallback
+            console.error(`MediaService: Failed to upload image ${i}:`, err)
+            return imgSrc
+          }
+        }
+      )
+      persistedImageUrls = await Promise.all(uploadPromises)
+      persistedImageUrl = persistedImageUrls[0] ?? ""
+    }
+
+    // Build finalOutput — replace temp URLs with persisted Azure Blob URLs
+    const finalOutput = {
+      ...output,
+      ...(persistedImageUrls.length > 0
+        ? {
+            imageUrls: persistedImageUrls,
+            imageUrl: persistedImageUrl,
+            // Keep original temp URL for debugging
+            originalImageUrls: output.imageUrls,
+          }
+        : {}),
+    }
+
+    await publish(aiChannel(nodeId).status({ status: "success", nodeId }))
 
     const variableName = config.variableName || "ai"
 
@@ -173,23 +220,27 @@ export const aiExecutor: NodeExecutor<AiNodeData> = async ({
         operation: config.operation,
         model: config.model,
         // Chat outputs
-        ...(output.text !== undefined ? { text: output.text, aiResponse: output.text } : {}),
-        ...(output.json !== undefined ? { json: output.json } : {}),
-        ...(output.toolCalls ? { toolCalls: output.toolCalls } : {}),
+        ...(finalOutput.text !== undefined ? { text: finalOutput.text, aiResponse: finalOutput.text } : {}),
+        ...(finalOutput.json !== undefined ? { json: finalOutput.json } : {}),
+        ...(finalOutput.toolCalls ? { toolCalls: finalOutput.toolCalls } : {}),
         // Special outputs
-        ...(output.embedding ? { embedding: output.embedding } : {}),
-        ...(output.imageUrls
-          ? { imageUrls: output.imageUrls, imageUrl: output.imageUrls[0] ?? "" }
+        ...(finalOutput.embedding ? { embedding: finalOutput.embedding } : {}),
+        ...(finalOutput.imageUrls
+          ? {
+              imageUrls: finalOutput.imageUrls,
+              imageUrl: finalOutput.imageUrls[0] ?? "",
+              ...(finalOutput.originalImageUrls ? { originalImageUrls: finalOutput.originalImageUrls } : {}),
+            }
           : {}),
-        ...(output.transcript !== undefined ? { transcript: output.transcript } : {}),
-        ...(output.label !== undefined
-          ? { label: output.label, confidence: output.confidence }
+        ...(finalOutput.transcript !== undefined ? { transcript: finalOutput.transcript } : {}),
+        ...(finalOutput.label !== undefined
+          ? { label: finalOutput.label, confidence: finalOutput.confidence }
           : {}),
         // Provider-specific
         ...(citations ? { citations } : {}),
         ...(reasoningContent ? { reasoning: reasoningContent } : {}),
         // Usage
-        usage: output.usage ?? null,
+        usage: finalOutput.usage ?? null,
         // History for CHAT_WITH_HISTORY
         history: updatedHistory,
       },

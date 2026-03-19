@@ -5,6 +5,7 @@ import { resolveTemplate } from "@/features/executions/lib/template-resolver"
 import { gmailChannel } from "@/inngest/channels/gmail"
 import { GmailOperation } from "@/generated/prisma"
 import { refreshGmailAccessToken } from "@/lib/gmail-auth"
+import { uploadFromBase64 } from "@/lib/media-service"
 
 /* ── Types ── */
 
@@ -211,12 +212,8 @@ function buildRawMessage(opts: {
         ? "Content-Type: text/html; charset=UTF-8"
         : "Content-Type: text/plain; charset=UTF-8"
     )
-    lines.push("Content-Transfer-Encoding: base64")
     lines.push("")
-    // Ensure the base64 string doesn't exceed line length limits by splitting into 76-character lines
-    const base64Body = Buffer.from(opts.body, "utf-8").toString("base64")
-    const wrappedBody = base64Body.match(/.{1,76}/g)?.join("\r\n") || ""
-    lines.push(wrappedBody)
+    lines.push(opts.body)
     lines.push(`--${boundary}`)
     lines.push(
       `Content-Type: ${opts.attachmentMime ?? "application/octet-stream"}; name="${opts.attachmentName ?? "attachment"}"`
@@ -235,11 +232,8 @@ function buildRawMessage(opts: {
         ? "Content-Type: text/html; charset=UTF-8"
         : "Content-Type: text/plain; charset=UTF-8"
     )
-    lines.push("Content-Transfer-Encoding: base64")
     lines.push("")
-    const base64Body = Buffer.from(opts.body, "utf-8").toString("base64")
-    const wrappedBody = base64Body.match(/.{1,76}/g)?.join("\r\n") || ""
-    lines.push(wrappedBody)
+    lines.push(opts.body)
   }
 
   const raw = lines.join("\r\n")
@@ -323,16 +317,47 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
               `Gmail: 'To' field resolved to empty string. Template: "${config.to}"`
             )
           }
+
+          // Large attachment handling: offload to Azure Blob to avoid DB bloat
+          let finalAttachmentData = attachmentData
+          let finalAttachmentName = attachmentName
+          let finalBody = body
+          if (attachmentData && attachmentData.length > 500_000) {
+            try {
+              const uploadResult = await uploadFromBase64(
+                attachmentData,
+                config.attachmentMime || "application/octet-stream",
+                {
+                  userId,
+                  workflowId: config.workflowId,
+                  executionId: (context.__executionId as string) ?? undefined,
+                  filename: attachmentName || "attachment",
+                }
+              )
+              const sizeKb = (uploadResult.sizeBytes / 1024).toFixed(0)
+              const displayName = attachmentName || "attachment"
+              const downloadLink = config.isHtml
+                ? `<p><a href="${uploadResult.url}" download="${displayName}">` +
+                  `\uD83D\uDCCE Download ${displayName} (${sizeKb}KB)</a></p>`
+                : `\n\nDownload ${displayName} (${sizeKb}KB): ${uploadResult.url}`
+              finalBody = finalBody + downloadLink
+              finalAttachmentData = "" // clear attachment from email
+              finalAttachmentName = ""
+            } catch {
+              // Failed to upload — send as attachment anyway (best effort)
+            }
+          }
+
           const raw = buildRawMessage({
             to,
             subject,
-            body,
+            body: finalBody,
             isHtml: config.isHtml,
             cc,
             bcc,
             replyTo,
-            attachmentData,
-            attachmentName,
+            attachmentData: finalAttachmentData,
+            attachmentName: finalAttachmentName,
             attachmentMime,
           })
           const sent = await gmailRequest("POST", "/messages/send", accessToken, {

@@ -114,6 +114,7 @@ model workflow {
   hubspotNodes       HubspotNode[]
   freshdeskNodes     FreshdeskNode[]
   aiNodes            AINode[]
+  mediaUploadNodes   MediaUploadNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -159,6 +160,7 @@ enum NodeType {
   ZOHO_CRM
   HUBSPOT
   FRESHDESK
+  MEDIA_UPLOAD
   // In a future sprint: ZOHO_CRM_TRIGGER
   // Registers a Zoho Notification API webhook for lead/contact/deal events.
   // Ref: https://www.zoho.com/crm/developer/docs/api/v6/notifications/overview.html
@@ -1721,6 +1723,37 @@ model FreshdeskNode {
   updatedAt    DateTime           @updatedAt
 
   workflow     workflow           @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+enum MediaUploadSource {
+  URL
+  BASE64
+  GOOGLE_DRIVE
+}
+
+model MediaUploadNode {
+  id           String            @id @default(cuid())
+  nodeId       String            @unique
+  workflowId   String
+
+  source       MediaUploadSource @default(URL)
+  inputField   String            @default("")
+  mimeTypeHint String            @default("image/png")
+  filename     String            @default("")
+
+  // For Google Drive source
+  credentialId String?
+
+  variableName   String  @default("media")
+  continueOnFail Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@index([workflowId])
   @@index([nodeId])

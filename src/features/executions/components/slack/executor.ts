@@ -5,6 +5,7 @@ import { decrypt } from "@/lib/encryption"
 import { resolveTemplate } from "@/features/executions/lib/template-resolver"
 import { slackChannel } from "@/inngest/channels/slack"
 import { SlackOperation } from "@/generated/prisma"
+import { mimeTypeToExt } from "@/lib/media-service"
 
 /* ── Credential types ── */
 
@@ -602,34 +603,102 @@ export const slackExecutor: NodeExecutor<SlackData> = async ({
         case SlackOperation.FILE_UPLOAD: {
           if (!channel)
             throw new NonRetriableError("Slack: channel is required")
-          const fileContent = contentVal || message
-          if (!fileContent)
-            throw new NonRetriableError(
-              "Slack: file content is required for FILE_UPLOAD"
-            )
           if (!filenameVal)
             throw new NonRetriableError("Slack: filename is required")
-          const formData = new FormData()
-          formData.append("channels", channel)
-          formData.append(
-            "content",
-            new Blob([fileContent], { type: "text/plain" }),
-            filenameVal
-          )
-          if (filenameVal) formData.append("filename", filenameVal)
-          if (fileTypeVal) formData.append("filetype", fileTypeVal)
-          if (titleVal) formData.append("title", titleVal)
-          if (initialCommentVal)
-            formData.append("initial_comment", initialCommentVal)
-          const data = await slackFormDataRequest(
-            "files.upload",
-            token,
-            formData
-          )
-          const file = data.file as Record<string, unknown> | undefined
-          apiResult = {
-            fileId: file?.id,
-            permalink: file?.permalink,
+
+          // Check if content looks like a URL — if so, use Slack v2 upload API with fetched bytes
+          const isUrlSource = contentVal.startsWith("https://") || contentVal.startsWith("http://")
+
+          if (isUrlSource) {
+            // Slack v2 upload API: fetch bytes from URL, then upload
+            const fetchResp = await fetch(contentVal, {
+              signal: AbortSignal.timeout(60000),
+            })
+            if (!fetchResp.ok) {
+              throw new NonRetriableError(
+                `Slack FILE_UPLOAD: Failed to fetch file from URL (${fetchResp.status}): ${contentVal.slice(0, 100)}`
+              )
+            }
+            const fileBuffer = Buffer.from(await fetchResp.arrayBuffer())
+            const mimeType = fetchResp.headers.get("content-type") ?? "application/octet-stream"
+            const ext = mimeTypeToExt(mimeType)
+            const filename = filenameVal || `upload.${ext}`
+
+            // Step 1: Get upload URL
+            const urlResp = await slackRequest("GET",
+              `files.getUploadURLExternal?filename=${encodeURIComponent(filename)}&length=${fileBuffer.length}`,
+              token
+            ) as Record<string, string>
+
+            const uploadUrl = urlResp.upload_url as string
+            const fileId = urlResp.file_id as string
+
+            if (!uploadUrl || !fileId) {
+              throw new NonRetriableError("Slack FILE_UPLOAD: Failed to get upload URL from Slack v2 API")
+            }
+
+            // Step 2: Upload bytes to the Slack-provided URL
+            const uploadResp = await fetch(uploadUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": mimeType,
+                Authorization: `Bearer ${token}`,
+              },
+              body: fileBuffer,
+            })
+            if (!uploadResp.ok) {
+              throw new NonRetriableError(
+                `Slack FILE_UPLOAD: Failed to upload file bytes (${uploadResp.status})`
+              )
+            }
+
+            // Step 3: Complete upload
+            const completeBody: Record<string, unknown> = {
+              files: [{ id: fileId, title: titleVal || filename }],
+              channel_id: channel,
+            }
+            if (initialCommentVal) completeBody.initial_comment = initialCommentVal
+            const completeData = await slackRequest(
+              "POST",
+              "files.completeUploadExternal",
+              token,
+              completeBody
+            )
+            const files = (completeData.files as Array<Record<string, unknown>>) ?? []
+            apiResult = {
+              fileId: files[0]?.id ?? fileId,
+              permalink: files[0]?.permalink,
+              filename,
+            }
+          } else {
+            // Fallback: legacy text-content upload
+            const fileContent = contentVal || message
+            if (!fileContent)
+              throw new NonRetriableError(
+                "Slack: file content or URL is required for FILE_UPLOAD"
+              )
+            const formData = new FormData()
+            formData.append("channels", channel)
+            formData.append(
+              "content",
+              new Blob([fileContent], { type: "text/plain" }),
+              filenameVal
+            )
+            if (filenameVal) formData.append("filename", filenameVal)
+            if (fileTypeVal) formData.append("filetype", fileTypeVal)
+            if (titleVal) formData.append("title", titleVal)
+            if (initialCommentVal)
+              formData.append("initial_comment", initialCommentVal)
+            const data = await slackFormDataRequest(
+              "files.upload",
+              token,
+              formData
+            )
+            const file = data.file as Record<string, unknown> | undefined
+            apiResult = {
+              fileId: file?.id,
+              permalink: file?.permalink,
+            }
           }
           break
         }

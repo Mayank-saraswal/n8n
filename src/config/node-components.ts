@@ -40,6 +40,7 @@ import { ShiprocketNode } from "@/features/executions/components/shiprocket/node
 import ZohoCrmNode from "@/features/executions/components/zoho-crm/node";
 import { HubspotNode } from "@/features/executions/components/hubspot/node";
 import { FreshdeskNode } from "@/features/executions/components/freshdesk/node";
+import { MediaUploadNode } from "@/features/executions/components/media-upload/node";
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -82,6 +83,7 @@ export const nodeComponents = {
     [NodeType.ZOHO_CRM]: ZohoCrmNode,
     [NodeType.HUBSPOT]: HubspotNode,
     [NodeType.FRESHDESK]: FreshdeskNode,
+    [NodeType.MEDIA_UPLOAD]: MediaUploadNode,
     //change later
 
 
