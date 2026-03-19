@@ -10,15 +10,8 @@ import { httpRequestChannel } from "./channels/http-request";
 import { manualTriggerChannel } from "./channels/manual-trigger";
 import { googleformTriggerChannel } from "./channels/google-form-trigger";
 import { stripeTriggerChannel } from "./channels/stripe-trigger";
-import { geminiChannel } from "./channels/gemini";
-import { openAiChannel } from "./channels/openai";
-import { anthropicChannel } from "./channels/anthropic";
-import { xAiChannel } from "./channels/xai";
 import { discordChannel } from "./channels/discord";
 import { slackChannel } from "./channels/slack";
-import { perplexityChannel } from "./channels/perplexity";
-import { deepseekChannel } from "./channels/deepseek";
-import { groqChannel } from "./channels/groq";
 import { telegramChannel } from "./channels/telegram";
 import { xChannel } from "./channels/x";
 import { workdayChannel } from "./channels/workday";
@@ -43,6 +36,8 @@ import { msg91Channel } from "./channels/msg91";
 import { shiprocketChannel } from "./channels/shiprocket";
 import { zohoCrmChannel } from "@/features/executions/components/zoho-crm/channels";
 import { freshdeskChannel } from "./channels/freshdesk";
+import { aiChannel } from "./channels/ai";
+
 
 const MAX_JSON_LENGTH = 100_000;
 
@@ -154,15 +149,8 @@ export const executeWorkflow = inngest.createFunction(
       manualTriggerChannel(),
       googleformTriggerChannel(),
       stripeTriggerChannel(),
-      geminiChannel(),
-      openAiChannel(),
-      anthropicChannel(),
-      xAiChannel(),
       discordChannel(),
       slackChannel(),
-      perplexityChannel(),
-      deepseekChannel(),
-      groqChannel(),
       telegramChannel(),
       xChannel(),
       workdayChannel(),
@@ -187,6 +175,7 @@ export const executeWorkflow = inngest.createFunction(
       shiprocketChannel(),
       zohoCrmChannel(),
       freshdeskChannel(),
+      aiChannel(),
 
     ]
   },

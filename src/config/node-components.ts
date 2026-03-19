@@ -8,9 +8,9 @@ import { StripeTriggerNode } from "@/features/triggers/components/stripe-trigger
 import { WebhookTriggerNode } from "@/features/triggers/components/webhook-trigger/node";
 import { ScheduleTriggerNode } from "@/features/triggers/components/schedule-trigger/node";
 import { GeminiNode } from "@/features/executions/components/gemini/node";
-import { OpenAiNode } from "@/features/executions/components/openai/node";
+import { OpenAINode } from "@/features/executions/components/openai/node";
 import { AnthropicNode } from "@/features/executions/components/anthropic/node";
-import { XaiNode } from "@/features/executions/components/xai/node";
+import { XAiNode } from "@/features/executions/components/xai/node";
 import { DiscordNode } from "@/features/executions/components/discord/node";
 import { SlackNode } from "@/features/executions/components/slack/node";
 import { DeepseekNode } from "@/features/executions/components/deepseek/node";
@@ -50,9 +50,9 @@ export const nodeComponents = {
     [NodeType.WEBHOOK_TRIGGER]: WebhookTriggerNode,
     [NodeType.SCHEDULE_TRIGGER]: ScheduleTriggerNode,
     [NodeType.GEMINI]: GeminiNode,
-    [NodeType.OPENAI]: OpenAiNode,
+    [NodeType.OPENAI]: OpenAINode,
     [NodeType.ANTHROPIC]: AnthropicNode,
-    [NodeType.XAI]: XaiNode,
+    [NodeType.XAI]: XAiNode,
     [NodeType.DISCORD]: DiscordNode,
     [NodeType.SLACK]: SlackNode,
     [NodeType.DEEPSEEK]: DeepseekNode,

@@ -211,8 +211,12 @@ function buildRawMessage(opts: {
         ? "Content-Type: text/html; charset=UTF-8"
         : "Content-Type: text/plain; charset=UTF-8"
     )
+    lines.push("Content-Transfer-Encoding: base64")
     lines.push("")
-    lines.push(opts.body)
+    // Ensure the base64 string doesn't exceed line length limits by splitting into 76-character lines
+    const base64Body = Buffer.from(opts.body, "utf-8").toString("base64")
+    const wrappedBody = base64Body.match(/.{1,76}/g)?.join("\r\n") || ""
+    lines.push(wrappedBody)
     lines.push(`--${boundary}`)
     lines.push(
       `Content-Type: ${opts.attachmentMime ?? "application/octet-stream"}; name="${opts.attachmentName ?? "attachment"}"`
@@ -222,7 +226,8 @@ function buildRawMessage(opts: {
       `Content-Disposition: attachment; filename="${opts.attachmentName ?? "attachment"}"`
     )
     lines.push("")
-    lines.push(opts.attachmentData!)
+    const wrappedAttachment = opts.attachmentData?.match(/.{1,76}/g)?.join("\r\n") || ""
+    lines.push(wrappedAttachment)
     lines.push(`--${boundary}--`)
   } else {
     lines.push(
@@ -230,8 +235,11 @@ function buildRawMessage(opts: {
         ? "Content-Type: text/html; charset=UTF-8"
         : "Content-Type: text/plain; charset=UTF-8"
     )
+    lines.push("Content-Transfer-Encoding: base64")
     lines.push("")
-    lines.push(opts.body)
+    const base64Body = Buffer.from(opts.body, "utf-8").toString("base64")
+    const wrappedBody = base64Body.match(/.{1,76}/g)?.join("\r\n") || ""
+    lines.push(wrappedBody)
   }
 
   const raw = lines.join("\r\n")
