@@ -1,7 +1,16 @@
 import { decrypt } from "@/lib/encryption"
 import { NonRetriableError, RetryAfterError } from "inngest"
-import { getGoogleGmailClientId, getGoogleGmailClientSecret } from "@/lib/env"
+import { refreshGoogleAccessToken } from "@/lib/google-auth"
 
+/**
+ * Refresh a Gmail access token from a raw credential value string.
+ * Keeps the same call signature used in gmail/executor.ts.
+ *
+ * Supported formats in the decrypted value:
+ *   - New OAuth2: { refreshToken: "1//...", email: "..." }
+ *   - Old OAuth2 Playground: { refresh_token: "1//..." }
+ *   - Deprecated App Password: { appPassword: "...", email: "..." }
+ */
 export async function refreshGmailAccessToken(
   credentialValue: string
 ): Promise<{ token: string; email: string }> {
@@ -16,64 +25,34 @@ export async function refreshGmailAccessToken(
   // Detect deprecated App Password format
   if (
     parsed.appPassword ||
-    (!parsed.refreshToken && typeof parsed.email === "string")
+    (!parsed.refreshToken && !parsed.refresh_token && typeof parsed.email === "string")
   ) {
     throw new NonRetriableError(
       "This Gmail credential uses the deprecated App Password format. " +
-        "Go to Settings → Credentials and click Reconnect with OAuth2."
+        "Go to Settings → Credentials, delete it, and click 'Connect with Google'."
     )
   }
 
-  const refreshToken = parsed.refreshToken as string | undefined
+  const refreshToken = (parsed.refreshToken ?? parsed.refresh_token) as string | undefined
   if (!refreshToken) {
     throw new NonRetriableError(
       "Credential missing refreshToken. Delete and reconnect your Gmail account."
     )
   }
 
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      client_id: getGoogleGmailClientId(),
-      client_secret: getGoogleGmailClientSecret(),
-      refresh_token: refreshToken,
-      grant_type: "refresh_token",
-    }),
-  })
-
-  if (!response.ok) {
-    const err = (await response.json().catch(() => ({}))) as Record<
-      string,
-      string
-    >
-
-    if (
-      (response.status === 400 || response.status === 401) &&
-      err.error === "invalid_grant"
-    ) {
-      throw new NonRetriableError(
-        "Gmail authorization revoked. Reconnect your account."
-      )
+  let accessToken: string
+  try {
+    accessToken = await refreshGoogleAccessToken(refreshToken)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (msg.includes("invalid") || msg.includes("revoked")) {
+      throw new NonRetriableError("Gmail authorization revoked. Reconnect your account.")
     }
-
-    if (response.status === 429 || response.status >= 500) {
-      throw new RetryAfterError("Gmail token refresh failed", "30s")
+    if (msg.includes("rate") || msg.includes("quota")) {
+      throw new RetryAfterError("Gmail token refresh rate limited", "30s")
     }
-
-    throw new NonRetriableError(
-      `Gmail: Failed to refresh access token. ` +
-        `Error: ${err.error_description ?? response.status}`
-    )
+    throw new NonRetriableError(`Gmail: Failed to refresh access token. ${msg}`)
   }
 
-  const data = (await response.json()) as { access_token: string }
-  if (!data.access_token) {
-    throw new NonRetriableError(
-      "Gmail: Token refresh succeeded but no access_token returned. " +
-        "Re-authenticate your Gmail credential."
-    )
-  }
-
-  return { token: data.access_token, email: (parsed.email as string) ?? "" }
+  return { token: accessToken, email: (parsed.email as string) ?? "" }
 }
