@@ -5,7 +5,7 @@ import { BaseExecutionNode } from "../base-execution-node"
 import { MediaUploadDialog, MediaUploadFormValues } from "./dialog"
 import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-node-status"
 import { fetchMediaUploadRealtimeToken } from "./actions"
-import { MEDIA_UPLOAD_CHANNEL_NAME } from "@/inngest/channels/media-upload"
+import { mediaUploadChannelName } from "@/inngest/channels/media-upload"
 import { MediaUploadSource } from "@/generated/prisma"
 
 export type MediaUploadNodeData = {
@@ -16,6 +16,7 @@ export type MediaUploadNodeData = {
     credentialId?: string | null
     variableName?: string
     continueOnFail?: boolean
+    workflowId?: string
 }
 
 type MediaUploadNodeType = Node<MediaUploadNodeData>;
@@ -26,9 +27,9 @@ export const MediaUploadNode = memo((props: NodeProps<MediaUploadNodeType>) => {
 
     const nodeStatus = useNodeStatus({
         nodeId: props.id,
-        channel: MEDIA_UPLOAD_CHANNEL_NAME,
+        channel: mediaUploadChannelName(props.id),
         topic: "status",
-        refreshToken: fetchMediaUploadRealtimeToken
+        refreshToken: () => fetchMediaUploadRealtimeToken(props.id)
     })
 
     const handleOpenSettings = () => setDialogOpen(true)
@@ -60,13 +61,15 @@ export const MediaUploadNode = memo((props: NodeProps<MediaUploadNodeType>) => {
                 onOpenChange={setDialogOpen}
                 defaultValues={nodeData}
                 onSubmit={handleSubmit}
+                nodeId={props.id}
+                workflowId={nodeData?.workflowId}
             />
             <BaseExecutionNode
                 {...props}
                 name="Media Upload"
                 id={props.id}
                 status={nodeStatus}
-                icon="/logos/folder.svg" // fallback icon, adjust if needed
+                icon="/logos/folder.svg"
                 description={description}
                 onSettings={handleOpenSettings}
                 onDoubleClick={handleOpenSettings}

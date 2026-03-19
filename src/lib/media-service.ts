@@ -8,7 +8,7 @@ import {
 const ACCOUNT_NAME = process.env.AZURE_STORAGE_ACCOUNT_NAME ?? ""
 const ACCOUNT_KEY = process.env.AZURE_STORAGE_ACCOUNT_KEY ?? ""
 const CONTAINER_NAME =
-  process.env.AZURE_STORAGE_CONTAINER_NAME ?? "nodebase-workflow-media"
+  process.env.AZURE_STORAGE_CONTAINER_NAME ?? "nodebasestorage"
 const SAS_EXPIRY_HOURS = parseInt(
   process.env.AZURE_STORAGE_SAS_EXPIRY_HOURS ?? "48"
 )
@@ -53,6 +53,17 @@ export async function uploadFromUrl(
   sourceUrl: string,
   opts: MediaUploadOptions
 ): Promise<UploadResult> {
+  // FIX 10: Validate URL — HTTPS only, block private/internal IP ranges
+  const parsed = new URL(sourceUrl)
+  if (parsed.protocol !== "https:") {
+    throw new Error("MediaService: Only HTTPS URLs are allowed")
+  }
+  const blocked = ["169.254.", "10.", "172.16.", "192.168.", "127.", "localhost", "0.0.0.0"]
+  const host = parsed.hostname
+  if (blocked.some((b) => host.startsWith(b) || host === b.replace(/\.$/, ""))) {
+    throw new Error("MediaService: Private/internal URLs are not allowed")
+  }
+
   // Fetch the media bytes
   const response = await fetch(sourceUrl, {
     signal: AbortSignal.timeout(60000), // 60s timeout for large images
@@ -95,11 +106,15 @@ export async function uploadFromBuffer(
   opts: MediaUploadOptions
 ): Promise<UploadResult> {
   const ext = mimeTypeToExt(mimeType)
-  const filename = opts.filename ?? `media-${Date.now()}.${ext}`
   const executionId = opts.executionId ?? "no-execution"
 
-  // Path: uploads/{userId}/{workflowId}/{executionId}/{timestamp}-{filename}
-  const blobName = `uploads/${opts.userId}/${opts.workflowId}/${executionId}/${Date.now()}-${filename}`
+  // FIX 9: Sanitize filename to prevent virtual path traversal in Azure Blob storage
+  const safeFilename = (opts.filename ?? `media-${Date.now()}.${ext}`)
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .slice(0, 200)
+
+  // Path: uploads/{userId}/{workflowId}/{executionId}/{timestamp}-{safeFilename}
+  const blobName = `uploads/${opts.userId}/${opts.workflowId}/${executionId}/${Date.now()}-${safeFilename}`
 
   const client = getBlobServiceClient()
   const containerClient = client.getContainerClient(CONTAINER_NAME)

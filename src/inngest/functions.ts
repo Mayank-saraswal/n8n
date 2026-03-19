@@ -176,6 +176,7 @@ export const executeWorkflow = inngest.createFunction(
       zohoCrmChannel(),
       freshdeskChannel(),
       aiChannel(),
+      mediaUploadChannel(),
 
     ]
   },

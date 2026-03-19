@@ -49,7 +49,7 @@ export const aiExecutor: NodeExecutor<AiNodeData> = async ({
 
   // ── Step 3: Execute ────────────────────────────────────────────────────────
   return await step.run(`ai-${nodeId}-execute`, async () => {
-    await publish(aiChannel().status({ status: "loading", nodeId }))
+    await publish((aiChannel() as any).status({ status: "loading", nodeId } as any))
 
     const r = (field: string) => resolveTemplate(field, context)
 
@@ -145,10 +145,10 @@ export const aiExecutor: NodeExecutor<AiNodeData> = async ({
       const msg = err instanceof Error ? err.message : String(err)
       // Rate-limit detection
       if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
-        await publish(aiChannel().status({ status: "error", nodeId }))
+        await publish((aiChannel() as any).status({ status: "error", nodeId } as any))
         throw new RetryAfterError(`AI rate limit: ${msg}`, "60s")
       }
-      await publish(aiChannel().status({ status: "error", nodeId }))
+      await publish((aiChannel() as any).status({ status: "error", nodeId } as any))
       throw new NonRetriableError(`AI call failed: ${msg}`)
     }
 
@@ -197,7 +197,7 @@ export const aiExecutor: NodeExecutor<AiNodeData> = async ({
         : {}),
     }
 
-    await publish(aiChannel().status({ status: "success", nodeId }))
+    await publish((aiChannel() as any).status({ status: "success", nodeId } as any))
 
     const variableName = config.variableName || "ai"
 

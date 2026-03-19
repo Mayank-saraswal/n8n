@@ -1,7 +1,7 @@
 "use client"
 import { createId} from "@paralleldrive/cuid2"
 import { useReactFlow } from "@xyflow/react"
-import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, GitForkIcon, SlidersHorizontalIcon, TableIcon, CodeIcon, RepeatIcon, TimerIcon, MergeIcon, AlertTriangleIcon} from "lucide-react"
+import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, GitForkIcon, SlidersHorizontalIcon, TableIcon, CodeIcon, RepeatIcon, TimerIcon, MergeIcon, AlertTriangleIcon, UploadIcon} from "lucide-react"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { 
@@ -268,6 +268,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Freshdesk",
         description:"32 support ops — tickets, contacts, companies, agents",
         icon:"/logos/freshdesk.svg"
+    },
+    {
+        type:NodeType.MEDIA_UPLOAD,
+        label:"Media Upload",
+        description:"Upload image/audio/video to Azure and get a permanent URL",
+        icon:UploadIcon
     }
 
 ]

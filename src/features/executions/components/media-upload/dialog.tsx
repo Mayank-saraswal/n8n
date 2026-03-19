@@ -32,6 +32,8 @@ import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { MediaUploadSource } from "@/generated/prisma"
+import { useTRPC } from "@/trpc/client"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 const formSchema = z.object({
     variableName: z
@@ -55,6 +57,8 @@ interface Props {
     onOpenChange: (open: boolean) => void
     onSubmit: (values: MediaUploadFormValues) => void
     defaultValues?: Partial<MediaUploadFormValues>
+    nodeId?: string
+    workflowId?: string
 }
 
 export const MediaUploadDialog = ({
@@ -62,7 +66,32 @@ export const MediaUploadDialog = ({
     onOpenChange,
     onSubmit,
     defaultValues = {},
+    nodeId,
+    workflowId,
 }: Props) => {
+    const trpc = useTRPC()
+    const queryClient = useQueryClient()
+
+    // Pre-fill from DB
+    const { data: dbConfig } = useQuery(
+        trpc.mediaUpload.getByNodeId.queryOptions(
+            { nodeId: nodeId! },
+            { enabled: open && !!nodeId }
+        )
+    )
+
+    const upsertMutation = useMutation(
+        trpc.mediaUpload.upsert.mutationOptions({
+            onSuccess: () => {
+                if (nodeId) {
+                    queryClient.invalidateQueries(
+                        trpc.mediaUpload.getByNodeId.queryOptions({ nodeId })
+                    )
+                }
+            },
+        })
+    )
+
     const form = useForm<MediaUploadFormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -76,8 +105,23 @@ export const MediaUploadDialog = ({
         },
     })
 
+    // Pre-fill from DB config when loaded
     useEffect(() => {
-        if (open) {
+        if (dbConfig) {
+            form.reset({
+                variableName: dbConfig.variableName,
+                source: dbConfig.source,
+                inputField: dbConfig.inputField,
+                mimeTypeHint: dbConfig.mimeTypeHint,
+                filename: dbConfig.filename ?? "",
+                credentialId: dbConfig.credentialId ?? null,
+                continueOnFail: dbConfig.continueOnFail,
+            })
+        }
+    }, [dbConfig, form])
+
+    useEffect(() => {
+        if (open && !dbConfig) {
             form.reset({
                 variableName: defaultValues.variableName || "media",
                 source: defaultValues.source || MediaUploadSource.URL,
@@ -88,13 +132,29 @@ export const MediaUploadDialog = ({
                 continueOnFail: defaultValues.continueOnFail || false,
             })
         }
-    }, [open, defaultValues, form])
+    }, [open, dbConfig, defaultValues, form])
 
     const watchVariableName = form.watch("variableName") || "media"
     const watchSource = form.watch("source")
 
     const handleFormSubmit = (values: MediaUploadFormValues) => {
         onSubmit(values)
+
+        // Persist to DB if nodeId and workflowId are available
+        if (nodeId && workflowId) {
+            upsertMutation.mutate({
+                nodeId,
+                workflowId,
+                source: values.source,
+                inputField: values.inputField,
+                mimeTypeHint: values.mimeTypeHint,
+                filename: values.filename ?? "",
+                credentialId: values.credentialId ?? null,
+                variableName: values.variableName,
+                continueOnFail: values.continueOnFail ?? false,
+            })
+        }
+
         onOpenChange(false)
     }
 
@@ -228,14 +288,16 @@ export const MediaUploadDialog = ({
                             <strong>Output Variables:</strong>
                             <ul className="list-disc pl-4 mt-2 space-y-1">
                                 <li><code>url</code> - Permanent SAS URL (48 hrs)</li>
-                                <li><code>mimeType</code> - e.g. "image/png"</li>
+                                <li><code>mimeType</code> - e.g. &quot;image/png&quot;</li>
                                 <li><code>sizeBytes</code> - File size in bytes</li>
                                 <li><code>expiresAt</code> - Expiration timestamp</li>
                             </ul>
                         </div>
 
                         <DialogFooter className="mt-4">
-                            <Button type="submit">Save</Button>
+                            <Button type="submit" disabled={upsertMutation.isPending}>
+                                {upsertMutation.isPending ? "Saving..." : "Save"}
+                            </Button>
                         </DialogFooter>
                     </form>
                 </Form>

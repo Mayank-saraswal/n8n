@@ -34,6 +34,7 @@ import { zohoCrmRouter } from '@/server/routers/zoho-crm.router';
 import { hubspotRouter } from '@/server/routers/hubspot.router';
 import { freshdeskRouter } from '@/server/routers/freshdesk.router';
 import { aiRouter } from '@/server/routers/ai.router';
+import { mediaUploadRouter } from '@/server/routers/media-upload.router';
 
 export const appRouter = createTRPCRouter({
   workflows: workflowsRouter,
@@ -65,6 +66,7 @@ export const appRouter = createTRPCRouter({
   hubspot: hubspotRouter,
   freshdesk: freshdeskRouter,
   ai: aiRouter,
+  mediaUpload: mediaUploadRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;
