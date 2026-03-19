@@ -11,4 +11,4 @@ export const aiChannel = (nodeId?: string) =>
       status: "loading" | "success" | "error"
       nodeId: string
     }>()
-  )
+  )()

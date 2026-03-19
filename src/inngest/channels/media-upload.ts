@@ -6,9 +6,9 @@ export const mediaUploadChannelName = (nodeId?: string): `media-upload-execution
   `${MEDIA_UPLOAD_CHANNEL_NAME}${nodeId ? `:${nodeId}` : ""}`
 
 export const mediaUploadChannel = (nodeId?: string) =>
-  channel(mediaUploadChannelName(nodeId) as string).addTopic(
+  channel(mediaUploadChannelName(nodeId)).addTopic(
     topic("status").type<{
       status: "loading" | "success" | "error"
       nodeId: string
     }>()
-  )
+  )()

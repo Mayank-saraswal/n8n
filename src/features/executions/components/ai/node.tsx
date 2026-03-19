@@ -70,7 +70,6 @@ function AIBaseNodeInner(
   }
 
   const nodeData = nodeProps.data
-  const opLabel = nodeData?.operation ? ` · ${nodeData.operation}` : ""
   const modelLabel = nodeData?.model ? ` (${nodeData.model})` : ""
   
   const activePrompt = nodeData?.userPrompt || nodeData?.imagePrompt || nodeData?.embeddingInput || nodeData?.audioUrl || nodeData?.classifyLabels

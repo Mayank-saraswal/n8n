@@ -36,7 +36,7 @@ export const mediaUploadExecutor: NodeExecutor = async ({
 
   // STEP 3: Execute — publish AND uploadMedia BOTH inside here
   return await step.run(`media-upload-${nodeId}-execute`, async () => {
-    await publish((mediaUploadChannel() as any).status({ nodeId, status: "loading" } as any))
+    await publish(mediaUploadChannel(nodeId).status({ nodeId, status: "loading" }))
     try {
       const inputFieldVal = resolveTemplate(config.inputField, context)
       const result = await uploadMedia(
@@ -51,7 +51,7 @@ export const mediaUploadExecutor: NodeExecutor = async ({
             : undefined,
         }
       )
-      await publish((mediaUploadChannel() as any).status({ nodeId, status: "success" } as any))
+      await publish(mediaUploadChannel(nodeId).status({ nodeId, status: "success" }))
       return {
         ...context,
         [config.variableName]: {
@@ -63,7 +63,7 @@ export const mediaUploadExecutor: NodeExecutor = async ({
         },
       }
     } catch (err) {
-      await publish((mediaUploadChannel() as any).status({ nodeId, status: "error" } as any))
+      await publish(mediaUploadChannel(nodeId).status({ nodeId, status: "error" }))
       if (config.continueOnFail) {
         return {
           ...context,

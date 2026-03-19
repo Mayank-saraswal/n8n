@@ -7,6 +7,7 @@ import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-n
 import { fetchMediaUploadRealtimeToken } from "./actions"
 import { mediaUploadChannelName } from "@/inngest/channels/media-upload"
 import { MediaUploadSource } from "@/generated/prisma"
+import { useParams } from "next/navigation"
 
 export type MediaUploadNodeData = {
     source?: MediaUploadSource
@@ -16,7 +17,6 @@ export type MediaUploadNodeData = {
     credentialId?: string | null
     variableName?: string
     continueOnFail?: boolean
-    workflowId?: string
 }
 
 type MediaUploadNodeType = Node<MediaUploadNodeData>;
@@ -24,6 +24,8 @@ type MediaUploadNodeType = Node<MediaUploadNodeData>;
 export const MediaUploadNode = memo((props: NodeProps<MediaUploadNodeType>) => {
     const [dialogOpen, setDialogOpen] = useState(false)
     const { setNodes } = useReactFlow()
+    const params = useParams()
+    const workflowId = params.workflowId as string
 
     const nodeStatus = useNodeStatus({
         nodeId: props.id,
@@ -62,7 +64,7 @@ export const MediaUploadNode = memo((props: NodeProps<MediaUploadNodeType>) => {
                 defaultValues={nodeData}
                 onSubmit={handleSubmit}
                 nodeId={props.id}
-                workflowId={nodeData?.workflowId}
+                workflowId={workflowId}
             />
             <BaseExecutionNode
                 {...props}
