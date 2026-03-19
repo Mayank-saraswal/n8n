@@ -3,44 +3,7 @@ import { NonRetriableError, RetryAfterError } from "inngest"
 import { resolveTemplate } from "@/features/executions/lib/template-resolver"
 import prisma from "@/lib/db"
 import { decrypt } from "@/lib/encryption"
-import { openAiChannel } from "@/inngest/channels/openai"
-import { anthropicChannel } from "@/inngest/channels/anthropic"
-import { geminiChannel } from "@/inngest/channels/gemini"
-import { groqChannel } from "@/inngest/channels/groq"
-import { xAiChannel } from "@/inngest/channels/xai"
-import { deepseekChannel } from "@/inngest/channels/deepseek"
-import { perplexityChannel } from "@/inngest/channels/perplexity"
-import { type AICallInput, callProvider } from "./lib/providers"
-import type { AIProvider, AIOperation } from "@/generated/prisma"
-
-// Helper to map provider → channel .status() call
-type PublishFn = Parameters<NodeExecutor>[0]["publish"]
-
-function publishStatus(
-  provider: AIProvider,
-  nodeId: string,
-  status: "loading" | "success" | "error",
-  publish: PublishFn,
-) {
-  switch (provider) {
-    case "OPENAI":
-      return publish(openAiChannel().status({ nodeId, status }))
-    case "ANTHROPIC":
-      return publish(anthropicChannel().status({ nodeId, status }))
-    case "GEMINI":
-      return publish(geminiChannel().status({ nodeId, status }))
-    case "GROQ":
-      return publish(groqChannel().status({ nodeId, status }))
-    case "XAI":
-      return publish(xAiChannel().status({ nodeId, status }))
-    case "DEEPSEEK":
-      return publish(deepseekChannel().status({ nodeId, status }))
-    case "PERPLEXITY":
-      return publish(perplexityChannel().status({ nodeId, status }))
-    default:
-      return Promise.resolve()
-  }
-}
+import { aiChannel } from "@/inngest/channels/ai"
 
 function tryParseJson<T>(str: string, fallback: T): T {
   try {
@@ -82,10 +45,10 @@ export const aiExecutor: NodeExecutor<AiNodeData> = async ({
 
   if (!config) throw new NonRetriableError("AI node not configured")
 
-  await publishStatus(config.provider, nodeId, "loading", publish)
-
   // ── Step 3: Execute ────────────────────────────────────────────────────────
   return await step.run(`ai-${nodeId}-execute`, async () => {
+    await publish(aiChannel(nodeId).topic("status").data({ status: "loading", nodeId }))
+
     const r = (field: string) => resolveTemplate(field, context)
 
     // Decrypt credential
@@ -180,14 +143,14 @@ export const aiExecutor: NodeExecutor<AiNodeData> = async ({
       const msg = err instanceof Error ? err.message : String(err)
       // Rate-limit detection
       if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
-        await publishStatus(config.provider, nodeId, "error", publish)
+        await publish(aiChannel(nodeId).topic("status").data({ status: "error", nodeId }))
         throw new RetryAfterError(`AI rate limit: ${msg}`, "60s")
       }
-      await publishStatus(config.provider, nodeId, "error", publish)
+      await publish(aiChannel(nodeId).topic("status").data({ status: "error", nodeId }))
       throw new NonRetriableError(`AI call failed: ${msg}`)
     }
 
-    await publishStatus(config.provider, nodeId, "success", publish)
+    await publish(aiChannel(nodeId).topic("status").data({ status: "success", nodeId }))
 
     const variableName = config.variableName || "ai"
 

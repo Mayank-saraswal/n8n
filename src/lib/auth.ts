@@ -17,7 +17,7 @@ export const auth = betterAuth({
     "https://www.nodebase.tech",
     "https://nodebase-app.bravefield-c424876c.eastasia.azurecontainerapps.io",
     "https://vast-lemur-notable.ngrok-free.app",
-    "http:localhost:3000"
+    "http://localhost:3000"
  ],
  socialProviders:{
    github:{

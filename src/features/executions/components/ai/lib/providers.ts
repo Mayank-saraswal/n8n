@@ -477,7 +477,7 @@ export async function callAnthropic(input: AICallInput): Promise<AICallOutput> {
 // ── Gemini ────────────────────────────────────────────────────────────────────
 
 export async function callGemini(input: AICallInput): Promise<AICallOutput> {
-  const model = input.model || "gemini-3.0-flash"
+  const model = input.model || "gemini-2.5-flash"
   const base = "https://generativelanguage.googleapis.com/v1beta"
 
   if (input.operation === "EMBED") {

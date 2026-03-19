@@ -2,8 +2,8 @@
 import { memo } from "react"
 import type { NodeProps, Node } from "@xyflow/react"
 import { AIBaseNode } from "../ai/node"
-import { fetchGroqRealtimeToken } from "./actions"
-import { GROQ_CHANNEL_NAME } from "@/inngest/channels/groq"
+import { fetchAIRealtimeToken } from "../ai/actions"
+import { AI_CHANNEL_NAME } from "@/inngest/channels/ai"
 
 type GroqNodeData = Record<string, unknown>
 type GroqNodeType = Node<GroqNodeData>
@@ -14,8 +14,8 @@ export const GroqNode = memo((props: NodeProps<GroqNodeType>) => (
     provider="GROQ"
     displayName="Groq"
     icon="/logos/groq.svg"
-    channelName={GROQ_CHANNEL_NAME}
-    refreshToken={fetchGroqRealtimeToken}
+    channelName={AI_CHANNEL_NAME}
+    refreshToken={() => fetchAIRealtimeToken(props.id)}
   />
 ))
 GroqNode.displayName = "GroqNode"

@@ -6,15 +6,8 @@ import { googleFormTriggerExecutor } from "@/features/triggers/components/google
 import { stripeTriggerExecutor } from "@/features/triggers/components/stripe-trigger/executor";
 import { webhookTriggerExecutor } from "@/features/triggers/components/webhook-trigger/executor";
 import { scheduleTriggerExecutor } from "@/features/triggers/components/schedule-trigger/executor";
-import { geminiExecutor } from "../components/gemini/executor";
-import { openAiExecutor } from "../components/openai/executor";
-import { anthropicExecutor } from "../components/anthropic/executor";
-import { xAiExecutor } from "../components/xai/executor";
 import { discordExecutor } from "../components/discord/executor";
 import { slackExecutor } from "../components/slack/executor";
-import { perplexityExecutor } from "../components/perplexity/executor";
-import { deepseekExecutor } from "../components/deepseek/executor";
-import { groqExecutor } from "../components/groq/executor";
 import { aiExecutor } from "../components/ai/executor";
 import { telegramExecutor } from "../components/telegram/executor";
 import { xExecutor } from "../components/x/executor";

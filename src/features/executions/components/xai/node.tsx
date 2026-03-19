@@ -2,8 +2,8 @@
 import { memo } from "react"
 import type { NodeProps, Node } from "@xyflow/react"
 import { AIBaseNode } from "../ai/node"
-import { fetchXaiRealtimeToken } from "./actions"
-import { XAI_CHANNEL_NAME } from "@/inngest/channels/xai"
+import { fetchAIRealtimeToken } from "../ai/actions"
+import { AI_CHANNEL_NAME } from "@/inngest/channels/ai"
 
 type XAINodeData = Record<string, unknown>
 type XAINodeType = Node<XAINodeData>
@@ -14,8 +14,8 @@ export const XAiNode = memo((props: NodeProps<XAINodeType>) => (
     provider="XAI"
     displayName="xAI Grok"
     icon="/logos/xai.svg"
-    channelName={XAI_CHANNEL_NAME}
-    refreshToken={fetchXaiRealtimeToken}
+    channelName={AI_CHANNEL_NAME}
+    refreshToken={() => fetchAIRealtimeToken(props.id)}
   />
 ))
 XAiNode.displayName = "XAiNode"
