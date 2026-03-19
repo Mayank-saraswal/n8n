@@ -37,7 +37,7 @@ import { shiprocketChannel } from "./channels/shiprocket";
 import { zohoCrmChannel } from "@/features/executions/components/zoho-crm/channels";
 import { freshdeskChannel } from "./channels/freshdesk";
 import { aiChannel } from "./channels/ai";
-
+import { mediaUploadChannel } from "./channels/media-upload";
 
 const MAX_JSON_LENGTH = 100_000;
 
@@ -231,7 +231,13 @@ export const executeWorkflow = inngest.createFunction(
     })
 
     //Initialize the context with any initial data from the trigger 
-    let context = event.data.initialData || {};
+    let context: Record<string, unknown> = event.data.initialData || {};
+
+    // Inject executionId so media-service can organize blobs by execution
+    context = {
+      ...context,
+      __executionId: executionDbId,
+    };
 
     // Track nodes to skip due to IF_ELSE branching
     const skippedNodes = new Set<string>();
@@ -461,7 +467,7 @@ export const executeWorkflow = inngest.createFunction(
         data: {
           status: ExecutionStatus.SUCCESS,
           completedAt: new Date(),
-          output: context,
+          output: context as any,
         },
       });
     });

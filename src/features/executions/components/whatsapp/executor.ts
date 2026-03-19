@@ -5,6 +5,7 @@ import { decrypt } from "@/lib/encryption"
 import { resolveTemplate } from "@/features/executions/lib/template-resolver"
 import { whatsappChannel } from "@/inngest/channels/whatsapp"
 import { WhatsAppOperation } from "@/generated/prisma"
+import { uploadMedia } from "@/lib/media-service"
 
 interface WhatsAppCredential {
   accessToken: string
@@ -177,31 +178,82 @@ export const whatsappExecutor: NodeExecutor<WhatsAppData> = async ({
         }
         break
 
-      case WhatsAppOperation.SEND_IMAGE:
+      case WhatsAppOperation.SEND_IMAGE: {
         if (!mediaUrl)
           throw new NonRetriableError(
             "WhatsApp SEND_IMAGE: 'mediaUrl' is required"
           )
+
+        // Auto-upload temp/base64 URLs to Azure Blob — WhatsApp requires a permanent public HTTPS URL
+        let finalMediaUrl = mediaUrl
+        const needsUpload =
+          mediaUrl.startsWith("data:") ||
+          mediaUrl.includes("oaidalleapiprodscus.blob.core.windows.net") ||
+          mediaUrl.includes("generativelanguage.googleapis.com")
+        if (needsUpload) {
+          try {
+            const uploadResult = await uploadMedia(
+              mediaUrl,
+              "image/jpeg",
+              {
+                userId,
+                workflowId: config.workflowId,
+                executionId: (context.__executionId as string) ?? undefined,
+              }
+            )
+            finalMediaUrl = uploadResult.url
+          } catch (err) {
+            console.error("WhatsApp: Failed to upload media to Azure Blob:", err)
+            // Fall back to original URL — may still work if not actually expired
+          }
+        }
+
         payload = {
           messaging_product: "whatsapp",
           to,
           type: "image",
-          image: { link: mediaUrl, caption: mediaCaption },
+          image: { link: finalMediaUrl, caption: mediaCaption },
         }
         break
+      }
 
-      case WhatsAppOperation.SEND_DOCUMENT:
+      case WhatsAppOperation.SEND_DOCUMENT: {
         if (!mediaUrl)
           throw new NonRetriableError(
             "WhatsApp SEND_DOCUMENT: 'mediaUrl' is required"
           )
+
+        // Auto-upload temp/base64 URLs to Azure Blob — WhatsApp requires a permanent public HTTPS URL
+        let finalDocUrl = mediaUrl
+        const docNeedsUpload =
+          mediaUrl.startsWith("data:") ||
+          mediaUrl.includes("oaidalleapiprodscus.blob.core.windows.net") ||
+          mediaUrl.includes("generativelanguage.googleapis.com")
+        if (docNeedsUpload) {
+          try {
+            const uploadResult = await uploadMedia(
+              mediaUrl,
+              "application/octet-stream",
+              {
+                userId,
+                workflowId: config.workflowId,
+                executionId: (context.__executionId as string) ?? undefined,
+              }
+            )
+            finalDocUrl = uploadResult.url
+          } catch (err) {
+            console.error("WhatsApp: Failed to upload document to Azure Blob:", err)
+          }
+        }
+
         payload = {
           messaging_product: "whatsapp",
           to,
           type: "document",
-          document: { link: mediaUrl, caption: mediaCaption },
+          document: { link: finalDocUrl, caption: mediaCaption },
         }
         break
+      }
 
       case WhatsAppOperation.SEND_REACTION:
         payload = {

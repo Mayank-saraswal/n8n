@@ -33,6 +33,7 @@ import { shiprocketExecutor } from "../components/shiprocket/executor";
 import { zohoCrmExecutor } from "../components/zoho-crm/executor";
 import { hubspotExecutor } from "../components/hubspot/executor";
 import { freshdeskExecutor } from "../components/freshdesk/executor";
+import { mediaUploadExecutor } from "../components/media-upload/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -75,6 +76,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.ZOHO_CRM]: zohoCrmExecutor,
     [NodeType.HUBSPOT]: hubspotExecutor,
     [NodeType.FRESHDESK]: freshdeskExecutor,
+    [NodeType.MEDIA_UPLOAD]: mediaUploadExecutor,
 
 }
 
