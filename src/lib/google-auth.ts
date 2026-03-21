@@ -1,4 +1,4 @@
-import { encrypt, decrypt } from "@/lib/encryption"
+import { decrypt } from "@/lib/encryption"
 import prisma from "@/lib/db"
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -6,7 +6,11 @@ const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
 
 // ── Config resolution (new unified var, falls back to service-specific) ──
 
-export function getGoogleClientId(): string {
+export function getGoogleClientId(type?: string): string {
+  if (type === "GMAIL" && process.env.GOOGLE_GMAIL_CLIENT_ID) return process.env.GOOGLE_GMAIL_CLIENT_ID
+  if (type === "GOOGLE_SHEETS" && process.env.GOOGLE_SHEETS_CLIENT_ID) return process.env.GOOGLE_SHEETS_CLIENT_ID
+  if (type === "GOOGLE_DRIVE" && process.env.GOOGLE_DRIVE_CLIENT_ID) return process.env.GOOGLE_DRIVE_CLIENT_ID
+
   const id =
     process.env.GOOGLE_CLIENT_ID ??
     process.env.GOOGLE_GMAIL_CLIENT_ID ??
@@ -17,7 +21,11 @@ export function getGoogleClientId(): string {
   return id
 }
 
-export function getGoogleClientSecret(): string {
+export function getGoogleClientSecret(type?: string): string {
+  if (type === "GMAIL" && process.env.GOOGLE_GMAIL_CLIENT_SECRET) return process.env.GOOGLE_GMAIL_CLIENT_SECRET
+  if (type === "GOOGLE_SHEETS" && process.env.GOOGLE_SHEETS_CLIENT_SECRET) return process.env.GOOGLE_SHEETS_CLIENT_SECRET
+  if (type === "GOOGLE_DRIVE" && process.env.GOOGLE_DRIVE_CLIENT_SECRET) return process.env.GOOGLE_DRIVE_CLIENT_SECRET
+
   const secret =
     process.env.GOOGLE_CLIENT_SECRET ??
     process.env.GOOGLE_GMAIL_CLIENT_SECRET ??
@@ -35,26 +43,44 @@ export function getGoogleRedirectUri(): string {
   )
 }
 
-// ── Scopes — combined for all Google services ────────────────────────────
+export function getGoogleScopes(type?: string): string {
+  const allScopes = [
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+  ]
 
-export const GOOGLE_SCOPES = [
-  "https://www.googleapis.com/auth/gmail.modify",
-  "https://www.googleapis.com/auth/gmail.send",
-  "https://mail.google.com/",
-  "https://www.googleapis.com/auth/spreadsheets",
-  "https://www.googleapis.com/auth/drive",
-  "https://www.googleapis.com/auth/userinfo.email",
-  "https://www.googleapis.com/auth/userinfo.profile",
-].join(" ")
+  if (type === "GMAIL" || type === "GMAIL_OAUTH") {
+    allScopes.push(
+      "https://www.googleapis.com/auth/gmail.modify",
+      "https://www.googleapis.com/auth/gmail.send",
+      "https://mail.google.com/"
+    )
+  } else if (type === "GOOGLE_SHEETS") {
+    allScopes.push("https://www.googleapis.com/auth/spreadsheets")
+  } else if (type === "GOOGLE_DRIVE") {
+    allScopes.push("https://www.googleapis.com/auth/drive")
+  } else {
+    // Fallback: request all known scopes together using the primary client
+    allScopes.push(
+      "https://www.googleapis.com/auth/gmail.modify",
+      "https://www.googleapis.com/auth/gmail.send",
+      "https://mail.google.com/",
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive"
+    )
+  }
+
+  return allScopes.join(" ")
+}
 
 // ── Generate OAuth2 authorization URL ────────────────────────────────────
 
-export function buildGoogleAuthUrl(state: string): string {
+export function buildGoogleAuthUrl(state: string, type?: string): string {
   const params = new URLSearchParams({
-    client_id: getGoogleClientId(),
+    client_id: getGoogleClientId(type),
     redirect_uri: getGoogleRedirectUri(),
     response_type: "code",
-    scope: GOOGLE_SCOPES,
+    scope: getGoogleScopes(type),
     access_type: "offline",
     prompt: "consent", // Always show consent to ensure refresh_token is returned
     state,
@@ -73,14 +99,14 @@ export interface GoogleTokenResponse {
   id_token?: string
 }
 
-export async function exchangeCodeForTokens(code: string): Promise<GoogleTokenResponse> {
+export async function exchangeCodeForTokens(code: string, type?: string): Promise<GoogleTokenResponse> {
   const response = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
-      client_id: getGoogleClientId(),
-      client_secret: getGoogleClientSecret(),
+      client_id: getGoogleClientId(type),
+      client_secret: getGoogleClientSecret(type),
       redirect_uri: getGoogleRedirectUri(),
       grant_type: "authorization_code",
     }),
@@ -107,59 +133,48 @@ export async function exchangeCodeForTokens(code: string): Promise<GoogleTokenRe
 
 // ── Refresh access token using stored refresh_token ──────────────────────
 
-export async function refreshGoogleAccessToken(refreshToken: string): Promise<string> {
-  // Try available clients in order: Unified -> Gmail -> Sheets -> Drive
-  const clients = [
-    { id: process.env.GOOGLE_CLIENT_ID, secret: process.env.GOOGLE_CLIENT_SECRET },
-    { id: process.env.GOOGLE_GMAIL_CLIENT_ID, secret: process.env.GOOGLE_GMAIL_CLIENT_SECRET },
-    { id: process.env.GOOGLE_SHEETS_CLIENT_ID, secret: process.env.GOOGLE_SHEETS_CLIENT_SECRET },
-    { id: process.env.GOOGLE_DRIVE_CLIENT_ID, secret: process.env.GOOGLE_DRIVE_CLIENT_SECRET },
-  ].filter((c) => c.id && c.secret)
+export async function refreshGoogleAccessToken(
+  refreshToken: string,
+  issuingClientId?: string
+): Promise<string> {
+  // Use the issuing client if known, otherwise fall back to primary
+  const clientId = issuingClientId ?? getGoogleClientId()
+  const clientSecret = resolveClientSecretForId(clientId)
 
-  // Remove exact duplicates
-  const uniqueClients = clients.filter(
-    (v, i, a) => a.findIndex((t) => t.id === v.id) === i
-  )
+  const response = await fetch(GOOGLE_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  })
 
-  if (uniqueClients.length === 0) {
-    throw new Error("Google OAuth: No client ID / secret configured in environment.")
+  if (response.ok) {
+    const data = (await response.json()) as { access_token: string; expires_in: number }
+    return data.access_token
   }
 
-  let lastError = ""
-  let lastStatus = 0
+  const lastStatus = response.status
+  const lastError = await response.text()
 
-  for (const client of uniqueClients) {
-    const response = await fetch(GOOGLE_TOKEN_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: client.id!,
-        client_secret: client.secret!,
-        refresh_token: refreshToken,
-        grant_type: "refresh_token",
-      }),
-    })
-
-    if (response.ok) {
-      const data = (await response.json()) as { access_token: string; expires_in: number }
-      return data.access_token
-    }
-
-    lastStatus = response.status
-    lastError = await response.text()
-
-    // If it's a 400/401, it might be the wrong client ID for this specific refresh token.
-    // Continue loop to try the next legacy client ID.
-  }
-
-  // If all failed, throw error for the last attempt
   if (lastStatus === 400 || lastStatus === 401) {
     throw new Error(
       "Google refresh token is invalid or revoked. " +
-        "Please reconnect your Google account in Settings → Credentials."
+        "Please reconnect your Google account in Settings → Credentials. Response: " + lastError
     )
   }
   throw new Error(`Failed to refresh Google access token: ${lastError}`)
+}
+
+function resolveClientSecretForId(clientId: string): string {
+  if (clientId === process.env.GOOGLE_CLIENT_ID) return process.env.GOOGLE_CLIENT_SECRET ?? ""
+  if (clientId === process.env.GOOGLE_GMAIL_CLIENT_ID) return process.env.GOOGLE_GMAIL_CLIENT_SECRET ?? ""
+  if (clientId === process.env.GOOGLE_SHEETS_CLIENT_ID) return process.env.GOOGLE_SHEETS_CLIENT_SECRET ?? ""
+  if (clientId === process.env.GOOGLE_DRIVE_CLIENT_ID) return process.env.GOOGLE_DRIVE_CLIENT_SECRET ?? ""
+  return getGoogleClientSecret() // fallback to primary
 }
 
 // ── Get user info (email, name, picture) ─────────────────────────────────
@@ -184,11 +199,15 @@ export async function getGoogleUserInfo(accessToken: string): Promise<{
 // ── Extract refresh token from any credential format ─────────────────────
 // Supports new OAuth2 format { refreshToken } and gives clear error for old formats
 
-export function extractRefreshToken(decryptedValue: string): string {
+export function extractRefreshToken(decryptedValue: string): {
+  refreshToken: string
+  clientId?: string
+} {
   try {
     const parsed = JSON.parse(decryptedValue) as {
       refreshToken?: string
       refresh_token?: string
+      clientId?: string
       appPassword?: string
     }
 
@@ -200,7 +219,12 @@ export function extractRefreshToken(decryptedValue: string): string {
     }
 
     const rt = parsed.refreshToken ?? parsed.refresh_token
-    if (rt) return rt
+    if (rt) {
+      return {
+        refreshToken: rt,
+        clientId: parsed.clientId,
+      }
+    }
     throw new Error("No refresh token found in credential")
   } catch (e) {
     if (e instanceof Error && e.message.includes("App Password")) throw e
@@ -232,9 +256,6 @@ export async function getAccessTokenFromCredential(
   }
 
   const decrypted = decrypt(credential.value)
-  const refreshToken = extractRefreshToken(decrypted)
-  return refreshGoogleAccessToken(refreshToken)
+  const { refreshToken, clientId } = extractRefreshToken(decrypted)
+  return refreshGoogleAccessToken(refreshToken, clientId)
 }
-
-// Suppress unused import warning — encrypt is re-exported for convenience
-export { encrypt }

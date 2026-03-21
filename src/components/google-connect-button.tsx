@@ -7,8 +7,8 @@ import Image from "next/image"
 
 interface GoogleConnectButtonProps {
   credentialName: string
-  credentialType: "GMAIL" | "GOOGLE_SHEETS" | "GOOGLE_DRIVE"
-  returnUrl: string
+  credentialType: "GMAIL" | "GMAIL_OAUTH" | "GOOGLE_SHEETS" | "GOOGLE_DRIVE"
+  returnUrl?: string
   isConnected?: boolean
   connectedEmail?: string
   onDisconnect?: () => void
@@ -30,11 +30,12 @@ export function GoogleConnectButton({
       return
     }
     setIsLoading(true)
-    const params = new URLSearchParams({
-      name: credentialName,
-      type: credentialType,
-      returnUrl,
-    })
+    const params = new URLSearchParams()
+    params.set("name", credentialName)
+    params.set("type", credentialType)
+    if (returnUrl) {
+      params.set("returnUrl", returnUrl)
+    }
     window.location.href = `/api/auth/google/start?${params.toString()}`
   }
 

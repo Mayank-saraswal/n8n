@@ -13,7 +13,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const credentialName = searchParams.get("name") || "My Google Account"
   const credentialType = searchParams.get("type") || "GMAIL"
-  const returnUrl = searchParams.get("returnUrl") || "/credentials"
+  const rawReturnUrl = searchParams.get("returnUrl") || "/credentials"
+  // Only allow relative paths — block open redirect to external URLs
+  const returnUrl = rawReturnUrl.startsWith("/") ? rawReturnUrl : "/credentials"
 
   // Encode state as base64url JSON: { userId, credentialName, credentialType, returnUrl }
   const stateData = {
@@ -24,6 +26,6 @@ export async function GET(request: NextRequest) {
   }
   const state = Buffer.from(JSON.stringify(stateData)).toString("base64url")
 
-  const authUrl = buildGoogleAuthUrl(state)
+  const authUrl = buildGoogleAuthUrl(state, credentialType)
   return NextResponse.redirect(authUrl)
 }

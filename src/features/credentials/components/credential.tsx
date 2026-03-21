@@ -324,6 +324,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     // Parse connected email / refresh token from existing OAuth credential
     const [connectedEmail, setConnectedEmail] = useState<string | undefined>()
     const [existingRefreshToken, setExistingRefreshToken] = useState<string | undefined>()
+    const [isJustConnected, setIsJustConnected] = useState(false)
 
     useEffect(() => {
         if (initialData?.value) {
@@ -343,7 +344,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
         const successEmail = params.get("google_success")
         if (successEmail) {
             setConnectedEmail(successEmail)
-            setExistingRefreshToken("placeholder") // Mark as connected
+            setIsJustConnected(true) // Mark as connected
             toast.success(`Successfully connected ${successEmail}`)
             window.history.replaceState({}, "", window.location.pathname)
         }
@@ -558,8 +559,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     })
 
     const watchType = form.watch("type")
-    const isGmail = watchType === CredentialType.GMAIL
     const isGmailOAuth = watchType === CredentialType.GMAIL_OAUTH
+    const isGmail = watchType === CredentialType.GMAIL || isGmailOAuth
     const isGoogleSheets = watchType === CredentialType.GOOGLE_SHEETS
     const isGoogleDrive = watchType === CredentialType.GOOGLE_DRIVE
     const isGoogleService = isGmail || isGoogleSheets || isGoogleDrive
@@ -816,25 +817,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
 
                             />
 
-
-                            {isGmailOAuth ? (
-                                <div className="space-y-4">
-                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
-                                        <p className="font-medium mb-2">Connect your Gmail account via OAuth2</p>
-                                        <p>Click the button below to securely authorize access to your Gmail account.</p>
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        asChild
-                                    >
-                                        <a href={`/api/auth/gmail?redirectTo=${encodeURIComponent(pathname)}`}>
-                                            <Image src="/logos/gmail.svg" alt="Gmail" width={16} height={16} className="mr-2" />
-                                            Connect Gmail Account
-                                        </a>
-                                    </Button>
-                                </div>
-                            ) : isGmail ? (
+                            {isGmail ? (
                                 <>
                                     <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
                                         <p className="font-medium mb-1">Connect your Gmail account via OAuth2</p>
@@ -842,9 +825,37 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                     </div>
                                     <GoogleConnectButton
                                         credentialName={form.watch("name")}
-                                        credentialType="GMAIL"
+                                        credentialType={watchType === CredentialType.GMAIL_OAUTH ? "GMAIL_OAUTH" : "GMAIL"}
                                         returnUrl={`/credentials/${isEdit && initialData?.id ? initialData.id : "new"}`}
-                                        isConnected={!!existingRefreshToken}
+                                        isConnected={!!existingRefreshToken || isJustConnected}
+                                        connectedEmail={connectedEmail}
+                                    />
+                                </>
+                            ) : isGoogleSheets ? (
+                                <>
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-1">Connect your Google Sheets account via OAuth2</p>
+                                        <p>You will be redirected to Google to approve access. The credential is saved automatically after connecting.</p>
+                                    </div>
+                                    <GoogleConnectButton
+                                        credentialName={form.watch("name")}
+                                        credentialType="GOOGLE_SHEETS"
+                                        returnUrl={`/credentials/${isEdit && initialData?.id ? initialData.id : "new"}`}
+                                        isConnected={!!existingRefreshToken || isJustConnected}
+                                        connectedEmail={connectedEmail}
+                                    />
+                                </>
+                            ) : isGoogleDrive ? (
+                                <>
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-1">Connect your Google Drive account via OAuth2</p>
+                                        <p>You will be redirected to Google to approve access. The credential is saved automatically after connecting.</p>
+                                    </div>
+                                    <GoogleConnectButton
+                                        credentialName={form.watch("name")}
+                                        credentialType="GOOGLE_DRIVE"
+                                        returnUrl={`/credentials/${isEdit && initialData?.id ? initialData.id : "new"}`}
+                                        isConnected={!!existingRefreshToken || isJustConnected}
                                         connectedEmail={connectedEmail}
                                     />
                                 </>
@@ -1357,7 +1368,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                         credentialName={form.watch("name")}
                                         credentialType={isGoogleSheets ? "GOOGLE_SHEETS" : "GOOGLE_DRIVE"}
                                         returnUrl={`/credentials/${isEdit && initialData?.id ? initialData.id : "new"}`}
-                                        isConnected={!!existingRefreshToken}
+                                        isConnected={!!existingRefreshToken || isJustConnected}
                                         connectedEmail={connectedEmail}
                                     />
                                 </>

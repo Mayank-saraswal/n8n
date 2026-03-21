@@ -28,6 +28,6 @@ export async function refreshGoogleSheetsAccessToken(
 
   // extractRefreshToken handles both { refreshToken: "..." } and { refresh_token: "..." }
   // and gives a clear error for old formats
-  const refreshToken = extractRefreshToken(decrypted)
-  return refreshGoogleAccessToken(refreshToken)
+  const { refreshToken, clientId } = extractRefreshToken(decrypted)
+  return refreshGoogleAccessToken(refreshToken, clientId)
 }

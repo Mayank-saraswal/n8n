@@ -29,7 +29,7 @@ export const gmailWatchRenewal = inngest.createFunction(
           if (!credential) continue
 
           // Get access token using shared helper
-          const { token } = await refreshGmailAccessToken(credential.value)
+          const { token } = await refreshGmailAccessToken(credential.id, credential.userId)
 
           // Register Gmail watch
           const topicName = getGmailPubsubTopic()
