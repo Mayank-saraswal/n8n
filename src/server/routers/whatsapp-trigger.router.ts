@@ -4,6 +4,7 @@ import { createTRPCRouter, protectedProcedure } from "@/trpc/init"
 import prisma from "@/lib/db"
 import { encryptVerifyToken, decryptVerifyToken } from "@/lib/whatsapp-secret"
 import { randomUUID } from "crypto"
+import type { WhatsAppTrigger } from "@/generated/prisma"
 
 export const whatsappTriggerRouter = createTRPCRouter({
   getByNodeId: protectedProcedure
@@ -54,7 +55,7 @@ export const whatsappTriggerRouter = createTRPCRouter({
       // Check if a row already exists
       const existing = await prisma.whatsAppTrigger.findUnique({ where: { nodeId } })
 
-      let node: Awaited<ReturnType<typeof prisma.whatsAppTrigger.findUnique>>
+      let node: WhatsAppTrigger
 
       if (!existing) {
         // CREATE — generate and encrypt a new verify token

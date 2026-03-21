@@ -5,7 +5,7 @@ import Stripe from "stripe";
 
 // Initialize Stripe gracefully — don't throw immediately if key is missing
 const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-01-27.acacia" as any })
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-02-25.clover" })
   : null;
 
 export async function POST(request: NextRequest) {
@@ -23,9 +23,9 @@ export async function POST(request: NextRequest) {
         const rawBody = await request.text();
         const signature = request.headers.get("stripe-signature");
 
-        let eventId: string;
-        let eventType: string;
-        let stripeData: any;
+        let eventId = "";
+        let eventType = "";
+        let stripeData: Record<string, unknown> = {};
 
         // Verify Stripe signature if secret is configured
         const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -53,8 +53,8 @@ export async function POST(request: NextRequest) {
             // Fallback for development / missing secrets: parse body directly
             try {
                 const body = JSON.parse(rawBody);
-                eventId = body.id;
-                eventType = body.type;
+                eventId = body.id ?? "";
+                eventType = body.type ?? "";
                 stripeData = {
                     eventId: body.id,
                     eventType: body.type,
@@ -62,16 +62,20 @@ export async function POST(request: NextRequest) {
                     livemode: body.livemode,
                     raw: body.data?.object,
                 };
-                
-                if (!eventId) {
-                    throw new Error("Missing event ID");
-                }
             } catch (err) {
                 return NextResponse.json(
                     { success: false, error: "Invalid JSON or missing event ID" },
                     { status: 400 }
                 );
             }
+        }
+        
+        // Now validate after both branches
+        if (!eventId) {
+            return NextResponse.json(
+                { success: false, error: "Missing or invalid event ID" },
+                { status: 400 }
+            );
         }
 
         // Deduplication using Upstash Redis
