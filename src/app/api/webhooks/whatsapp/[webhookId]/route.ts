@@ -1,5 +1,7 @@
 import { sendWorkflowExecution } from "@/inngest/utils"
 import prisma from "@/lib/db"
+import { decryptVerifyToken } from "@/lib/whatsapp-secret"
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@/lib/redis"
 import { NextRequest, NextResponse } from "next/server"
 
 export const runtime = "nodejs"
@@ -28,7 +30,15 @@ export async function GET(
     return new Response("Not found", { status: 404 })
   }
 
-  if (mode === "subscribe" && token === trigger.verifyToken) {
+  // Decrypt the token (supports both new encrypted and legacy plaintext formats)
+  let storedToken: string
+  try {
+    storedToken = decryptVerifyToken(trigger.verifyTokenEncrypted, trigger.verifyToken)
+  } catch {
+    return new Response("Forbidden", { status: 403 })
+  }
+
+  if (mode === "subscribe" && token === storedToken) {
     // Return ONLY the challenge — not JSON, plain text
     return new Response(challenge, { status: 200 })
   }
@@ -157,44 +167,63 @@ export async function POST(
             // Extract reaction
             const reactionObj = msg.reaction as Record<string, unknown> | undefined
 
-            await sendWorkflowExecution({
-              workflowId: trigger.workflow.id,
-              initialData: {
-                [variableName]: {
-                  eventType: "message",
-                  messageId: msg.id ?? null,
-                  from: msg.from ?? null,
-                  senderName: profile?.name ?? contact?.wa_id ?? null,
-                  type: msgType,
-                  timestamp: msg.timestamp ?? null,
-                  phoneNumberId: metadata?.phone_number_id ?? null,
-                  // Text
-                  text: textObj?.body ?? null,
-                  // Media (image, audio, video, document, sticker)
-                  mediaId: mediaObj?.id ?? null,
-                  caption: mediaObj?.caption ?? null,
-                  filename: mediaObj?.filename ?? null,
-                  // Location
-                  latitude: locObj?.latitude ?? null,
-                  longitude: locObj?.longitude ?? null,
-                  locationName: locObj?.name ?? null,
-                  address: locObj?.address ?? null,
-                  // Interactive button reply
-                  buttonId: buttonReply?.id ?? null,
-                  buttonTitle: buttonReply?.title ?? null,
-                  // Interactive list reply
-                  listId: listReply?.id ?? null,
-                  listTitle: listReply?.title ?? null,
-                  // Reaction
-                  emoji: reactionObj?.emoji ?? null,
-                  reactedToMsgId: reactionObj?.message_id ?? null,
-                  // Raw message for advanced use
-                  raw: msg,
-                  headers,
-                  receivedAt,
+            // Claim idempotency key for this message
+            const messageId = msg.id as string | undefined
+            if (!messageId) continue
+            
+            const idempotencyKey = `whatsapp:${webhookId}:${messageId}`
+            const isFirstDelivery = await claimIdempotencyKey(idempotencyKey, 86400) // 24h TTL
+            
+            if (!isFirstDelivery) {
+              console.log(`[WhatsApp] Duplicate message discarded: ${messageId} for webhook ${webhookId}`)
+              continue // skip this message but continue processing others in this batch
+            }
+
+            try {
+              await sendWorkflowExecution({
+                workflowId: trigger.workflow.id,
+                inngestId: idempotencyKey, // Second-layer deduplication in Inngest
+                initialData: {
+                  [variableName]: {
+                    eventType: "message",
+                    messageId: msg.id ?? null,
+                    from: msg.from ?? null,
+                    senderName: profile?.name ?? contact?.wa_id ?? null,
+                    type: msgType,
+                    timestamp: msg.timestamp ?? null,
+                    phoneNumberId: metadata?.phone_number_id ?? null,
+                    // Text
+                    text: textObj?.body ?? null,
+                    // Media (image, audio, video, document, sticker)
+                    mediaId: mediaObj?.id ?? null,
+                    caption: mediaObj?.caption ?? null,
+                    filename: mediaObj?.filename ?? null,
+                    // Location
+                    latitude: locObj?.latitude ?? null,
+                    longitude: locObj?.longitude ?? null,
+                    locationName: locObj?.name ?? null,
+                    address: locObj?.address ?? null,
+                    // Interactive button reply
+                    buttonId: buttonReply?.id ?? null,
+                    buttonTitle: buttonReply?.title ?? null,
+                    // Interactive list reply
+                    listId: listReply?.id ?? null,
+                    listTitle: listReply?.title ?? null,
+                    // Reaction
+                    emoji: reactionObj?.emoji ?? null,
+                    reactedToMsgId: reactionObj?.message_id ?? null,
+                    // Raw message for advanced use
+                    raw: msg,
+                    headers,
+                    receivedAt,
+                  },
                 },
-              },
-            })
+              })
+            } catch (err) {
+              // Release key if Inngest send fails so we can retry on next webhook delivery
+              await releaseIdempotencyKey(idempotencyKey)
+              throw err
+            }
           }
 
           // Process status updates

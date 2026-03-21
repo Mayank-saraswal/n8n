@@ -1,7 +1,9 @@
 import { sendWorkflowExecution } from "@/inngest/utils"
 import prisma from "@/lib/db"
+import { decryptWebhookSecret } from "@/lib/razorpay-secret"
 import { NextRequest, NextResponse } from "next/server"
 import crypto from "crypto"
+import { claimIdempotencyKey, releaseIdempotencyKey } from "@/lib/redis"
 
 export const runtime = "nodejs"
 
@@ -47,10 +49,14 @@ export async function POST(
       return NextResponse.json({ status: "inactive" }, { status: 200 })
     }
 
-    // Verify Razorpay HMAC-SHA256 signature if secret is configured
-    if (trigger.webhookSecret) {
+    // Verify Razorpay HMAC-SHA256 signature if a secret is configured
+    const hasSecret = !!(trigger.webhookSecretEncrypted || trigger.webhookSecret)
+    if (hasSecret) {
+      const { decryptWebhookSecret } = await import("@/lib/razorpay-secret")
+      const secret = decryptWebhookSecret(trigger.webhookSecretEncrypted, trigger.webhookSecret)
+
       const expectedSignature = crypto
-        .createHmac("sha256", trigger.webhookSecret)
+        .createHmac("sha256", secret)
         .update(rawBody)
         .digest("hex")
 
@@ -80,12 +86,33 @@ export async function POST(
       )
     }
 
+    // Extract event fingerprint for deduplication
+    const razorpayEventId = request.headers.get("x-razorpay-event-id")
+    const eventFingerprint = razorpayEventId ?? 
+      crypto.createHash("sha256").update(rawBody).digest("hex").slice(0, 32)
+      
+    // Claim idempotency key BEFORE proceeding to potentially heavy operations
+    const idempotencyKey = `razorpay:${webhookId}:${eventFingerprint}`
+    const isFirstDelivery = await claimIdempotencyKey(idempotencyKey, 86400) // 24h TTL
+    
+    if (!isFirstDelivery) {
+      console.log(`[Razorpay] Duplicate event discarded: ${eventFingerprint} for webhook ${webhookId}`)
+      return NextResponse.json({ 
+        received: true, 
+        status: "duplicate_discarded",
+        eventId: eventFingerprint
+      })
+    }
+
+
+
     // Check event filtering — if activeEvents is set, only allow matching events
     const eventType = (body.event as string) ?? ""
     const activeEvents: string[] = JSON.parse(trigger.activeEvents || "[]")
 
     if (activeEvents.length > 0 && !activeEvents.includes(eventType)) {
       // Event not in the active list — acknowledge but don't execute
+      await releaseIdempotencyKey(idempotencyKey)
       return NextResponse.json({ status: "filtered", event: eventType })
     }
 
@@ -98,23 +125,31 @@ export async function POST(
     const receivedAt = new Date().toISOString()
     const variableName = trigger.variableName || "razorpayTrigger"
 
-    await sendWorkflowExecution({
-      workflowId: trigger.workflow.id,
-      initialData: {
-        [variableName]: {
-          event: eventType,
-          payload: body.payload ?? {},
-          accountId: body.account_id ?? null,
-          contains: body.contains ?? [],
-          createdAt: body.created_at ?? null,
-          rawBody: body,
-          headers,
-          receivedAt,
+    try {
+      await sendWorkflowExecution({
+        workflowId: trigger.workflow.id,
+        inngestId: idempotencyKey, // Second-layer deduplication in Inngest
+        initialData: {
+          [variableName]: {
+            event: eventType,
+            eventId: eventFingerprint,
+            payload: body.payload ?? {},
+            accountId: body.account_id ?? null,
+            contains: body.contains ?? [],
+            createdAt: body.created_at ?? null,
+            rawBody: body,
+            headers,
+            receivedAt,
+          },
         },
-      },
-    })
+      })
+    } catch (err) {
+      // Release key if Inngest send fails so we can retry
+      await releaseIdempotencyKey(idempotencyKey)
+      throw err
+    }
 
-    return NextResponse.json({ status: "ok", receivedAt })
+    return NextResponse.json({ status: "accepted", receivedAt, eventId: eventFingerprint })
   } catch (error) {
     console.error("Razorpay webhook error:", error)
     return NextResponse.json(

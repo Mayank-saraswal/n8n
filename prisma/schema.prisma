@@ -1028,7 +1028,17 @@ model RazorpayTrigger {
   workflowId    String
 
   webhookId     String   @unique @default(uuid())
-  webhookSecret String   @default("")
+
+  // DEPRECATED — plaintext, kept for backward-compat until data migration is complete.
+  // TODO: Once all rows have webhookSecretEncrypted set and webhookSecret IS NULL,
+  // create a follow-up migration to: DROP COLUMN webhookSecret and set
+  // webhookSecretEncrypted NOT NULL.
+  webhookSecret          String?  // legacy plaintext (pre-encryption rows)
+
+  // AES-256 encrypted webhook secret. Prefer this over webhookSecret.
+  // Populated by new saves and by `npm run migrate:razorpay-secrets`.
+  webhookSecretEncrypted String?  // encrypted; null until migrated
+
   activeEvents  String   @default("[]") @db.Text
   variableName  String   @default("razorpayTrigger")
   isActive      Boolean  @default(true)
@@ -1049,7 +1059,17 @@ model WhatsAppTrigger {
   workflowId        String
 
   webhookId         String   @unique @default(uuid())
-  verifyToken       String   @default(uuid())
+
+  // DEPRECATED — plaintext, kept for backward-compat until data migration is complete.
+  // TODO: Once all rows have verifyTokenEncrypted set and verifyToken IS NULL,
+  // create a follow-up migration to: DROP COLUMN verifyToken and set
+  // verifyTokenEncrypted NOT NULL.
+  verifyToken              String?  // legacy plaintext (pre-encryption rows)
+
+  // AES-256 encrypted verify token. Prefer this over verifyToken.
+  // Populated by new saves and by `npm run migrate:whatsapp-tokens`.
+  verifyTokenEncrypted     String?  // encrypted; null until migrated
+
   phoneNumberId     String   @default("")
   activeEvents      String   @default("[]") @db.Text
   messageTypes      String   @default("[]") @db.Text

@@ -99,12 +99,15 @@ export const RazorpayTriggerDialog = ({
   )
 
   const [webhookSecret, setWebhookSecret] = useState("")
+  const [changingSecret, setChangingSecret] = useState(false)
 
   useEffect(() => {
-    if (triggerConfig) {
-      setWebhookSecret(triggerConfig.webhookSecret)
+    // Reset the change-secret form when the dialog opens/closes or data changes
+    if (!open) {
+      setChangingSecret(false)
+      setWebhookSecret("")
     }
-  }, [triggerConfig])
+  }, [open])
 
   useEffect(() => {
     if (open && !isLoading && !triggerConfig && nodeId) {
@@ -182,22 +185,52 @@ export const RazorpayTriggerDialog = ({
               <Label htmlFor="razorpay-webhook-secret">
                 Webhook Secret (from Razorpay Dashboard)
               </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="razorpay-webhook-secret"
-                  value={webhookSecret}
-                  onChange={(e) => setWebhookSecret(e.target.value)}
-                  placeholder="Enter your Razorpay webhook secret"
-                  className="font-mono text-sm"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSaveSecret}
-                >
-                  Save
-                </Button>
-              </div>
+              {!changingSecret && triggerConfig?.isSecretConfigured ? (
+                <div className="flex gap-2 items-center">
+                  <Input
+                    id="razorpay-webhook-secret"
+                    value="••••••••"
+                    readOnly
+                    className="font-mono text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setChangingSecret(true)}
+                  >
+                    Change
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    id="razorpay-webhook-secret"
+                    value={webhookSecret}
+                    onChange={(e) => setWebhookSecret(e.target.value)}
+                    placeholder="Enter your Razorpay webhook secret"
+                    className="font-mono text-sm"
+                    type="password"
+                    autoComplete="new-password"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSaveSecret}
+                    disabled={!webhookSecret.trim()}
+                  >
+                    Save
+                  </Button>
+                  {changingSecret && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => { setChangingSecret(false); setWebhookSecret("") }}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 Found in Razorpay Dashboard → Settings → Webhooks → Secret
               </p>
