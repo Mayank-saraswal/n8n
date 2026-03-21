@@ -46,6 +46,8 @@ ENV POLAR_WEBHOOK_SECRET="dummy"
 ENV GROQ_API_KEY="dummy"
 ENV GOOGLE_GENERATIVE_AI_API_KEY="dummy"
 
+# Increase Node.js heap size to prevent OOM during type checking
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # Production image — minimal size
