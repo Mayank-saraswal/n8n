@@ -108,8 +108,6 @@ export const useUpdateCredentialName = ()=>{
         
      trpc.credentials.updateName.mutationOptions({
         onSuccess: (data)=>{
-           toast.success(`Credential name updated`)
-           
            queryClient.invalidateQueries(
             trpc.credentials.getMany.queryOptions({})
            );

@@ -583,11 +583,15 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
         // Only update the name here.
         if (isGoogleService) {
             if (isEdit && initialData?.id) {
-                await updateCredentialName.mutate({
-                    id: initialData.id,
-                    name: values.name,
-                })
-                toast.success("Credential name updated")
+                try {
+                    await updateCredentialName.mutateAsync({
+                        id: initialData.id,
+                        name: values.name,
+                    })
+                    toast.success("Credential name updated")
+                } catch {
+                    // onError in the hook already shows the error toast
+                }
             }
             // For new Google credentials, credential was already created by OAuth callback
             return

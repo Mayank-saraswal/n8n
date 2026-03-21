@@ -62,7 +62,6 @@ export async function refreshGmailAccessToken(
     accessToken = await refreshGoogleAccessToken(refreshToken, clientId)
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    console.error("GMAIL AUTH FAILED DETAILED:", msg)
     if (msg.includes("invalid") || msg.includes("revoked")) {
       throw new NonRetriableError(`Gmail authorization revoked. Reconnect your account. Details: ${msg}`)
     }
