@@ -170,11 +170,23 @@ export async function refreshGoogleAccessToken(
 }
 
 function resolveClientSecretForId(clientId: string): string {
-  if (clientId === process.env.GOOGLE_CLIENT_ID) return process.env.GOOGLE_CLIENT_SECRET ?? ""
-  if (clientId === process.env.GOOGLE_GMAIL_CLIENT_ID) return process.env.GOOGLE_GMAIL_CLIENT_SECRET ?? ""
-  if (clientId === process.env.GOOGLE_SHEETS_CLIENT_ID) return process.env.GOOGLE_SHEETS_CLIENT_SECRET ?? ""
-  if (clientId === process.env.GOOGLE_DRIVE_CLIENT_ID) return process.env.GOOGLE_DRIVE_CLIENT_SECRET ?? ""
-  return getGoogleClientSecret() // fallback to primary
+  const lookup: Array<[string | undefined, string | undefined]> = [
+    [process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET],
+    [process.env.GOOGLE_GMAIL_CLIENT_ID, process.env.GOOGLE_GMAIL_CLIENT_SECRET],
+    [process.env.GOOGLE_SHEETS_CLIENT_ID, process.env.GOOGLE_SHEETS_CLIENT_SECRET],
+    [process.env.GOOGLE_DRIVE_CLIENT_ID, process.env.GOOGLE_DRIVE_CLIENT_SECRET],
+  ]
+  for (const [id, secret] of lookup) {
+    if (id === clientId) {
+      if (!secret) throw new Error(
+        `Google OAuth: client secret is not set for client ${clientId}. ` +
+        `Check your environment variables.`
+      )
+      return secret
+    }
+  }
+  // clientId not recognized — use primary client
+  return getGoogleClientSecret()
 }
 
 // ── Get user info (email, name, picture) ─────────────────────────────────

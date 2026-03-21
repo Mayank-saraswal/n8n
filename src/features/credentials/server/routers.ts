@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { PAGINATION } from "@/config/constants";
 import { CredentialType } from "@/generated/prisma";
 import { encrypt } from "@/lib/encryption";
+import { TRPCError } from "@trpc/server";
 
 
 
@@ -45,6 +46,21 @@ export const credentialsRouter = createTRPCRouter({
 
 
 
+
+    updateName: protectedProcedure
+        .input(z.object({ id: z.string(), name: z.string().min(1) }))
+        .mutation(async ({ input, ctx }) => {
+            const credential = await prisma.credential.findUnique({
+                where: { id: input.id },
+            })
+            if (!credential || credential.userId !== ctx.auth.user.id) {
+                throw new TRPCError({ code: "UNAUTHORIZED" })
+            }
+            return prisma.credential.update({
+                where: { id: input.id },
+                data: { name: input.name },
+            })
+        }),
 
     update: protectedProcedure
         .input(z.object({

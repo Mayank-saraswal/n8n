@@ -100,6 +100,33 @@ export const useUpdateCredential = ()=>{
     
 }
 
+export const useUpdateCredentialName = ()=>{
+    
+    const queryClient = useQueryClient()
+    const trpc = useTRPC()
+    return useMutation(
+        
+     trpc.credentials.updateName.mutationOptions({
+        onSuccess: (data)=>{
+           toast.success(`Credential name updated`)
+           
+           queryClient.invalidateQueries(
+            trpc.credentials.getMany.queryOptions({})
+           );
+           queryClient.invalidateQueries(
+            trpc.credentials.getOne.queryOptions({id: data.id}),
+           )
+        },
+        onError: (error)=>{
+            toast.error(`Failed to update credential name: ${error.message}`)
+        }
+     })
+    
+    
+    )
+    
+}
+
 //Hook for fetch credetials by type
 export const useCredentialsByType = (type:CredentialType)=>{
     const trpc = useTRPC()

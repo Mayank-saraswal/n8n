@@ -3,7 +3,7 @@
 import { CredentialType } from "@/generated/prisma";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import z from "zod";
-import { useCreateCredential, useUpdateCredential, useSuspennseCredential } from "../hooks/use-credentials";
+import { useCreateCredential, useUpdateCredential, useUpdateCredentialName, useSuspennseCredential } from "../hooks/use-credentials";
 import { useUpgradeModal } from "@/hooks/use-upgrade-modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -317,6 +317,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const pathname = usePathname();
     const createCredential = useCreateCredential();
     const updateCredential = useUpdateCredential();
+    const updateCredentialName = useUpdateCredentialName();
     const { handleError, modal } = useUpgradeModal();
 
     const isEdit = !!initialData?.id;
@@ -582,16 +583,13 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
         // Only update the name here.
         if (isGoogleService) {
             if (isEdit && initialData?.id) {
-                await updateCredential.mutate({
+                await updateCredentialName.mutate({
                     id: initialData.id,
                     name: values.name,
-                    // value and type are required by the hook but unchanged
-                    value: initialData.value ?? values.value,
-                    type: initialData.type ?? values.type,
                 })
+                toast.success("Credential name updated")
             }
-            // For new Google credentials, the create was already done by the OAuth callback.
-            // This path is only hit if user clicks Save without connecting — just ignore.
+            // For new Google credentials, credential was already created by OAuth callback
             return
         }
 
@@ -1361,16 +1359,6 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                             </div>
                                         </>
                                     )}
-                                </>
-                            ) : isGoogleSheets || isGoogleDrive ? (
-                                <>
-                                    <GoogleConnectButton
-                                        credentialName={form.watch("name")}
-                                        credentialType={isGoogleSheets ? "GOOGLE_SHEETS" : "GOOGLE_DRIVE"}
-                                        returnUrl={`/credentials/${isEdit && initialData?.id ? initialData.id : "new"}`}
-                                        isConnected={!!existingRefreshToken || isJustConnected}
-                                        connectedEmail={connectedEmail}
-                                    />
                                 </>
                             ) : (
                                 <FormField
