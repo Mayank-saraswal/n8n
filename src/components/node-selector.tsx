@@ -1,7 +1,7 @@
 "use client"
 import { createId} from "@paralleldrive/cuid2"
 import { useReactFlow } from "@xyflow/react"
-import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, GitForkIcon, SlidersHorizontalIcon, TableIcon, CodeIcon, RepeatIcon, TimerIcon, MergeIcon, AlertTriangleIcon, UploadIcon} from "lucide-react"
+import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, GitForkIcon, SlidersHorizontalIcon, TableIcon, CodeIcon, RepeatIcon, TimerIcon, MergeIcon, AlertTriangleIcon, UploadIcon, ArrowUpDown} from "lucide-react"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { 
@@ -274,6 +274,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Media Upload",
         description:"Upload image/audio/video to Azure and get a permanent URL",
         icon:UploadIcon
+    },
+    {
+        type:NodeType.SORT,
+        label:"Sort",
+        description:"Sort, reverse, or shuffle arrays and objects",
+        icon:ArrowUpDown
     }
 
 ]

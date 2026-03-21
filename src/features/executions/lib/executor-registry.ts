@@ -34,6 +34,7 @@ import { zohoCrmExecutor } from "../components/zoho-crm/executor";
 import { hubspotExecutor } from "../components/hubspot/executor";
 import { freshdeskExecutor } from "../components/freshdesk/executor";
 import { mediaUploadExecutor } from "../components/media-upload/executor";
+import { sortExecutor } from "../components/sort/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -77,6 +78,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.HUBSPOT]: hubspotExecutor,
     [NodeType.FRESHDESK]: freshdeskExecutor,
     [NodeType.MEDIA_UPLOAD]: mediaUploadExecutor,
+    [NodeType.SORT]: sortExecutor,
 
 }
 
