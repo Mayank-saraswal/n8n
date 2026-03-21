@@ -115,6 +115,7 @@ model workflow {
   freshdeskNodes     FreshdeskNode[]
   aiNodes            AINode[]
   mediaUploadNodes   MediaUploadNode[]
+  sortNodes          SortNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -161,6 +162,7 @@ enum NodeType {
   HUBSPOT
   FRESHDESK
   MEDIA_UPLOAD
+  SORT
   // In a future sprint: ZOHO_CRM_TRIGGER
   // Registers a Zoho Notification API webhook for lead/contact/deal events.
   // Ref: https://www.zoho.com/crm/developer/docs/api/v6/notifications/overview.html
@@ -1778,3 +1780,41 @@ model MediaUploadNode {
   @@index([workflowId])
   @@index([nodeId])
 }
+
+model SortNode {
+  id         String   @id @default(cuid())
+  nodeId     String   @unique
+  workflowId String
+
+  // Operation mode
+  // "SORT_ARRAY"     — sort array of objects or primitives
+  // "SORT_KEYS"      — sort the keys of an object
+  // "REVERSE"        — reverse array order
+  // "SHUFFLE"        — random order (Fisher-Yates)
+  operation  String   @default("SORT_ARRAY")
+
+  // JSON-serialized array of SortKey objects:
+  // [{ field: string, direction: "asc"|"desc", type: "auto"|"string"|
+  //    "number"|"date"|"boolean", nulls: "first"|"last",
+  //    caseSensitive: boolean, locale: string, natural: boolean }]
+  sortKeys   String   @default("[]") @db.Text
+
+  // Input path — dot-notation path to the array inside context
+  // e.g. "googleSheets.rows" or "razorpayTrigger.payload.items"
+  // Empty string = use the entire previous node output
+  inputPath  String   @default("")
+
+  // Variable name for output
+  variableName String  @default("sort")
+
+  // Whether to sort in-place (mutate) or return new array
+  // Always false in executor — immutable by default
+  // Kept for future UI hint
+  inPlace    Boolean  @default(false)
+
+  workflow   workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+

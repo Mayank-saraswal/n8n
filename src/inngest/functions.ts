@@ -38,6 +38,7 @@ import { zohoCrmChannel } from "@/features/executions/components/zoho-crm/channe
 import { freshdeskChannel } from "./channels/freshdesk";
 import { aiChannel } from "./channels/ai";
 import { mediaUploadChannel } from "./channels/media-upload";
+import { sortChannel } from "./channels/sort";
 
 const MAX_JSON_LENGTH = 100_000;
 
@@ -177,6 +178,7 @@ export const executeWorkflow = inngest.createFunction(
       freshdeskChannel(),
       aiChannel(),
       mediaUploadChannel(),
+      sortChannel(),
 
     ]
   },
