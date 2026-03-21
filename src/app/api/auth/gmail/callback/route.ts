@@ -90,6 +90,7 @@ export async function GET(req: NextRequest) {
         JSON.stringify({
           refreshToken: tokenData.refresh_token,
           email,
+          clientId: getGoogleGmailClientId(),
           scope: tokenData.scope ?? "",
         })
       ),

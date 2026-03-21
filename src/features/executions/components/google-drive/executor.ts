@@ -1,29 +1,12 @@
 import { NonRetriableError } from "inngest"
 import type { NodeExecutor } from "@/features/executions/types"
 import prisma from "@/lib/db"
-import { decrypt } from "@/lib/encryption"
 import { resolveTemplate } from "@/features/executions/lib/template-resolver"
 import { googleDriveChannel } from "@/inngest/channels/google-drive"
+import { refreshGoogleDriveAccessToken } from "@/lib/google-drive-auth"
 
 const DRIVE_API = "https://www.googleapis.com/drive/v3"
 const UPLOAD_API = "https://www.googleapis.com/upload/drive/v3"
-
-// Token refresh — identical to Google Sheets executor pattern
-async function refreshAccessToken(refreshToken: string): Promise<string> {
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: process.env.GOOGLE_DRIVE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_DRIVE_CLIENT_SECRET!,
-      refresh_token: refreshToken,
-      grant_type: "refresh_token",
-    }),
-  })
-  const data = await res.json()
-  if (!data.access_token) throw new Error("Failed to refresh Google token")
-  return data.access_token
-}
 
 export const googleDriveExecutor: NodeExecutor = async ({
   nodeId, context, step, publish, userId,
@@ -40,36 +23,17 @@ export const googleDriveExecutor: NodeExecutor = async ({
     throw new NonRetriableError("Google Drive node is missing credential")
   }
 
-  // Load and decrypt credential
-  const credential = await step.run(`drive-${nodeId}-load-credential`, () =>
-    prisma.credential.findUnique({
-      where: { id: config.credentialId!, userId }
-    })
-  )
-
-  if (!credential) {
-    await publish(googleDriveChannel().status({ nodeId, status: "error" }))
-    throw new NonRetriableError("Google Drive credential not found")
-  }
-
-  let decrypted: { refreshToken: string }
-  const raw = decrypt(credential.value)
-  try {
-    decrypted = JSON.parse(raw)
-  } catch {
-    decrypted = { refreshToken: raw }
-  }
-
-  if (!decrypted?.refreshToken) {
-    await publish(googleDriveChannel().status({ nodeId, status: "error" }))
-    throw new NonRetriableError(
-      'Google Drive credential missing refreshToken. Store as JSON: {"refreshToken": "..."}'
-    )
-  }
-
-  // Execute operation
+  // Execute operation — load access token inline
   const result = await step.run(`drive-${nodeId}-execute`, async () => {
-    const token = await refreshAccessToken(decrypted.refreshToken)
+    let token: string
+    try {
+      token = await refreshGoogleDriveAccessToken(config.credentialId!, userId)
+    } catch (err) {
+      await publish(googleDriveChannel().status({ nodeId, status: "error" }))
+      throw new NonRetriableError(
+        err instanceof Error ? err.message : "Google Drive: Failed to get access token"
+      )
+    }
 
     switch (config.operation) {
 

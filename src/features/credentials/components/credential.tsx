@@ -3,11 +3,12 @@
 import { CredentialType } from "@/generated/prisma";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import z from "zod";
-import { useCreateCredential, useUpdateCredential, useSuspennseCredential } from "../hooks/use-credentials";
+import { useCreateCredential, useUpdateCredential, useUpdateCredentialName, useSuspennseCredential } from "../hooks/use-credentials";
 import { useUpgradeModal } from "@/hooks/use-upgrade-modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { toast } from "sonner";
 
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
+import { GoogleConnectButton } from "@/components/google-connect-button";
 
 
 const formSchema = z.object({
@@ -49,20 +51,7 @@ const formSchema = z.object({
     freshdeskDomain: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.type === CredentialType.GMAIL) {
-        if (!data.gmailEmail) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "Gmail address is required",
-                path: ["gmailEmail"],
-            })
-        }
-        if (!data.gmailAppPassword) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "App Password is required",
-                path: ["gmailAppPassword"],
-            })
-        }
+        // Gmail now uses OAuth2 via GoogleConnectButton — no required form fields
     }
     if (data.type === CredentialType.WHATSAPP) {
         if (!data.whatsappAccessToken) {
@@ -316,9 +305,10 @@ interface CredentialsFormPage {
     initialData?: {
         id?: string;
         name: string;
-        type: CredentialType
-        value: string
-
+        type: CredentialType;
+        value?: string;
+        connectedEmail?: string;
+        isGoogleOAuth?: boolean;
     }
 };
 
@@ -328,9 +318,41 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const pathname = usePathname();
     const createCredential = useCreateCredential();
     const updateCredential = useUpdateCredential();
+    const updateCredentialName = useUpdateCredentialName();
     const { handleError, modal } = useUpgradeModal();
 
     const isEdit = !!initialData?.id;
+
+    // Parse connected email / refresh token from existing OAuth credential
+    const [connectedEmail, setConnectedEmail] = useState<string | undefined>()
+    const [existingRefreshToken, setExistingRefreshToken] = useState<string | undefined>()
+    const [isJustConnected, setIsJustConnected] = useState(false)
+
+    useEffect(() => {
+        if (initialData?.connectedEmail) {
+            setConnectedEmail(initialData.connectedEmail)
+        }
+        if (initialData?.isGoogleOAuth) {
+            setExistingRefreshToken("oauth-connected") // truthy marker, not actual token
+        }
+    }, [initialData])
+
+    // Handle google_success / google_error URL params after OAuth callback
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search)
+        const successEmail = params.get("google_success")
+        if (successEmail) {
+            setConnectedEmail(successEmail)
+            setIsJustConnected(true) // Mark as connected
+            toast.success(`Successfully connected ${successEmail}`)
+            window.history.replaceState({}, "", window.location.pathname)
+        }
+        const googleError = params.get("google_error")
+        if (googleError) {
+            toast.error(`Google connection failed: ${decodeURIComponent(googleError)}`)
+            window.history.replaceState({}, "", window.location.pathname)
+        }
+    }, [])
 
     // Parse WhatsApp JSON value into individual fields for editing
     const whatsappDefaults = useMemo(() => {
@@ -536,10 +558,11 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     })
 
     const watchType = form.watch("type")
-    const isGmail = watchType === CredentialType.GMAIL
     const isGmailOAuth = watchType === CredentialType.GMAIL_OAUTH
+    const isGmail = watchType === CredentialType.GMAIL || isGmailOAuth
     const isGoogleSheets = watchType === CredentialType.GOOGLE_SHEETS
     const isGoogleDrive = watchType === CredentialType.GOOGLE_DRIVE
+    const isGoogleService = isGmail || isGoogleSheets || isGoogleDrive
     const isWhatsApp = watchType === CredentialType.WHATSAPP
     const isNotion = watchType === CredentialType.NOTION
     const isRazorpay = watchType === CredentialType.RAZORPAY
@@ -553,6 +576,25 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
 
     const onSubmit = async (values: FormValues) => {
         let submitValues = { ...values }
+
+        // Google OAuth services: credential already saved by /api/auth/google/callback.
+        // Only update the name here.
+        if (isGoogleService) {
+            if (isEdit && initialData?.id) {
+                try {
+                    await updateCredentialName.mutateAsync({
+                        id: initialData.id,
+                        name: values.name,
+                    })
+                    toast.success("Credential name updated")
+                } catch {
+                    // onError in the hook already shows the error toast
+                }
+            }
+            // For new Google credentials, credential was already created by OAuth callback
+            return
+        }
+
 
         // For Gmail, encode email + appPassword as JSON in the value field
         if (values.type === CredentialType.GMAIL) {
@@ -725,7 +767,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                 } else if (val === CredentialType.FRESHDESK) {
                                                     form.setValue("value", "freshdesk-credential")
                                                 } else if (val === CredentialType.GOOGLE_SHEETS || val === CredentialType.GOOGLE_DRIVE) {
-                                                    form.setValue("value", "")
+                                                    form.setValue("value", "google-oauth-credential")
                                                 } else {
                                                     const currentValue = form.getValues("value")
                                                     if (
@@ -775,60 +817,46 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
 
                             />
 
-
-                            {isGmailOAuth ? (
-                                <div className="space-y-4">
-                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
-                                        <p className="font-medium mb-2">Connect your Gmail account via OAuth2</p>
-                                        <p>Click the button below to securely authorize access to your Gmail account.</p>
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        asChild
-                                    >
-                                        <a href={`/api/auth/gmail?redirectTo=${encodeURIComponent(pathname)}`}>
-                                            <Image src="/logos/gmail.svg" alt="Gmail" width={16} height={16} className="mr-2" />
-                                            Connect Gmail Account
-                                        </a>
-                                    </Button>
-                                </div>
-                            ) : isGmail ? (
+                            {isGmail ? (
                                 <>
-                                    <div className="rounded-md border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200">
-                                        <p className="font-medium mb-1">⚠️ App Password is deprecated</p>
-                                        <p>Reconnect with OAuth2 to use all Gmail operations. Select &quot;Gmail OAuth&quot; as the type above.</p>
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-1">Connect your Gmail account via OAuth2</p>
+                                        <p>You will be redirected to Google to approve access. The credential is saved automatically after connecting.</p>
                                     </div>
-
-                                    <FormField
-                                        control={form.control}
-                                        name="gmailEmail"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Gmail Address</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="you@gmail.com" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
+                                    <GoogleConnectButton
+                                        credentialName={form.watch("name")}
+                                        credentialType={watchType === CredentialType.GMAIL_OAUTH ? "GMAIL_OAUTH" : "GMAIL"}
+                                        returnUrl={`/credentials/${isEdit && initialData?.id ? initialData.id : "new"}`}
+                                        isConnected={!!existingRefreshToken || isJustConnected}
+                                        connectedEmail={connectedEmail}
                                     />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="gmailAppPassword"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>App Password</FormLabel>
-                                                <FormControl>
-                                                    <Input type="password" placeholder="xxxx xxxx xxxx xxxx" {...field} />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    Generate at: Google Account → Security → 2-Step Verification → App Passwords
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
+                                </>
+                            ) : isGoogleSheets ? (
+                                <>
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-1">Connect your Google Sheets account via OAuth2</p>
+                                        <p>You will be redirected to Google to approve access. The credential is saved automatically after connecting.</p>
+                                    </div>
+                                    <GoogleConnectButton
+                                        credentialName={form.watch("name")}
+                                        credentialType="GOOGLE_SHEETS"
+                                        returnUrl={`/credentials/${isEdit && initialData?.id ? initialData.id : "new"}`}
+                                        isConnected={!!existingRefreshToken || isJustConnected}
+                                        connectedEmail={connectedEmail}
+                                    />
+                                </>
+                            ) : isGoogleDrive ? (
+                                <>
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-1">Connect your Google Drive account via OAuth2</p>
+                                        <p>You will be redirected to Google to approve access. The credential is saved automatically after connecting.</p>
+                                    </div>
+                                    <GoogleConnectButton
+                                        credentialName={form.watch("name")}
+                                        credentialType="GOOGLE_DRIVE"
+                                        returnUrl={`/credentials/${isEdit && initialData?.id ? initialData.id : "new"}`}
+                                        isConnected={!!existingRefreshToken || isJustConnected}
+                                        connectedEmail={connectedEmail}
                                     />
                                 </>
                             ) : isWhatsApp ? (
@@ -1334,39 +1362,6 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                         </>
                                     )}
                                 </>
-                            ) : isGoogleSheets || isGoogleDrive ? (
-                                <FormField
-                                    control={form.control}
-                                    name="value"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>OAuth Refresh Token JSON</FormLabel>
-                                            <FormControl>
-                                                <Textarea
-                                                    placeholder='{"refreshToken": "1//0...", ...}'
-                                                    rows={6}
-                                                    className="font-mono text-xs"
-                                                    {...field}
-                                                />
-                                            </FormControl>
-                                            <FormDescription>
-                                                Paste the JSON containing your refresh token from{" "}
-                                                <a
-                                                    href="https://developers.google.com/oauthplayground"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-primary underline"
-                                                >
-                                                    OAuth Playground
-                                                </a>
-                                                {" "}— select {isGoogleDrive
-                                                    ? "\"Google Drive API v3\" scope: https://www.googleapis.com/auth/drive"
-                                                    : "\"Google Sheets API v4\" scope"}
-                                            </FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
                             ) : (
                                 <FormField
                                     control={form.control}

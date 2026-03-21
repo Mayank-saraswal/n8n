@@ -1,41 +1,12 @@
 import { NonRetriableError } from "inngest"
 import type { NodeExecutor } from "@/features/executions/types"
 import prisma from "@/lib/db"
-import { decrypt } from "@/lib/encryption"
 import { resolveTemplate } from "@/features/executions/lib/template-resolver"
 import { googleSheetsChannel } from "@/inngest/channels/google-sheets"
 import { GoogleSheetsOp } from "@/generated/prisma"
+import { refreshGoogleSheetsAccessToken } from "@/lib/google-sheets-auth"
 
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets"
-
-// ─── getAccessToken ──────────────────────────────────────────────────────────
-
-async function getAccessToken(refreshToken: string): Promise<string> {
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      client_id: process.env.GOOGLE_SHEETS_CLIENT_ID,
-      client_secret: process.env.GOOGLE_SHEETS_CLIENT_SECRET,
-      refresh_token: refreshToken,
-      grant_type: "refresh_token",
-    }),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new NonRetriableError(
-      `Google Sheets: Token refresh failed. ` +
-        `Error: ${(err as Record<string, string>).error_description ?? res.status}. ` +
-        `Re-authenticate in Settings → Credentials.`
-    )
-  }
-  const data = (await res.json()) as { access_token?: string }
-  if (!data.access_token)
-    throw new NonRetriableError(
-      "Google Sheets: No access_token in token refresh response."
-    )
-  return data.access_token
-}
 
 // ─── sheetsRequest ───────────────────────────────────────────────────────────
 
@@ -133,47 +104,19 @@ export const googleSheetsExecutor: NodeExecutor<GoogleSheetsData> = async ({
     )
   }
 
-  // Step 2: Load and decrypt credential
-  const credential = await step.run(
-    `google-sheets-${nodeId}-credential`,
-    async () => {
-      return prisma.credential.findUnique({
-        where: { id: config.credentialId, userId },
-      })
-    }
-  )
-
-  if (!credential) {
-    await publish(
-      googleSheetsChannel().status({ nodeId, status: "error" })
-    )
-    throw new NonRetriableError(
-      "Google Sheets credential not found. Please re-select your credential."
-    )
-  }
-
-  let refreshToken: string
-  const raw = decrypt(credential.value)
-  try {
-    const parsed = JSON.parse(raw) as { refreshToken?: string }
-    refreshToken = parsed.refreshToken ?? raw
-  } catch {
-    refreshToken = raw
-  }
-
-  if (!refreshToken) {
-    await publish(
-      googleSheetsChannel().status({ nodeId, status: "error" })
-    )
-    throw new NonRetriableError(
-      'Google Sheets credential missing refreshToken. Store as JSON: {"refreshToken": "..."}'
-    )
-  }
-
-  // Step 3: Get fresh access token
+  // Step 2: Get fresh access token (loads credential from DB, decrypts, refreshes)
   const accessToken = await step.run(
     `google-sheets-${nodeId}-token`,
-    async () => getAccessToken(refreshToken)
+    async () => {
+      try {
+        return await refreshGoogleSheetsAccessToken(config.credentialId!, userId)
+      } catch (err) {
+        await publish(googleSheetsChannel().status({ nodeId, status: "error" }))
+        throw new NonRetriableError(
+          err instanceof Error ? err.message : "Google Sheets: Failed to get access token"
+        )
+      }
+    }
   )
 
   const spreadsheetId = config.spreadsheetId

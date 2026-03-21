@@ -271,17 +271,12 @@ export const gmailExecutor: NodeExecutor<GmailData> = async ({
   const tokenResult = await step.run(
     `gmail-${nodeId}-get-tokens`,
     async () => {
-      const credential = await prisma.credential.findUnique({
-        where: { id: config.credentialId, userId },
-      })
-
-      if (!credential) {
+      if (!config.credentialId) {
         throw new NonRetriableError(
-          "Gmail credential not found. Please re-select your credential."
+          "Gmail: No credential selected in node config."
         )
       }
-
-      return getAccessToken(credential.value)
+      return getAccessToken(config.credentialId, userId)
     }
   )
 

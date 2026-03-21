@@ -64,7 +64,7 @@ export const gmailRouter = createTRPCRouter({
       }
 
       try {
-        const { token, email } = await refreshGmailAccessToken(credential.value)
+        const { token, email } = await refreshGmailAccessToken(credential.id, ctx.auth.user.id)
 
         // Verify with Gmail profile
         const profileRes = await fetch(`${GMAIL_API}/profile`, {
@@ -183,7 +183,7 @@ export const gmailRouter = createTRPCRouter({
       let token: string
       let email: string
       try {
-        const result = await refreshGmailAccessToken(credential.value)
+        const result = await refreshGmailAccessToken(credential.id, ctx.auth.user.id)
         token = result.token
         email = result.email
       } catch (err) {
@@ -270,7 +270,7 @@ export const gmailRouter = createTRPCRouter({
           where: { id: watcher.credentialId },
         })
         if (credential) {
-          const { token } = await refreshGmailAccessToken(credential.value)
+          const { token } = await refreshGmailAccessToken(credential.id, ctx.auth.user.id)
           await fetch(`${GMAIL_API}/stop`, {
             method: "POST",
             headers: { Authorization: `Bearer ${token}` },

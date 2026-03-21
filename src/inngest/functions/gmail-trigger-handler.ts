@@ -29,14 +29,7 @@ export const gmailTriggerHandler = inngest.createFunction(
 
     // Step 2: Fetch new messages using history API
     const newMessages = await step.run("fetch-new-messages", async () => {
-      const credential = await prisma.credential.findUnique({
-        where: { id: watcher.credentialId },
-      })
-      if (!credential) throw new NonRetriableError(
-        "Gmail trigger: credential not found"
-      )
-
-      const { token } = await refreshGmailAccessToken(credential.value)
+      const { token } = await refreshGmailAccessToken(watcher.credentialId, watcher.workflow.userId)
 
       // First run — just return empty so future runs have a baseline
       if (!lastHistoryId) {

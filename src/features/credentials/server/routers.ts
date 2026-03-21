@@ -3,7 +3,8 @@ import prisma from "@/lib/db";
 import { z } from 'zod'
 import { PAGINATION } from "@/config/constants";
 import { CredentialType } from "@/generated/prisma";
-import { encrypt } from "@/lib/encryption";
+import { encrypt, decrypt } from "@/lib/encryption";
+import { TRPCError } from "@trpc/server";
 
 
 
@@ -46,6 +47,21 @@ export const credentialsRouter = createTRPCRouter({
 
 
 
+    updateName: protectedProcedure
+        .input(z.object({ id: z.string(), name: z.string().min(1) }))
+        .mutation(async ({ input, ctx }) => {
+            const credential = await prisma.credential.findUnique({
+                where: { id: input.id },
+            })
+            if (!credential || credential.userId !== ctx.auth.user.id) {
+                throw new TRPCError({ code: "UNAUTHORIZED" })
+            }
+            return prisma.credential.update({
+                where: { id: input.id },
+                data: { name: input.name },
+            })
+        }),
+
     update: protectedProcedure
         .input(z.object({
             id: z.string(),
@@ -82,13 +98,42 @@ export const credentialsRouter = createTRPCRouter({
         .input(z.object({
             id: z.string()
         }))
-        .query(({ ctx, input }) => {
-            return prisma.credential.findUniqueOrThrow({
+        .query(async ({ ctx, input }) => {
+            const credential = await prisma.credential.findUniqueOrThrow({
                 where: {
                     id: input.id,
                     userId: ctx.auth.user.id,
                 },
             });
+
+            // Decrypt display info for Google OAuth credentials — never return raw value
+            const googleTypes: CredentialType[] = [
+                CredentialType.GMAIL,
+                CredentialType.GMAIL_OAUTH,
+                CredentialType.GOOGLE_SHEETS,
+                CredentialType.GOOGLE_DRIVE,
+            ]
+            
+            let connectedEmail: string | undefined
+            let isGoogleOAuth = false
+
+            if (googleTypes.includes(credential.type)) {
+                try {
+                    const parsed = JSON.parse(decrypt(credential.value)) as {
+                        email?: string
+                        refreshToken?: string
+                    }
+                    connectedEmail = parsed.email
+                    isGoogleOAuth = !!parsed.refreshToken
+                } catch { /* not an OAuth credential — ignore */ }
+
+                // Strip value for Google — UI uses connectedEmail/isGoogleOAuth instead
+                const { value: _v, ...googleFields } = credential
+                return { ...googleFields, connectedEmail, isGoogleOAuth }
+            }
+
+            // Non-Google: return value so form can pre-populate credential fields
+            return { ...credential, connectedEmail: undefined, isGoogleOAuth: false }
         }),
 
     getMany: protectedProcedure
