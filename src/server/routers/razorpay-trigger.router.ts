@@ -2,21 +2,31 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init"
 import prisma from "@/lib/db"
+import { encryptWebhookSecret } from "@/lib/razorpay-secret"
 
 export const razorpayTriggerRouter = createTRPCRouter({
   getByNodeId: protectedProcedure
     .input(z.object({ nodeId: z.string() }))
     .query(async ({ input, ctx }) => {
-      return prisma.razorpayTrigger
-        .findUnique({
-          where: { nodeId: input.nodeId },
-          include: { workflow: { select: { userId: true } } },
-        })
-        .then((node) => {
-          if (!node) return null
-          if (node.workflow.userId !== ctx.auth.user.id) return null
-          return node
-        })
+      const node = await prisma.razorpayTrigger.findUnique({
+        where: { nodeId: input.nodeId },
+        include: { workflow: { select: { userId: true } } },
+      })
+
+      if (!node) return null
+      if (node.workflow.userId !== ctx.auth.user.id) return null
+
+      // Never return secret fields to the client — expose only a boolean indicator.
+      const {
+        webhookSecret: _legacy,
+        webhookSecretEncrypted: _encrypted,
+        ...safeFields
+      } = node
+
+      return {
+        ...safeFields,
+        isSecretConfigured: !!(node.webhookSecretEncrypted || node.webhookSecret),
+      }
     }),
 
   upsert: protectedProcedure
@@ -24,6 +34,8 @@ export const razorpayTriggerRouter = createTRPCRouter({
       z.object({
         nodeId: z.string(),
         workflowId: z.string(),
+        // The client sends the plaintext secret (or empty string to leave unchanged).
+        // We encrypt it before writing to the DB.
         webhookSecret: z.string().max(500).default(""),
         activeEvents: z.array(z.string()).default([]),
         variableName: z.string().max(200).default("razorpayTrigger"),
@@ -39,21 +51,38 @@ export const razorpayTriggerRouter = createTRPCRouter({
         throw new TRPCError({ code: "UNAUTHORIZED" })
       }
 
-      const { nodeId, workflowId, activeEvents, ...data } = input
+      const { nodeId, workflowId, webhookSecret, activeEvents, variableName } = input
 
-      return prisma.razorpayTrigger.upsert({
+      // Build the encrypted-secret payload only when a non-empty secret is supplied.
+      const secretData = webhookSecret.trim()
+        ? {
+            webhookSecretEncrypted: encryptWebhookSecret(webhookSecret),
+            webhookSecret: null, // clear legacy plaintext
+          }
+        : {}
+
+      const node = await prisma.razorpayTrigger.upsert({
         where: { nodeId },
         create: {
           nodeId,
           workflowId,
           activeEvents: JSON.stringify(activeEvents),
-          ...data,
+          variableName,
+          ...secretData,
         },
         update: {
           activeEvents: JSON.stringify(activeEvents),
-          ...data,
+          variableName,
+          ...secretData,
         },
       })
+
+      // Strip secret fields before returning to client
+      const { webhookSecret: _l, webhookSecretEncrypted: _e, ...safeFields } = node
+      return {
+        ...safeFields,
+        isSecretConfigured: !!(node.webhookSecretEncrypted || node.webhookSecret),
+      }
     }),
 
   delete: protectedProcedure
