@@ -378,13 +378,13 @@ function Navbar() {
             ))}
             <hr className="border-[#E5E5E5]" />
             <Link
-              href="/sign-in"
+              href="/login"
               className="font-[family-name:var(--font-dm-sans)] text-base font-medium text-[#525252]"
             >
               Sign in
             </Link>
             <Link
-              href="/sign-up"
+              href="/signup"
               className="rounded-lg bg-[#E8470A] px-4 py-2.5 text-center font-[family-name:var(--font-dm-sans)] text-sm font-medium text-white"
             >
               Get started free
@@ -449,7 +449,7 @@ function Hero() {
         {/* CTA Buttons */}
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
           <Link
-            href="/sign-up"
+            href="/signup"
             className="rounded-xl bg-[#E8470A] px-8 py-3.5 font-[family-name:var(--font-dm-sans)] text-base font-medium text-white shadow-lg shadow-[#E8470A]/20 transition-all hover:bg-[#c93d09] hover:shadow-xl hover:shadow-[#E8470A]/25"
           >
             Start building free
@@ -837,7 +837,7 @@ function IndiaFeatures() {
   const { ref, visible } = useScrollReveal();
 
   return (
-    <section ref={ref} className="bg-[#0A0A0A] px-6 py-24 md:py-32">
+    <section ref={ref} className="bg-[#F5F5F5] px-6 py-24 md:py-32">
       <div className="mx-auto max-w-5xl">
         <div
           className={`text-center transition-all duration-700 ${
@@ -999,7 +999,7 @@ function Pricing() {
                 ))}
               </ul>
               <Link
-                href={tier.title === "Enterprise" ? "#" : "/sign-up"}
+                href={tier.title === "Enterprise" ? "#" : "/signup"}
                 className={`mt-8 block rounded-xl py-3 text-center font-[family-name:var(--font-dm-sans)] text-sm font-medium transition-colors ${
                   tier.featured
                     ? "bg-[#E8470A] text-white hover:bg-[#c93d09]"
@@ -1036,7 +1036,7 @@ function CtaBanner() {
           Free forever. No credit card required.
         </p>
         <Link
-          href="/sign-up"
+          href="/signup"
           className="mt-8 inline-block rounded-xl bg-white px-8 py-3.5 font-[family-name:var(--font-dm-sans)] text-base font-medium text-[#E8470A] transition-all hover:bg-white/90 hover:shadow-lg"
         >
           Build your first workflow →
