@@ -32,9 +32,10 @@ export function coerceValue(
   if (value === null || value === undefined) return null
 
   switch (typeHint) {
-    case "number":
+    case "number": {
       const n = parseFloat(String(value))
       return isNaN(n) ? null : n
+    }
 
     case "date": {
       const d = new Date(value as string | number | Date)

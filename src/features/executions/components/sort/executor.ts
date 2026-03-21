@@ -19,7 +19,7 @@ export const sortExecutor: NodeExecutor = async ({
   publish,
   userId,
 }) => {
-  // STEP 1: Load config from DB
+  // Load config
   const config = await step.run(`sort-${nodeId}-load`, async () => {
     return prisma.sortNode.findUnique({
       where: { nodeId },
@@ -27,7 +27,7 @@ export const sortExecutor: NodeExecutor = async ({
     })
   })
 
-  // STEP 2: Validate
+  // Validate
   await step.run(`sort-${nodeId}-validate`, async () => {
     if (!config) {
       throw new NonRetriableError(
@@ -43,11 +43,13 @@ export const sortExecutor: NodeExecutor = async ({
   // Parse sortKeys from JSON string
   const sortKeys: SortKey[] = JSON.parse(config.sortKeys)
 
-  // STEP 3: Execute
-  return await step.run(`sort-${nodeId}-execute`, async () => {
-    await publish(sortChannel(nodeId).status({ nodeId, status: "loading" }))
-    
-    try {
+  // Publish OUTSIDE step.run
+  await publish(sortChannel(nodeId)().status({ nodeId, status: "loading" }))
+
+  let executionResult: unknown
+
+  try {
+    executionResult = await step.run(`sort-${nodeId}-execute`, async () => {
       // ── Resolve input ──────────────────────────────────────────────────
       let inputData: unknown
 
@@ -88,8 +90,7 @@ export const sortExecutor: NodeExecutor = async ({
       }
 
       const operation = config.operation ?? "SORT_ARRAY"
-      let executionResult: unknown
-
+      
       switch (operation) {
         case "SORT_ARRAY": {
           if (!Array.isArray(inputData)) {
@@ -114,13 +115,12 @@ export const sortExecutor: NodeExecutor = async ({
 
           const sorted = sortArray(inputData, resolvedKeys)
 
-          executionResult = {
+          return {
             items: sorted,
             count: sorted.length,
             operation: "SORT_ARRAY",
             sortedBy: resolvedKeys.map((k) => `${k.field} ${k.direction}`),
           }
-          break
         }
 
         case "REVERSE": {
@@ -130,12 +130,11 @@ export const sortExecutor: NodeExecutor = async ({
             )
           }
           const reversed = reverseArray(inputData)
-          executionResult = {
+          return {
             items: reversed,
             count: reversed.length,
             operation: "REVERSE",
           }
-          break
         }
 
         case "SHUFFLE": {
@@ -145,12 +144,11 @@ export const sortExecutor: NodeExecutor = async ({
             )
           }
           const shuffled = shuffleArray(inputData)
-          executionResult = {
+          return {
             items: shuffled,
             count: shuffled.length,
             operation: "SHUFFLE",
           }
-          break
         }
 
         case "SORT_KEYS": {
@@ -171,12 +169,11 @@ export const sortExecutor: NodeExecutor = async ({
             direction,
             locale
           )
-          executionResult = {
+          return {
             items: sorted,
             count: Object.keys(sorted).length,
             operation: "SORT_KEYS",
           }
-          break
         }
 
         default:
@@ -185,12 +182,14 @@ export const sortExecutor: NodeExecutor = async ({
               `Valid operations: SORT_ARRAY, REVERSE, SHUFFLE, SORT_KEYS`
           )
       }
+    })
+  } catch (err) {
+    await publish(sortChannel(nodeId)().status({ nodeId, status: "error" }))
+    throw err
+  }
 
-      await publish(sortChannel(nodeId).status({ nodeId, status: "success" }))
-      return { ...context, [config.variableName]: executionResult }
-    } catch (err) {
-      await publish(sortChannel(nodeId).status({ nodeId, status: "error" }))
-      throw err
-    }
-  })
+  await publish(sortChannel(nodeId)().status({ nodeId, status: "success" }))
+
+  // Return ONLY the new variable, not ...context spread
+  return { [config.variableName]: executionResult }
 }
