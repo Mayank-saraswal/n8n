@@ -178,7 +178,7 @@ export const executeWorkflow = inngest.createFunction(
       freshdeskChannel(),
       aiChannel(),
       mediaUploadChannel(),
-      sortChannel("__registration__"),
+      sortChannel(),
 
     ]
   },

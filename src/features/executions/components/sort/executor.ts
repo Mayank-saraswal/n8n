@@ -44,7 +44,7 @@ export const sortExecutor: NodeExecutor = async ({
   const sortKeys: SortKey[] = JSON.parse(config.sortKeys)
 
   // Publish OUTSIDE step.run
-  await publish(sortChannel(nodeId)().status({ nodeId, status: "loading" }))
+  await publish(sortChannel(nodeId).status({ nodeId, status: "loading" }))
 
   let executionResult: unknown
 
@@ -184,11 +184,11 @@ export const sortExecutor: NodeExecutor = async ({
       }
     })
   } catch (err) {
-    await publish(sortChannel(nodeId)().status({ nodeId, status: "error" }))
+    await publish(sortChannel(nodeId).status({ nodeId, status: "error" }))
     throw err
   }
 
-  await publish(sortChannel(nodeId)().status({ nodeId, status: "success" }))
+  await publish(sortChannel(nodeId).status({ nodeId, status: "success" }))
 
   // Return ONLY the new variable, not ...context spread
   return { [config.variableName]: executionResult }
