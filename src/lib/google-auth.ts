@@ -1,5 +1,4 @@
-import { decrypt } from "@/lib/encryption"
-import prisma from "@/lib/db"
+
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
@@ -249,25 +248,3 @@ export function extractRefreshToken(decryptedValue: string): {
   }
 }
 
-// ── Get access token from a Credential record (used in executors) ────────
-
-export async function getAccessTokenFromCredential(
-  credentialId: string,
-  userId: string
-): Promise<string> {
-  const credential = await prisma.credential.findUnique({
-    where: { id: credentialId },
-  })
-
-  if (!credential) {
-    throw new Error("Google credential not found. Please reconnect in Settings → Credentials.")
-  }
-
-  if (credential.userId !== userId) {
-    throw new Error("Unauthorized: credential does not belong to this user")
-  }
-
-  const decrypted = decrypt(credential.value)
-  const { refreshToken, clientId } = extractRefreshToken(decrypted)
-  return refreshGoogleAccessToken(refreshToken, clientId)
-}

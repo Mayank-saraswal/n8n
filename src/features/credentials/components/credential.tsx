@@ -305,9 +305,10 @@ interface CredentialsFormPage {
     initialData?: {
         id?: string;
         name: string;
-        type: CredentialType
-        value: string
-
+        type: CredentialType;
+        value?: string;
+        connectedEmail?: string;
+        isGoogleOAuth?: boolean;
     }
 };
 
@@ -328,14 +329,11 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const [isJustConnected, setIsJustConnected] = useState(false)
 
     useEffect(() => {
-        if (initialData?.value) {
-            try {
-                const parsed = JSON.parse(initialData.value) as { email?: string; refreshToken?: string }
-                setConnectedEmail(parsed.email)
-                setExistingRefreshToken(parsed.refreshToken)
-            } catch {
-                // Old plain-string format — ignore
-            }
+        if (initialData?.connectedEmail) {
+            setConnectedEmail(initialData.connectedEmail)
+        }
+        if (initialData?.isGoogleOAuth) {
+            setExistingRefreshToken("oauth-connected") // truthy marker, not actual token
         }
     }, [initialData])
 

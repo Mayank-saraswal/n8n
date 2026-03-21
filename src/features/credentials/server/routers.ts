@@ -3,7 +3,7 @@ import prisma from "@/lib/db";
 import { z } from 'zod'
 import { PAGINATION } from "@/config/constants";
 import { CredentialType } from "@/generated/prisma";
-import { encrypt } from "@/lib/encryption";
+import { encrypt, decrypt } from "@/lib/encryption";
 import { TRPCError } from "@trpc/server";
 
 
@@ -98,13 +98,37 @@ export const credentialsRouter = createTRPCRouter({
         .input(z.object({
             id: z.string()
         }))
-        .query(({ ctx, input }) => {
-            return prisma.credential.findUniqueOrThrow({
+        .query(async ({ ctx, input }) => {
+            const credential = await prisma.credential.findUniqueOrThrow({
                 where: {
                     id: input.id,
                     userId: ctx.auth.user.id,
                 },
             });
+
+            // Decrypt display info for Google OAuth credentials — never return raw value
+            let connectedEmail: string | undefined
+            let isGoogleOAuth = false
+            const googleTypes: CredentialType[] = [
+                CredentialType.GMAIL,
+                CredentialType.GMAIL_OAUTH,
+                CredentialType.GOOGLE_SHEETS,
+                CredentialType.GOOGLE_DRIVE,
+            ]
+            if (googleTypes.includes(credential.type)) {
+                try {
+                    const parsed = JSON.parse(decrypt(credential.value)) as {
+                        email?: string
+                        refreshToken?: string
+                    }
+                    connectedEmail = parsed.email
+                    isGoogleOAuth = !!parsed.refreshToken
+                } catch { /* not an OAuth credential — ignore */ }
+            }
+
+            // Return credential WITHOUT value field, add display fields
+            const { value: _v, ...safeFields } = credential
+            return { ...safeFields, connectedEmail, isGoogleOAuth }
         }),
 
     getMany: protectedProcedure
