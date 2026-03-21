@@ -52,7 +52,6 @@ export async function POST(
     // Verify Razorpay HMAC-SHA256 signature if a secret is configured
     const hasSecret = !!(trigger.webhookSecretEncrypted || trigger.webhookSecret)
     if (hasSecret) {
-      const { decryptWebhookSecret } = await import("@/lib/razorpay-secret")
       const secret = decryptWebhookSecret(trigger.webhookSecretEncrypted, trigger.webhookSecret)
 
       const expectedSignature = crypto

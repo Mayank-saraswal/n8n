@@ -54,54 +54,36 @@ export const whatsappTriggerRouter = createTRPCRouter({
       // Check if a row already exists
       const existing = await prisma.whatsAppTrigger.findUnique({ where: { nodeId } })
 
-      let node: Awaited<ReturnType<typeof prisma.whatsAppTrigger.upsert>>
+      let node: Awaited<ReturnType<typeof prisma.whatsAppTrigger.findUnique>>
 
       if (!existing) {
-        // Creating — auto-generate and encrypt a new verify token
+        // CREATE — generate and encrypt a new verify token
         const plainToken = randomUUID()
         const encryptedToken = encryptVerifyToken(plainToken)
-
-        node = await prisma.whatsAppTrigger.upsert({
-          where: { nodeId },
-          create: {
-            nodeId,
-            workflowId,
-            phoneNumberId,
-            activeEvents: JSON.stringify(activeEvents),
-            messageTypes: JSON.stringify(messageTypes),
-            ignoreOwnMessages,
-            variableName,
-            verifyTokenEncrypted: encryptedToken,
-            verifyToken: null,
-          },
-          update: {
-            phoneNumberId,
-            activeEvents: JSON.stringify(activeEvents),
-            messageTypes: JSON.stringify(messageTypes),
-            ignoreOwnMessages,
-            variableName,
-          },
+        node = await prisma.whatsAppTrigger.create({
+            data: {
+                nodeId,
+                workflowId,
+                phoneNumberId,
+                activeEvents: JSON.stringify(activeEvents),
+                messageTypes: JSON.stringify(messageTypes),
+                ignoreOwnMessages,
+                variableName,
+                verifyTokenEncrypted: encryptedToken,
+                verifyToken: null,
+            },
         })
       } else {
-        // Updating — do not rotate the token, just update other fields
-        node = await prisma.whatsAppTrigger.upsert({
-          where: { nodeId },
-          create: {
-            nodeId,
-            workflowId,
-            phoneNumberId,
-            activeEvents: JSON.stringify(activeEvents),
-            messageTypes: JSON.stringify(messageTypes),
-            ignoreOwnMessages,
-            variableName,
-          },
-          update: {
-            phoneNumberId,
-            activeEvents: JSON.stringify(activeEvents),
-            messageTypes: JSON.stringify(messageTypes),
-            ignoreOwnMessages,
-            variableName,
-          },
+        // UPDATE — never rotate the verify token
+        node = await prisma.whatsAppTrigger.update({
+            where: { nodeId },
+            data: {
+                phoneNumberId,
+                activeEvents: JSON.stringify(activeEvents),
+                messageTypes: JSON.stringify(messageTypes),
+                ignoreOwnMessages,
+                variableName,
+            },
         })
       }
 
