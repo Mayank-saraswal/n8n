@@ -107,14 +107,16 @@ export const credentialsRouter = createTRPCRouter({
             });
 
             // Decrypt display info for Google OAuth credentials — never return raw value
-            let connectedEmail: string | undefined
-            let isGoogleOAuth = false
             const googleTypes: CredentialType[] = [
                 CredentialType.GMAIL,
                 CredentialType.GMAIL_OAUTH,
                 CredentialType.GOOGLE_SHEETS,
                 CredentialType.GOOGLE_DRIVE,
             ]
+            
+            let connectedEmail: string | undefined
+            let isGoogleOAuth = false
+
             if (googleTypes.includes(credential.type)) {
                 try {
                     const parsed = JSON.parse(decrypt(credential.value)) as {
@@ -124,11 +126,14 @@ export const credentialsRouter = createTRPCRouter({
                     connectedEmail = parsed.email
                     isGoogleOAuth = !!parsed.refreshToken
                 } catch { /* not an OAuth credential — ignore */ }
+
+                // Strip value for Google — UI uses connectedEmail/isGoogleOAuth instead
+                const { value: _v, ...googleFields } = credential
+                return { ...googleFields, connectedEmail, isGoogleOAuth }
             }
 
-            // Return credential WITHOUT value field, add display fields
-            const { value: _v, ...safeFields } = credential
-            return { ...safeFields, connectedEmail, isGoogleOAuth }
+            // Non-Google: return value so form can pre-populate credential fields
+            return { ...credential, connectedEmail: undefined, isGoogleOAuth: false }
         }),
 
     getMany: protectedProcedure
