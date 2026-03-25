@@ -16,11 +16,11 @@ This file documents the node system in this repository (Nodebase), including:
 
 This document is based on:
 
-- Prisma schema: `/home/runner/work/n8n/n8n/prisma/schema.prisma`
-- Node registry: `/home/runner/work/n8n/n8n/src/features/executions/lib/executor-registry.ts`
-- Node UI mapping: `/home/runner/work/n8n/n8n/src/config/node-components.ts`
-- Workflow engine: `/home/runner/work/n8n/n8n/src/inngest/functions.ts`
-- Existing node reference: `/home/runner/work/n8n/n8n/NODES.md`
+- Prisma schema: `prisma/schema.prisma`
+- Node registry: `src/features/executions/lib/executor-registry.ts`
+- Node UI mapping: `src/config/node-components.ts`
+- Workflow engine: `src/inngest/functions.ts`
+- Existing node reference: `NODES.md`
 
 ---
 
@@ -71,38 +71,38 @@ To become runnable, a node must be wired in all relevant places:
 
 ## 3.1 Root and infra
 
-- `/home/runner/work/n8n/n8n/prisma/schema.prisma`  
+- `prisma/schema.prisma`  
   Full DB schema: NodeType enum, node config models, operation enums.
-- `/home/runner/work/n8n/n8n/src/inngest/functions.ts`  
+- `src/inngest/functions.ts`  
   Main workflow executor + error-triggered executor.
-- `/home/runner/work/n8n/n8n/src/inngest/channels/*`  
+- `src/inngest/channels/*`  
   Realtime channel definitions for node status updates.
 
 ## 3.2 UI + node canvas
 
-- `/home/runner/work/n8n/n8n/src/config/node-components.ts`  
+- `src/config/node-components.ts`  
   Maps `NodeType -> ReactFlow node component`.
-- `/home/runner/work/n8n/n8n/src/features/editer/components/editor.tsx`  
+- `src/features/editer/components/editor.tsx`  
   Canvas runtime, execution trigger controls, delete cleanup hooks.
 
 ## 3.3 Node implementation layout
 
 - Execution nodes:  
-  `/home/runner/work/n8n/n8n/src/features/executions/components/<node>/`
+  `src/features/executions/components/<node>/`
   - `node.tsx` (canvas node)
   - `dialog.tsx` (configuration UI)
   - `executor.ts` (runtime operation logic)
   - optional `actions.ts`, `schemas.ts`, helpers, tests
 
 - Trigger nodes:  
-  `/home/runner/work/n8n/n8n/src/features/triggers/components/<trigger>/`
+  `src/features/triggers/components/<trigger>/`
   - similar layout; trigger-specific executors/webhook mechanics
 
 ## 3.4 Server/API layer
 
-- Routers in `/home/runner/work/n8n/n8n/src/server/routers/*`
-- Webhook handlers in `/home/runner/work/n8n/n8n/src/app/api/webhooks/*`
-- App router composition in `/home/runner/work/n8n/n8n/src/trpc/routers/_app.ts`
+- Routers in `src/server/routers/*`
+- Webhook handlers in `src/app/api/webhooks/*`
+- App router composition in `src/trpc/routers/_app.ts`
 
 ---
 
@@ -450,4 +450,3 @@ If you want to out-compete n8n, focus next on:
 - strong template marketplace,
 - strict security defaults,
 - and polished onboarding for non-technical users.
-
