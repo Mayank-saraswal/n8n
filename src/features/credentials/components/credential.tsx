@@ -760,6 +760,10 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                     form.setValue("value", "razorpay-credential")
                                                 } else if (val === CredentialType.MSG91) {
                                                     form.setValue("value", "msg91-credential")
+                                                } else if (val === CredentialType.SHIPROCKET) {
+                                                    form.setValue("value", "shiprocket-credential")
+                                                } else if (val === CredentialType.HUBSPOT) {
+                                                    form.setValue("value", "hubspot-credential")
                                                 } else if (val === CredentialType.ZOHO_CRM) {
                                                     form.setValue("value", "zoho-crm-credential")
                                                 } else if (val === CredentialType.SLACK) {
@@ -777,6 +781,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                       currentValue === "notion-credential" ||
                                                       currentValue === "razorpay-credential" ||
                                                        currentValue === "msg91-credential" ||
+                                                       currentValue === "shiprocket-credential" ||
+                                                       currentValue === "hubspot-credential" ||
                                                        currentValue === "zoho-crm-credential" ||
                                                        currentValue === "slack-credential" ||
                                                        currentValue === "freshdesk-credential" ||
