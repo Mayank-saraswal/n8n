@@ -183,6 +183,7 @@ export const executeWorkflow = inngest.createFunction(
       mediaUploadChannel(),
       sortChannel(),
       filterChannel(),
+      cashfreeChannel(),
 
     ]
   },

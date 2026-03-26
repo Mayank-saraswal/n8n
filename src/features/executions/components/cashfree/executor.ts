@@ -171,7 +171,7 @@ export const cashfreeExecutor: NodeExecutor = async ({ nodeId, context, step, pu
 
   // STEP 3 — Execute
   return await step.run(`cashfree-${nodeId}-execute`, async () => {
-    await publish(cashfreeChannel().status({ nodeId, status: "loading" }))
+    await publish(cashfreeChannel(nodeId).status({ nodeId, status: "loading" }))
 
     try {
       const creds = JSON.parse(decrypt(config!.credential!.value)) as CashfreeCredential
@@ -717,11 +717,11 @@ export const cashfreeExecutor: NodeExecutor = async ({ nodeId, context, step, pu
           throw new NonRetriableError(`Cashfree: Unknown operation ${String(config!.operation)}`)
       }
 
-      await publish(cashfreeChannel().status({ nodeId, status: "success" }))
+      await publish(cashfreeChannel(nodeId).status({ nodeId, status: "success" }))
       return { ...context, [variableName]: result }
 
     } catch (err) {
-      await publish(cashfreeChannel().status({ nodeId, status: "error" }))
+      await publish(cashfreeChannel(nodeId).status({ nodeId, status: "error" }))
       const cfg = config!
       if (cfg?.continueOnFail) {
         return {

@@ -5,7 +5,7 @@ import { BaseExecutionNode } from "../base-execution-node"
 import { CashfreeFormValues, CashfreeDialog } from "./dialog"
 import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-node-status"
 import { fetchCashfreeRealtimeToken } from "./actions"
-import { CASHFREE_CHANNEL_NAME } from "@/inngest/channels/cashfree"
+import { CASHFREE_CHANNEL } from "@/inngest/channels/cashfree"
 import { useParams } from "next/navigation"
 
 type CashfreeNodeData = {
@@ -64,7 +64,7 @@ export const CashfreeNode = memo((props: NodeProps<CashfreeNodeType>) => {
 
   const nodeStatus = useNodeStatus({
     nodeId: props.id,
-    channel: CASHFREE_CHANNEL_NAME,
+    channel: CASHFREE_CHANNEL,
     topic: "status",
     refreshToken: fetchCashfreeRealtimeToken,
   })

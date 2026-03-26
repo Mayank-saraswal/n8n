@@ -5,7 +5,7 @@ import { TRPCError } from "@trpc/server"
 import { CashfreeOperation } from "@/generated/prisma"
 import { getSubscriptionToken } from "@inngest/realtime"
 import { inngest } from "@/inngest/client"
-import { CASHFREE_CHANNEL_NAME } from "@/inngest/channels/cashfree"
+import { cashfreeChannel } from "@/inngest/channels/cashfree"
 
 export const cashfreeRouter = createTRPCRouter({
   getByNodeId: protectedProcedure
@@ -157,7 +157,7 @@ export const cashfreeRouter = createTRPCRouter({
     .input(z.object({ nodeId: z.string() }))
     .query(async ({ input }) => {
       const token = await getSubscriptionToken(inngest, {
-        channel: CASHFREE_CHANNEL_NAME,
+        channel: cashfreeChannel(),
         topics: ["status"],
       })
       return { token }
