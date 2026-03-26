@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Cashfree">
+  <rect width="64" height="64" rx="10" fill="#1A1F2E"/>
+  <path d="M12 32C12 21 21 12 32 12C39.5 12 46 16.5 49.5 23H42C39 19.5 35.7 17.5 32 17.5C23.7 17.5 17 24.2 17 32.5C17 40.8 23.7 47.5 32 47.5C35.7 47.5 39 45.5 42 42H49.5C46 48.5 39.5 53 32 53C21 53 12 44 12 32Z" fill="#1ED760"/>
+  <path d="M36 26L42 32L36 38" stroke="#1ED760" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

@@ -49,6 +49,11 @@ const formSchema = z.object({
     hubspotHubId: z.string().optional(),
     freshdeskApiKey: z.string().optional(),
     freshdeskDomain: z.string().optional(),
+    cashfreeClientId: z.string().optional(),
+    cashfreeClientSecret: z.string().optional(),
+    cashfreeEnvironment: z.enum(["production", "sandbox"]).optional(),
+    cashfreePayoutClientId: z.string().optional(),
+    cashfreePayoutClientSecret: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.type === CredentialType.GMAIL) {
         // Gmail now uses OAuth2 via GoogleConnectButton — no required form fields
@@ -171,6 +176,29 @@ const formSchema = z.object({
                 code: z.ZodIssueCode.custom,
                 message: "Domain is required",
                 path: ["freshdeskDomain"],
+            })
+        }
+    }
+    if (data.type === CredentialType.CASHFREE) {
+        if (!data.cashfreeClientId) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Client ID is required",
+                path: ["cashfreeClientId"],
+            })
+        }
+        if (!data.cashfreeClientSecret) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Client Secret is required",
+                path: ["cashfreeClientSecret"],
+            })
+        }
+        if (!data.cashfreeEnvironment) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Environment is required",
+                path: ["cashfreeEnvironment"],
             })
         }
     }
@@ -297,6 +325,11 @@ const credentialTypeOptions = [
         value: CredentialType.FRESHDESK,
         label: "Freshdesk",
         logo: "/logos/freshdesk.svg"
+    },
+    {
+        value: CredentialType.CASHFREE,
+        label: "Cashfree",
+        logo: "/logos/cashfree.svg"
     },
 
 ]
@@ -522,10 +555,28 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
         return { freshdeskApiKey: "", freshdeskDomain: "" }
     }, [initialData])
 
+    const cashfreeDefaults = useMemo(() => {
+        if (initialData?.type === CredentialType.CASHFREE && initialData.value) {
+            try {
+                const parsed = JSON.parse(initialData.value)
+                return {
+                    cashfreeClientId: parsed.clientId ?? "",
+                    cashfreeClientSecret: parsed.clientSecret ?? "",
+                    cashfreeEnvironment: parsed.environment ?? "sandbox",
+                    cashfreePayoutClientId: parsed.payoutClientId ?? "",
+                    cashfreePayoutClientSecret: parsed.payoutClientSecret ?? "",
+                }
+            } catch {
+                return { cashfreeClientId: "", cashfreeClientSecret: "", cashfreeEnvironment: "sandbox" as const, cashfreePayoutClientId: "", cashfreePayoutClientSecret: "" }
+            }
+        }
+        return { cashfreeClientId: "", cashfreeClientSecret: "", cashfreeEnvironment: "sandbox" as const, cashfreePayoutClientId: "", cashfreePayoutClientSecret: "" }
+    }, [initialData])
+
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: initialData
-            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...msg91Defaults, ...shiprocketDefaults, ...slackDefaults, ...zohoDefaults, ...hubspotDefaults, ...freshdeskDefaults }
+            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...msg91Defaults, ...shiprocketDefaults, ...slackDefaults, ...zohoDefaults, ...hubspotDefaults, ...freshdeskDefaults, ...cashfreeDefaults }
             : {
                 name: "",
                 type: CredentialType.OPENAI,
@@ -554,6 +605,11 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                 hubspotHubId: "",
                 freshdeskApiKey: "",
                 freshdeskDomain: "",
+                cashfreeClientId: "",
+                cashfreeClientSecret: "",
+                cashfreeEnvironment: "sandbox",
+                cashfreePayoutClientId: "",
+                cashfreePayoutClientSecret: "",
             }
     })
 
@@ -572,6 +628,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const isSlack = watchType === CredentialType.SLACK
     const isHubspot = watchType === CredentialType.HUBSPOT
     const isFreshdesk = watchType === CredentialType.FRESHDESK
+    const isCashfree = watchType === CredentialType.CASHFREE
     const watchSlackAuthType = form.watch("slackAuthType")
 
     const onSubmit = async (values: FormValues) => {
@@ -669,6 +726,16 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             })
         }
 
+        if (values.type === CredentialType.CASHFREE) {
+            submitValues.value = JSON.stringify({
+                clientId: values.cashfreeClientId,
+                clientSecret: values.cashfreeClientSecret,
+                environment: values.cashfreeEnvironment || "sandbox",
+                payoutClientId: values.cashfreePayoutClientId,
+                payoutClientSecret: values.cashfreePayoutClientSecret,
+            })
+        }
+
         // For Slack, encode based on auth type
         if (values.type === CredentialType.SLACK) {
             if (values.slackAuthType === "bot_token") {
@@ -684,7 +751,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             }
         }
 
-        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, msg91AuthKey, shiprocketEmail, shiprocketPassword, zohoClientId, zohoClientSecret, zohoRefreshToken, zohoRegion, slackAuthType, slackBotToken, slackWebhookUrl, hubspotAccessToken, hubspotRefreshToken, hubspotExpiresAt, hubspotPortalId, hubspotHubId, freshdeskApiKey, freshdeskDomain, ...payload } = submitValues
+        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, msg91AuthKey, shiprocketEmail, shiprocketPassword, zohoClientId, zohoClientSecret, zohoRefreshToken, zohoRegion, slackAuthType, slackBotToken, slackWebhookUrl, hubspotAccessToken, hubspotRefreshToken, hubspotExpiresAt, hubspotPortalId, hubspotHubId, freshdeskApiKey, freshdeskDomain, cashfreeClientId, cashfreeClientSecret, cashfreeEnvironment, cashfreePayoutClientId, cashfreePayoutClientSecret, ...payload } = submitValues
 
         if (isEdit && initialData?.id) {
             await updateCredential.mutate({
@@ -770,6 +837,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                     form.setValue("value", "slack-credential")
                                                 } else if (val === CredentialType.FRESHDESK) {
                                                     form.setValue("value", "freshdesk-credential")
+                                                } else if (val === CredentialType.CASHFREE) {
+                                                    form.setValue("value", "cashfree-credential")
                                                 } else if (val === CredentialType.GOOGLE_SHEETS || val === CredentialType.GOOGLE_DRIVE) {
                                                     form.setValue("value", "google-oauth-credential")
                                                 } else {
@@ -786,6 +855,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                        currentValue === "zoho-crm-credential" ||
                                                        currentValue === "slack-credential" ||
                                                        currentValue === "freshdesk-credential" ||
+                                                       currentValue === "cashfree-credential" ||
                                                       currentValue.startsWith("{")
                                                     ) {
                                                       form.setValue("value", "")
@@ -1367,6 +1437,93 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                             </div>
                                         </>
                                     )}
+                                </>
+                            ) : isCashfree ? (
+                                <>
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-1">Cashfree Payment Gateway</p>
+                                        <p>Used for Orders, Payments, Refunds, Settlements, Subscriptions, UPI, Payment Links, and Offers.</p>
+                                    </div>
+
+                                    <FormField
+                                        control={form.control}
+                                        name="cashfreeClientId"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>PG Client ID <span className="text-red-500">*</span></FormLabel>
+                                                <FormControl>
+                                                    <Input type="text" placeholder="Enter Cashfree PG Client ID" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="cashfreeClientSecret"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>PG Client Secret <span className="text-red-500">*</span></FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" placeholder="Enter Cashfree PG Client Secret" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="cashfreeEnvironment"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Environment <span className="text-red-500">*</span></FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value ?? "sandbox"}>
+                                                    <FormControl>
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Select environment" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
+                                                        <SelectItem value="production">Production (Live)</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
+                                        <p className="font-medium mb-1">Cashfree Payouts (Optional)</p>
+                                        <p>Only required if you want to use the Payouts module. Payouts uses a different set of API keys than the Payment Gateway.</p>
+                                    </div>
+
+                                    <FormField
+                                        control={form.control}
+                                        name="cashfreePayoutClientId"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Payouts Client ID</FormLabel>
+                                                <FormControl>
+                                                    <Input type="text" placeholder="Enter Cashfree Payouts Client ID" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="cashfreePayoutClientSecret"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Payouts Client Secret</FormLabel>
+                                                <FormControl>
+                                                    <Input type="password" placeholder="Enter Cashfree Payouts Client Secret" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 </>
                             ) : (
                                 <FormField

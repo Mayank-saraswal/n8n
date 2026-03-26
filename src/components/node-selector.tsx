@@ -286,6 +286,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Filter",
         description:"Filter arrays by conditions — keep, reject, or split",
         icon:"/logos/filter.svg"
+    },
+    {
+        type:NodeType.CASHFREE,
+        label:"Cashfree",
+        description:"35 operations — orders, refunds, payouts, UPI, payment links",
+        icon:"/logos/cashfree.svg"
     }
 
 ]
