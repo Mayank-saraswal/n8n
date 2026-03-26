@@ -1,0 +1,11 @@
+﻿src/features/executions/components/filter/node.tsx(17,28): error TS2344: Type 'FilterNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'FilterNodeData'.
+src/features/executions/components/filter/node.tsx(61,50): error TS2344: Type 'FilterNodeType' does not satisfy the constraint 'Node<Record<string, unknown>, string | undefined>'.
+  Type 'FilterNodeType' is not assignable to type '{ id: string; position: XYPosition; data: Record<string, unknown>; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }'.
+    Types of property 'data' are incompatible.
+      Type 'FilterNodeData' is not assignable to type 'Record<string, unknown>'.
+        Index signature for type 'string' is missing in type 'FilterNodeData'.
+src/features/executions/components/filter/node.tsx(107,8): error TS2322: Type '{ name: string; id: string; status: NodeStatus; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; ... 19 more ...; positionAbsoluteY: number; }' is not assignable to type 'BaseExecutionProps'.
+  Types of property 'data' are incompatible.
+    Type 'FilterNodeData' is not assignable to type 'Record<string, unknown>'.
+      Index signature for type 'string' is missing in type 'FilterNodeData'.

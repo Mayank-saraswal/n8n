@@ -35,6 +35,7 @@ import { hubspotExecutor } from "../components/hubspot/executor";
 import { freshdeskExecutor } from "../components/freshdesk/executor";
 import { mediaUploadExecutor } from "../components/media-upload/executor";
 import { sortExecutor } from "../components/sort/executor";
+import { filterExecutor } from "../components/filter/executor";
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MANUAL_TRIGGER]: manualTriggerExecutor,
@@ -79,6 +80,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.FRESHDESK]: freshdeskExecutor,
     [NodeType.MEDIA_UPLOAD]: mediaUploadExecutor,
     [NodeType.SORT]: sortExecutor,
+    [NodeType.FILTER]: filterExecutor,
 
 }
 

@@ -36,6 +36,7 @@ import { freshdeskRouter } from '@/server/routers/freshdesk.router';
 import { aiRouter } from '@/server/routers/ai.router';
 import { mediaUploadRouter } from '@/server/routers/media-upload.router';
 import { sortRouter } from '@/server/routers/sort.router';
+import { filterRouter } from '@/server/routers/filter.router';
 
 export const appRouter = createTRPCRouter({
   workflows: workflowsRouter,
@@ -69,6 +70,7 @@ export const appRouter = createTRPCRouter({
   ai: aiRouter,
   mediaUpload: mediaUploadRouter,
   sort: sortRouter,
+  filter: filterRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;

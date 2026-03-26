@@ -280,6 +280,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Sort",
         description:"Sort, reverse, or shuffle arrays and objects",
         icon:ArrowUpDown
+    },
+    {
+        type:NodeType.FILTER,
+        label:"Filter",
+        description:"Filter arrays by conditions — keep, reject, or split",
+        icon:"/logos/filter.svg"
     }
 
 ]

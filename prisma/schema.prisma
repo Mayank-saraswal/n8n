@@ -116,6 +116,7 @@ model workflow {
   aiNodes            AINode[]
   mediaUploadNodes   MediaUploadNode[]
   sortNodes          SortNode[]
+  filterNodes        FilterNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -163,6 +164,7 @@ enum NodeType {
   FRESHDESK
   MEDIA_UPLOAD
   SORT
+  FILTER
   // In a future sprint: ZOHO_CRM_TRIGGER
   // Registers a Zoho Notification API webhook for lead/contact/deal events.
   // Ref: https://www.zoho.com/crm/developer/docs/api/v6/notifications/overview.html
@@ -1818,3 +1820,32 @@ model SortNode {
   updatedAt  DateTime @updatedAt
 }
 
+
+model FilterNode {
+  id           String @id @default(cuid())
+  nodeId       String @unique
+  workflowId   String
+
+  operation       String  @default("FILTER_ARRAY")
+  inputArray      String  @default("") @db.Text
+  inputObject     String  @default("") @db.Text
+  conditionGroups String  @default("[]") @db.Text
+  rootLogic       String  @default("AND")
+  outputMode      String  @default("filtered")
+  variableName    String  @default("filter")
+  stopOnEmpty     Boolean @default(false)
+  includeMetadata Boolean @default(false)
+  continueOnFail  Boolean @default(false)
+
+  // FILTER_OBJECT_KEYS specific:
+  keyFilterMode   String  @default("key_name")
+  keepMatching    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
