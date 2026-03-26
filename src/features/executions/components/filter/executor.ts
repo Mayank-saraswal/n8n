@@ -2,7 +2,7 @@ import { NonRetriableError } from "inngest"
 import type { NodeExecutor } from "@/features/executions/types"
 import prisma from "@/lib/db"
 import { resolveTemplate } from "@/features/executions/lib/template-resolver"
-import { filterChannel } from "@/inngest/channels/filter"
+import { filterChannel, filterChannelName } from "@/inngest/channels/filter"
 import { filterArray, filterObjectKeys } from "./filter-engine"
 import type { ConditionGroup } from "./types"
 
@@ -11,7 +11,6 @@ export const filterExecutor: NodeExecutor = async ({
   context,
   step,
   publish,
-  userId,
 }) => {
   // ── Step 1: Load config ────────────────────────────────────────────────────
   const config = await step.run(`filter-${nodeId}-load`, async () => {
@@ -21,23 +20,23 @@ export const filterExecutor: NodeExecutor = async ({
     })
   })
 
+  await step.run(`filter-${nodeId}-validate`, async () => {
+    if (!config) throw new NonRetriableError("Filter node not configured. Open settings to configure.")
+    return { valid: true }
+  })
+
+  // Narrow TypeScript type to ensure config is not null
   if (!config) {
     throw new NonRetriableError("Filter node not configured. Open settings to configure.")
   }
-  if (config.workflow.userId !== userId) {
-    throw new NonRetriableError("Unauthorized")
-  }
-
-  const variableName = config.variableName || "filter"
-
-  // ── Publish loading OUTSIDE step.run ──────────────────────────────────────
-  await publish(filterChannel(nodeId).status({ nodeId, status: "loading" }))
 
   // ── Step 2: Execute filter ─────────────────────────────────────────────────
   let result: Record<string, unknown>
 
   try {
     result = await step.run(`filter-${nodeId}-execute`, async () => {
+      await publish(filterChannel(nodeId).status({ nodeId, status: "loading" }))
+
       // Parse condition groups from JSON
       let conditionGroups: ConditionGroup[]
       try {
@@ -202,17 +201,23 @@ export const filterExecutor: NodeExecutor = async ({
         timestamp: new Date().toISOString(),
       }
 
+      let stepResult: Record<string, unknown>
       switch (outputMode) {
         case "rejected":
-          return { ...base, items: filterResult.rejected, count: filterResult.rejected.length }
+          stepResult = { ...base, items: filterResult.rejected, count: filterResult.rejected.length }
+          break
         case "both":
-          return { ...base, items: filterResult.passed, rejected: filterResult.rejected }
+          stepResult = { ...base, items: filterResult.passed, rejected: filterResult.rejected }
+          break
         case "stats_only":
-          return base
+          stepResult = base
+          break
         case "filtered":
         default:
-          return { ...base, items: filterResult.passed }
+          stepResult = { ...base, items: filterResult.passed }
       }
+      await publish(filterChannel(nodeId).status({ nodeId, status: "success" }))
+      return stepResult
     })
   } catch (err) {
     await publish(filterChannel(nodeId).status({ nodeId, status: "error" }))
@@ -238,9 +243,10 @@ export const filterExecutor: NodeExecutor = async ({
     }
   }
 
-  await publish(filterChannel(nodeId).status({ nodeId, status: "success" }))
+  const variableName = config?.variableName || "filter"
 
   return {
+    ...context,
     [variableName]: result,
   }
 }

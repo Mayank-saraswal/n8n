@@ -5,7 +5,7 @@ import { type Node, type NodeProps, useReactFlow } from "@xyflow/react"
 import { Filter } from "lucide-react"
 import { BaseExecutionNode } from "../base-execution-node"
 import { useNodeStatus } from "@/features/triggers/components/shared/hooks/use-node-status"
-import { FILTER_CHANNEL_NAME } from "@/inngest/channels/filter"
+import { filterChannelName } from "@/inngest/channels/filter"
 import { fetchFilterRealtimeToken } from "./actions"
 import { FilterDialog } from "./dialog"
 import type { FilterNodeData, ConditionGroup } from "./types"
@@ -74,7 +74,7 @@ export const FilterNode = memo((props: NodeProps<FilterNodeType>) => {
 
   const nodeStatus = useNodeStatus({
     nodeId: props.id,
-    channel: FILTER_CHANNEL_NAME(props.id) as string,
+    channel: filterChannelName(props.id),
     topic: "status",
     refreshToken: () => fetchFilterRealtimeToken(props.id),
   })

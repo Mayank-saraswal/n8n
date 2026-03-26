@@ -2,6 +2,9 @@ import { z } from "zod"
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init"
 import prisma from "@/lib/db"
 import { TRPCError } from "@trpc/server"
+import { inngest } from "@/inngest/client"
+import { getSubscriptionToken } from "@inngest/realtime"
+import { filterChannelName } from "@/inngest/channels/filter"
 
 export const filterRouter = createTRPCRouter({
   getByNodeId: protectedProcedure
@@ -78,5 +81,15 @@ export const filterRouter = createTRPCRouter({
         throw new TRPCError({ code: "UNAUTHORIZED" })
       }
       return prisma.filterNode.delete({ where: { nodeId: input.nodeId } })
+    }),
+
+  getToken: protectedProcedure
+    .input(z.object({ nodeId: z.string() }))
+    .query(async ({ input }) => {
+      const token = await getSubscriptionToken(inngest, {
+        channel: filterChannelName(input.nodeId),
+        topics: ["status"],
+      })
+      return { token }
     }),
 })
