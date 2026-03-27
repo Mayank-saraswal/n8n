@@ -75,7 +75,7 @@ export interface FilterObjectResult {
   removedKeys: string[]
 }
 
-export interface FilterNodeData extends Record<string, unknown> {
+export type FilterNodeData = {
   operation?: string
   inputArray?: string
   inputObject?: string
@@ -88,7 +88,7 @@ export interface FilterNodeData extends Record<string, unknown> {
   continueOnFail?: boolean
   keyFilterMode?: string
   keepMatching?: boolean
-}
+} & Record<string, unknown>
 
 export const OPERATOR_LABELS: Record<FilterOperator, string> = {
   equals: "is equal to",

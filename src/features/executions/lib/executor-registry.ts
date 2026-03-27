@@ -81,6 +81,8 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.MEDIA_UPLOAD]: mediaUploadExecutor,
     [NodeType.SORT]: sortExecutor,
     [NodeType.FILTER]: filterExecutor,
+    [NodeType.CASHFREE]: async () => { throw new Error("Cashfree node not available on this branch") },
+    [NodeType.CASHFREE_TRIGGER]: async () => { throw new Error("Cashfree trigger not available on this branch") },
 
 }
 
