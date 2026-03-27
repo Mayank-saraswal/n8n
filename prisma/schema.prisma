@@ -116,6 +116,8 @@ model workflow {
   aiNodes            AINode[]
   mediaUploadNodes   MediaUploadNode[]
   sortNodes          SortNode[]
+  filterNodes        FilterNode[]
+  cashfreeNodes      CashfreeNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -163,6 +165,9 @@ enum NodeType {
   FRESHDESK
   MEDIA_UPLOAD
   SORT
+  FILTER
+  CASHFREE
+  CASHFREE_TRIGGER
   // In a future sprint: ZOHO_CRM_TRIGGER
   // Registers a Zoho Notification API webhook for lead/contact/deal events.
   // Ref: https://www.zoho.com/crm/developer/docs/api/v6/notifications/overview.html
@@ -303,6 +308,7 @@ model Credential {
   zohoCrmNodes    ZohoCrmNode[]
   hubspotNodes    HubspotNode[]
   freshdeskNodes  FreshdeskNode[]
+  cashfreeNodes   CashfreeNode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -334,6 +340,7 @@ enum CredentialType {
   ZOHO_CRM
   HUBSPOT
   FRESHDESK
+  CASHFREE
 }
 
 model Node {
@@ -1818,3 +1825,209 @@ model SortNode {
   updatedAt  DateTime @updatedAt
 }
 
+
+model FilterNode {
+  id           String @id @default(cuid())
+  nodeId       String @unique
+  workflowId   String
+
+  operation       String  @default("FILTER_ARRAY")
+  inputArray      String  @default("") @db.Text
+  inputObject     String  @default("") @db.Text
+  conditionGroups String  @default("[]") @db.Text
+  rootLogic       String  @default("AND")
+  outputMode      String  @default("filtered")
+  variableName    String  @default("filter")
+  stopOnEmpty     Boolean @default(false)
+  includeMetadata Boolean @default(false)
+  continueOnFail  Boolean @default(false)
+
+  // FILTER_OBJECT_KEYS specific:
+  keyFilterMode   String  @default("key_name")
+  keepMatching    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+enum CashfreeOperation {
+  // ── ORDERS (Payment Gateway) ──────────────────────────────
+  CREATE_ORDER
+  GET_ORDER
+  TERMINATE_ORDER
+  PAY_ORDER
+
+  // ── PAYMENTS ──────────────────────────────────────────────
+  GET_PAYMENTS_FOR_ORDER
+  GET_PAYMENT_BY_ID
+
+  // ── REFUNDS ───────────────────────────────────────────────
+  CREATE_REFUND
+  GET_REFUND
+  GET_ALL_REFUNDS_FOR_ORDER
+
+  // ── SETTLEMENTS ───────────────────────────────────────────
+  GET_SETTLEMENTS_FOR_ORDER
+  GET_ALL_SETTLEMENTS
+  GET_SETTLEMENT_RECON
+
+  // ── PAYMENT LINKS ─────────────────────────────────────────
+  CREATE_PAYMENT_LINK
+  GET_PAYMENT_LINK
+  CANCEL_PAYMENT_LINK
+  GET_ORDERS_FOR_LINK
+
+  // ── SUBSCRIPTIONS ─────────────────────────────────────────
+  CREATE_SUBSCRIPTION_PLAN
+  GET_SUBSCRIPTION_PLAN
+  CREATE_SUBSCRIPTION
+  GET_SUBSCRIPTION
+  MANAGE_SUBSCRIPTION
+  GET_SUBSCRIPTION_PAYMENTS
+
+  // ── PAYOUTS ───────────────────────────────────────────────
+  GET_PAYOUT_BALANCE
+  ADD_BENEFICIARY
+  GET_BENEFICIARY
+  REMOVE_BENEFICIARY
+  TRANSFER_TO_BENEFICIARY
+  GET_TRANSFER_STATUS
+  BULK_TRANSFER
+  GET_BATCH_TRANSFER_STATUS
+
+  // ── UPI ───────────────────────────────────────────────────
+  VALIDATE_UPI_ID
+  CREATE_UPI_PAYMENT_LINK
+
+  // ── OFFERS ────────────────────────────────────────────────
+  CREATE_OFFER
+  GET_OFFER
+
+  // ── WEBHOOKS ──────────────────────────────────────────────
+  VERIFY_WEBHOOK_SIGNATURE
+}
+
+model CashfreeNode {
+  id           String             @id @default(cuid())
+  nodeId       String             @unique
+  workflowId   String
+  credentialId String?
+  credential   Credential?        @relation(fields: [credentialId], references: [id])
+
+  operation    CashfreeOperation  @default(CREATE_ORDER)
+  variableName String             @default("cashfree")
+  continueOnFail Boolean          @default(false)
+
+  // ── ORDER FIELDS ──────────────────────────────────────────
+  orderId           String         @default("") @db.Text
+  orderAmount       String         @default("") @db.Text
+  orderCurrency     String         @default("INR")
+  orderNote         String         @default("") @db.Text
+  orderMeta         String         @default("{}") @db.Text
+
+  // ── CUSTOMER FIELDS ───────────────────────────────────────
+  customerId        String         @default("") @db.Text
+  customerEmail     String         @default("") @db.Text
+  customerPhone     String         @default("") @db.Text
+  customerName      String         @default("") @db.Text
+  customerBankAccountNumber String  @default("") @db.Text
+  customerBankIfsc  String         @default("") @db.Text
+  customerBankCode  String         @default("")
+
+  // ── PAYMENT FIELDS ────────────────────────────────────────
+  cfPaymentId       String         @default("") @db.Text
+  cfOrderId         String         @default("") @db.Text
+  paymentMethod     String         @default("") @db.Text
+
+  // ── REFUND FIELDS ─────────────────────────────────────────
+  refundId          String         @default("") @db.Text
+  refundAmount      String         @default("") @db.Text
+  refundNote        String         @default("") @db.Text
+  refundSpeed       String         @default("STANDARD")
+  refundSplits      String         @default("[]") @db.Text
+
+  // ── SETTLEMENT FIELDS ─────────────────────────────────────
+  settlementId      String         @default("") @db.Text
+  startDate         String         @default("") @db.Text
+  endDate           String         @default("") @db.Text
+  cursor            String         @default("")
+  limit             Int            @default(10)
+
+  // ── PAYMENT LINK FIELDS ───────────────────────────────────
+  linkId            String         @default("") @db.Text
+  linkAmount        String         @default("") @db.Text
+  linkCurrency      String         @default("INR")
+  linkPurpose       String         @default("") @db.Text
+  linkDescription   String         @default("") @db.Text
+  linkExpiryTime    String         @default("") @db.Text
+  linkNotifyPhone   Boolean        @default(true)
+  linkNotifyEmail   Boolean        @default(true)
+  linkAutoReminders Boolean        @default(true)
+  linkMinPartialAmount String      @default("") @db.Text
+  linkMeta          String         @default("{}") @db.Text
+
+  // ── SUBSCRIPTION FIELDS ───────────────────────────────────
+  subscriptionId    String         @default("") @db.Text
+  planId            String         @default("") @db.Text
+  planName          String         @default("") @db.Text
+  planType          String         @default("PERIODIC")
+  planIntervalType  String         @default("MONTH")
+  planIntervals     Int            @default(1)
+  planMaxCycles     Int            @default(0)
+  planMaxAmount     String         @default("") @db.Text
+  subscriptionFirstChargeTime String @default("") @db.Text
+  subscriptionExpiryTime String    @default("") @db.Text
+  subscriptionReturnUrl String     @default("") @db.Text
+  subscriptionNotifyUrl String     @default("") @db.Text
+  subscriptionAction  String       @default("PAUSE")
+
+  // ── PAYOUT FIELDS ─────────────────────────────────────────
+  beneId            String         @default("") @db.Text
+  beneName          String         @default("") @db.Text
+  beneEmail         String         @default("") @db.Text
+  benePhone         String         @default("") @db.Text
+  beneBankAccount   String         @default("") @db.Text
+  beneBankIfsc      String         @default("") @db.Text
+  beneVpa           String         @default("") @db.Text
+  beneAddress       String         @default("") @db.Text
+  beneCity          String         @default("") @db.Text
+  beneState         String         @default("India")
+  benePincode       String         @default("") @db.Text
+
+  transferId        String         @default("") @db.Text
+  transferAmount    String         @default("") @db.Text
+  transferRemarks   String         @default("") @db.Text
+  transferMode      String         @default("banktransfer")
+  batchTransferId   String         @default("") @db.Text
+  batchEntries      String         @default("[]") @db.Text
+
+  // ── UPI FIELDS ────────────────────────────────────────────
+  upiVpa            String         @default("") @db.Text
+  upiAmount         String         @default("") @db.Text
+  upiDescription    String         @default("") @db.Text
+
+  // ── OFFER FIELDS ──────────────────────────────────────────
+  offerId           String         @default("") @db.Text
+  offerMeta         String         @default("{}") @db.Text
+  offerValidations  String         @default("{}") @db.Text
+  offerDetails      String         @default("{}") @db.Text
+
+  // ── WEBHOOK FIELDS ────────────────────────────────────────
+  webhookSignature  String         @default("") @db.Text
+  webhookTimestamp  String         @default("") @db.Text
+  webhookRawBody    String         @default("") @db.Text
+  webhookThrowOnFail Boolean       @default(true)
+
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  workflow     workflow           @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}

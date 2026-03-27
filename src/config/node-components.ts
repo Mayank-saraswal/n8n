@@ -42,6 +42,9 @@ import { HubspotNode } from "@/features/executions/components/hubspot/node";
 import { FreshdeskNode } from "@/features/executions/components/freshdesk/node";
 import { MediaUploadNode } from "@/features/executions/components/media-upload/node";
 import { SortNode } from "@/features/executions/components/sort/node";
+import { FilterNode } from "@/features/executions/components/filter/node";
+import { CashfreeNode } from "@/features/executions/components/cashfree/node";
+
 
 export const nodeComponents = {
     [NodeType.INITIAL]: InitialNode,
@@ -86,6 +89,9 @@ export const nodeComponents = {
     [NodeType.FRESHDESK]: FreshdeskNode,
     [NodeType.MEDIA_UPLOAD]: MediaUploadNode,
     [NodeType.SORT]: SortNode,
+    [NodeType.FILTER]: FilterNode,
+    [NodeType.CASHFREE]: CashfreeNode,
+    [NodeType.CASHFREE_TRIGGER]: CashfreeNode,
     //change later
 
 

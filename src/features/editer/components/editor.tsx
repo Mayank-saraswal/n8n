@@ -68,6 +68,9 @@ export const Editor = ({workflowId}:{workflowId:string}) => {
     const deleteZohoCrm = useMutation(trpc.zohoCrm.delete.mutationOptions())
     const deleteHubspot = useMutation(trpc.hubspot.delete.mutationOptions())
     const deleteFreshdesk = useMutation(trpc.freshdesk.delete.mutationOptions())
+    const deleteFilter = useMutation(trpc.filter.delete.mutationOptions())
+    const deleteCashfree = useMutation(trpc.cashfree.delete.mutationOptions())
+
 
     const onNodesDelete = useCallback((deletedNodes: Node[]) => {
       for (const node of deletedNodes) {
@@ -95,9 +98,12 @@ export const Editor = ({workflowId}:{workflowId:string}) => {
           case NodeType.ZOHO_CRM: deleteZohoCrm.mutate({ nodeId }); break
           case NodeType.HUBSPOT: deleteHubspot.mutate({ nodeId }); break
           case NodeType.FRESHDESK: deleteFreshdesk.mutate({ nodeId }); break
+          case NodeType.FILTER: deleteFilter.mutate({ nodeId }); break
+          case NodeType.CASHFREE: deleteCashfree.mutate({ nodeId }); break
+          case NodeType.CASHFREE_TRIGGER: deleteCashfree.mutate({ nodeId }); break
         }
       }
-    }, [deleteCode, deleteGmail, deleteGoogleDrive, deleteGoogleSheets, deleteIfElse, deleteLoop, deleteNotion, deleteRazorpay, deleteSetVariable, deleteSlack, deleteSwitch, deleteWhatsapp, deleteWait, deleteMerge, deleteErrorTrigger, deleteRazorpayTrigger, deleteWhatsappTrigger, deleteMsg91, deleteShiprocket, deleteZohoCrm, deleteHubspot, deleteFreshdesk])
+    }, [deleteCode, deleteGmail, deleteGoogleDrive, deleteGoogleSheets, deleteIfElse, deleteLoop, deleteNotion, deleteRazorpay, deleteSetVariable, deleteSlack, deleteSwitch, deleteWhatsapp, deleteWait, deleteMerge, deleteErrorTrigger, deleteRazorpayTrigger, deleteWhatsappTrigger, deleteMsg91, deleteShiprocket, deleteZohoCrm, deleteHubspot, deleteFreshdesk, deleteFilter, deleteCashfree])
 
        const onNodesChange = useCallback(
     (changes:NodeChange[]) => setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),
