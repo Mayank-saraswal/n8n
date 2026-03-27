@@ -40,6 +40,8 @@ import { aiChannel } from "./channels/ai";
 import { mediaUploadChannel } from "./channels/media-upload";
 import { sortChannel } from "./channels/sort";
 import { filterChannel } from "./channels/filter";
+import { cashfreeChannel } from "./channels/cashfree";
+
 
 const MAX_JSON_LENGTH = 100_000;
 
@@ -181,6 +183,7 @@ export const executeWorkflow = inngest.createFunction(
       mediaUploadChannel(),
       sortChannel(),
       filterChannel(),
+      cashfreeChannel(),
 
     ]
   },
