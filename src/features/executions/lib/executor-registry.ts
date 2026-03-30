@@ -37,6 +37,7 @@ import { mediaUploadExecutor } from "../components/media-upload/executor";
 import { sortExecutor } from "../components/sort/executor";
 import { filterExecutor } from "../components/filter/executor";
 import { cashfreeExecutor } from "../components/cashfree/executor";
+import { aggregateExecutor } from "../components/aggregate/executor";
 
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
@@ -85,6 +86,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.FILTER]: filterExecutor,
     [NodeType.CASHFREE]: cashfreeExecutor,
     [NodeType.CASHFREE_TRIGGER]: cashfreeExecutor,
+    [NodeType.AGGREGATE]: aggregateExecutor,
 
 }
 

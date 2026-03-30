@@ -2,7 +2,7 @@ import { NonRetriableError } from "inngest"
 import type { NodeExecutor } from "@/features/executions/types"
 import prisma from "@/lib/db"
 import { resolveTemplate } from "@/features/executions/lib/template-resolver"
-import { filterChannel, filterChannelName } from "@/inngest/channels/filter"
+import { filterChannel } from "@/inngest/channels/filter"
 import { filterArray, filterObjectKeys } from "./filter-engine"
 import type { ConditionGroup } from "./types"
 
@@ -33,9 +33,10 @@ export const filterExecutor: NodeExecutor = async ({
   // ── Step 2: Execute filter ─────────────────────────────────────────────────
   let result: Record<string, unknown>
 
+  await publish(filterChannel(nodeId).status({ nodeId, status: "loading" }))
+
   try {
     result = await step.run(`filter-${nodeId}-execute`, async () => {
-      await publish(filterChannel(nodeId).status({ nodeId, status: "loading" }))
 
       // Parse condition groups from JSON
       let conditionGroups: ConditionGroup[]
@@ -216,7 +217,6 @@ export const filterExecutor: NodeExecutor = async ({
         default:
           stepResult = { ...base, items: filterResult.passed }
       }
-      await publish(filterChannel(nodeId).status({ nodeId, status: "success" }))
       return stepResult
     })
   } catch (err) {
@@ -243,10 +243,9 @@ export const filterExecutor: NodeExecutor = async ({
     }
   }
 
-  const variableName = config?.variableName || "filter"
+  const variableName = config.variableName || "filter"
 
-  return {
-    ...context,
-    [variableName]: result,
-  }
+  await publish(filterChannel(nodeId).status({ nodeId, status: "success" }))
+
+  return { [variableName]: result! }
 }

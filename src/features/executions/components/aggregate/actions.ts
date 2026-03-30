@@ -1,18 +1,18 @@
 "use server"
 
-import { filterChannelName } from "@/inngest/channels/filter"
+import { aggregateChannelName } from "@/inngest/channels/aggregate"
 import { inngest } from "@/inngest/client"
 import { getSubscriptionToken } from "@inngest/realtime"
 
-export async function fetchFilterRealtimeToken(nodeId: string) {
+export async function fetchAggregateRealtimeToken(nodeId: string) {
   try {
     const token = await getSubscriptionToken(inngest, {
-      channel: filterChannelName(nodeId),
+      channel: aggregateChannelName(nodeId),
       topics: ["status"],
     })
     return token
   } catch (error) {
-    console.error("Failed to fetch Filter realtime token:", error)
+    console.error("Failed to fetch Aggregate realtime token:", error)
     throw error
   }
 }

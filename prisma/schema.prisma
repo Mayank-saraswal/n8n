@@ -118,6 +118,7 @@ model workflow {
   sortNodes          SortNode[]
   filterNodes        FilterNode[]
   cashfreeNodes      CashfreeNode[]
+  aggregateNodes     AggregateNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -168,6 +169,7 @@ enum NodeType {
   FILTER
   CASHFREE
   CASHFREE_TRIGGER
+  AGGREGATE
   // In a future sprint: ZOHO_CRM_TRIGGER
   // Registers a Zoho Notification API webhook for lead/contact/deal events.
   // Ref: https://www.zoho.com/crm/developer/docs/api/v6/notifications/overview.html
@@ -2027,6 +2029,62 @@ model CashfreeNode {
   updatedAt    DateTime           @updatedAt
 
   workflow     workflow           @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@index([nodeId])
+}
+
+model AggregateNode {
+  id           String @id @default(cuid())
+  nodeId       String @unique
+  workflowId   String
+
+  // Primary operation
+  operation    String @default("COUNT")
+
+  // Dot-notation path to the input array
+  inputPath    String @default("") @db.Text
+
+  // Dot-notation field within each item to aggregate
+  field        String @default("") @db.Text
+
+  // For GROUP_BY: field to group items by
+  groupByField String @default("")
+
+  // For PIVOT: row field, column field, value field, value operation
+  pivotRowField    String @default("")
+  pivotColField    String @default("")
+  pivotValueField  String @default("")
+  pivotValueOp     String @default("SUM")
+
+  // For CONCATENATE: separator string (default ", ")
+  separator    String @default(", ")
+
+  // For PERCENTILE: the percentile to compute (0–100)
+  percentile   Float  @default(90)
+
+  // For COUNT: optional filter condition (JSON FilterCondition[])
+  countFilter  String @default("") @db.Text
+
+  // For MULTI: JSON array of AggregateOperation objects
+  multiOps     String @default("[]") @db.Text
+
+  // For GROUP_BY with nested aggregation:
+  groupAggOps  String @default("[]") @db.Text
+
+  // Output options
+  variableName    String  @default("aggregate")
+  includeInput    Boolean @default(false)
+  sortOutput      Boolean @default(true)
+  topN            Int     @default(0)
+  nullHandling    String  @default("exclude")
+  roundDecimals   Int     @default(2)
+  continueOnFail  Boolean @default(false)
+
+  workflow workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([workflowId])
   @@index([nodeId])
