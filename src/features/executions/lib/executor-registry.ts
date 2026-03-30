@@ -38,6 +38,7 @@ import { sortExecutor } from "../components/sort/executor";
 import { filterExecutor } from "../components/filter/executor";
 import { cashfreeExecutor } from "../components/cashfree/executor";
 import { aggregateExecutor } from "../components/aggregate/executor";
+import { postgresExecutor } from "../components/postgres/executor";
 
 
 export const executorRegistry: Record<NodeType, NodeExecutor> = {
@@ -87,6 +88,7 @@ export const executorRegistry: Record<NodeType, NodeExecutor> = {
     [NodeType.CASHFREE]: cashfreeExecutor,
     [NodeType.CASHFREE_TRIGGER]: cashfreeExecutor,
     [NodeType.AGGREGATE]: aggregateExecutor,
+    [NodeType.POSTGRES]: postgresExecutor,
 
 }
 

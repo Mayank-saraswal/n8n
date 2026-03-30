@@ -119,6 +119,7 @@ model workflow {
   filterNodes        FilterNode[]
   cashfreeNodes      CashfreeNode[]
   aggregateNodes     AggregateNode[]
+  postgresNodes      PostgresNode[]
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -170,6 +171,7 @@ enum NodeType {
   CASHFREE
   CASHFREE_TRIGGER
   AGGREGATE
+  POSTGRES
   // In a future sprint: ZOHO_CRM_TRIGGER
   // Registers a Zoho Notification API webhook for lead/contact/deal events.
   // Ref: https://www.zoho.com/crm/developer/docs/api/v6/notifications/overview.html
@@ -311,6 +313,7 @@ model Credential {
   hubspotNodes    HubspotNode[]
   freshdeskNodes  FreshdeskNode[]
   cashfreeNodes   CashfreeNode[]
+  postgresNodes   PostgresNode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -343,6 +346,7 @@ enum CredentialType {
   HUBSPOT
   FRESHDESK
   CASHFREE
+  POSTGRES
 }
 
 model Node {
@@ -2088,4 +2092,101 @@ model AggregateNode {
 
   @@index([workflowId])
   @@index([nodeId])
+}
+
+model PostgresNode {
+  id           String @id @default(cuid())
+  nodeId       String @unique
+  workflowId   String
+
+  // The operation to perform
+  operation    String @default("EXECUTE_QUERY")
+
+  // Credential reference
+  credentialId String?
+
+  // For visual query builder (SELECT, UPDATE, DELETE, COUNT, EXISTS, UPSERT):
+  tableName    String @default("")    // target table
+  schemaName   String @default("public")
+
+  // SELECT options:
+  // JSON array of column names to return. [] = SELECT *
+  selectColumns  String @default("[]") @db.Text
+  // JSON array of WhereCondition objects
+  whereConditions String @default("[]") @db.Text
+  // JSON array of OrderBy objects: [{ column, direction }]
+  orderBy        String @default("[]") @db.Text
+  // LIMIT rows. 0 = no limit
+  limitRows      Int    @default(0)
+  // OFFSET for pagination
+  offsetRows     Int    @default(0)
+  // JOIN configuration: JSON array of JoinClause objects
+  joins          String @default("[]") @db.Text
+
+  // INSERT / UPSERT:
+  // JSON object or template string that resolves to row data
+  insertData     String @default("") @db.Text
+  // For UPSERT: column(s) to check for conflict
+  conflictColumns String @default("[]") @db.Text
+  // For UPSERT: columns to update on conflict. [] = all non-conflict columns
+  updateOnConflict String @default("[]") @db.Text
+
+  // UPDATE:
+  // JSON object of { column: newValue } — supports template expressions
+  updateData     String @default("") @db.Text
+
+  // INSERT_MANY:
+  // Template path to array of row objects: "{{filter.items}}"
+  insertManyPath String @default("") @db.Text
+  // Column names to insert. [] = infer from first row
+  insertManyColumns String @default("[]") @db.Text
+
+  // EXECUTE_QUERY:
+  // Raw SQL with $1, $2... placeholders
+  query          String @default("") @db.Text
+  // JSON array of query parameters [value1, value2...]
+  queryParams    String @default("[]") @db.Text
+
+  // EXECUTE_TRANSACTION:
+  // JSON array of { query, params } objects — run atomically
+  transactionStatements String @default("[]") @db.Text
+
+  // EXECUTE_FUNCTION:
+  functionName   String @default("")
+  functionArgs   String @default("[]") @db.Text  // JSON array
+
+  // FULL_TEXT_SEARCH:
+  searchColumn   String @default("")
+  searchQuery    String @default("")
+  searchLanguage String @default("english")  // pg language: "simple", "english", etc.
+  searchLimit    Int    @default(10)
+
+  // JSON_PATH_QUERY:
+  jsonColumn     String @default("")
+  jsonPath       String @default("")  // e.g. '$.payment.amount'
+
+  // JSON_SET_FIELD:
+  jsonSetColumn  String @default("")
+  jsonSetPath    String @default("")  // e.g. '{payment,status}'
+  jsonSetValue   String @default("")  // new value (supports template)
+
+  // CREATE_TABLE:
+  // JSON array of ColumnDefinition objects
+  columnDefinitions String @default("[]") @db.Text
+  createTableIfNotExists Boolean @default(true)
+
+  // Output options
+  variableName    String  @default("postgres")
+  returnData      Boolean @default(true)   // whether to return affected rows
+  continueOnFail  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workflow   workflow   @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  credential Credential? @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+
+  @@index([workflowId])
+  @@index([nodeId])
+  @@index([credentialId])
 }

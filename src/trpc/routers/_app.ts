@@ -39,6 +39,7 @@ import { sortRouter } from '@/server/routers/sort.router';
 import { filterRouter } from '@/server/routers/filter.router';
 import { cashfreeRouter } from '@/server/routers/cashfree.router';
 import { aggregateRouter } from '@/server/routers/aggregate.router';
+import { postgresRouter } from '@/server/routers/postgres.router';
 
 
 export const appRouter = createTRPCRouter({
@@ -76,6 +77,7 @@ export const appRouter = createTRPCRouter({
   filter: filterRouter,
   cashfree: cashfreeRouter,
   aggregate: aggregateRouter,
+  postgres: postgresRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;

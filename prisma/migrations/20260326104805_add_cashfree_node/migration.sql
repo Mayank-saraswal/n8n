@@ -16,7 +16,7 @@ ALTER TYPE "NodeType" ADD VALUE 'CASHFREE';
 ALTER TYPE "NodeType" ADD VALUE 'CASHFREE_TRIGGER';
 
 -- DropEnum
-DROP TYPE "FilterOperation";
+DROP TYPE IF EXISTS "FilterOperation";
 
 -- CreateTable
 CREATE TABLE "CashfreeNode" (
