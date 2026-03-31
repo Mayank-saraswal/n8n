@@ -41,6 +41,7 @@ import { mediaUploadChannel } from "./channels/media-upload";
 import { sortChannel } from "./channels/sort";
 import { filterChannel } from "./channels/filter";
 import { cashfreeChannel } from "./channels/cashfree";
+import { aggregateChannel } from "./channels/aggregate";
 
 
 const MAX_JSON_LENGTH = 100_000;
@@ -184,6 +185,7 @@ export const executeWorkflow = inngest.createFunction(
       sortChannel(),
       filterChannel(),
       cashfreeChannel(),
+      aggregateChannel(),
 
     ]
   },

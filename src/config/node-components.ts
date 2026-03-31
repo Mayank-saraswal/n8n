@@ -44,6 +44,7 @@ import { MediaUploadNode } from "@/features/executions/components/media-upload/n
 import { SortNode } from "@/features/executions/components/sort/node";
 import { FilterNode } from "@/features/executions/components/filter/node";
 import { CashfreeNode } from "@/features/executions/components/cashfree/node";
+import { AggregateNode } from "@/features/executions/components/aggregate/node";
 
 
 export const nodeComponents = {
@@ -92,6 +93,7 @@ export const nodeComponents = {
     [NodeType.FILTER]: FilterNode,
     [NodeType.CASHFREE]: CashfreeNode,
     [NodeType.CASHFREE_TRIGGER]: CashfreeNode,
+    [NodeType.AGGREGATE]: AggregateNode,
     //change later
 
 

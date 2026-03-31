@@ -38,6 +38,7 @@ import { mediaUploadRouter } from '@/server/routers/media-upload.router';
 import { sortRouter } from '@/server/routers/sort.router';
 import { filterRouter } from '@/server/routers/filter.router';
 import { cashfreeRouter } from '@/server/routers/cashfree.router';
+import { aggregateRouter } from '@/server/routers/aggregate.router';
 
 
 export const appRouter = createTRPCRouter({
@@ -74,6 +75,7 @@ export const appRouter = createTRPCRouter({
   sort: sortRouter,
   filter: filterRouter,
   cashfree: cashfreeRouter,
+  aggregate: aggregateRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;

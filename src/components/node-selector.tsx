@@ -1,7 +1,7 @@
 "use client"
 import { createId} from "@paralleldrive/cuid2"
 import { useReactFlow } from "@xyflow/react"
-import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, GitForkIcon, SlidersHorizontalIcon, TableIcon, CodeIcon, RepeatIcon, TimerIcon, MergeIcon, AlertTriangleIcon, UploadIcon, ArrowUpDown, Filter} from "lucide-react"
+import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, GitForkIcon, SlidersHorizontalIcon, TableIcon, CodeIcon, RepeatIcon, TimerIcon, MergeIcon, AlertTriangleIcon, UploadIcon, ArrowUpDown, Filter, TrendingUp} from "lucide-react"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { 
@@ -283,16 +283,22 @@ const executionNodes: NodeTypeOptions[] = [
     },
     {
         type:NodeType.FILTER,
+        icon: Filter,
         label:"Filter",
-        description:"Filter arrays by conditions — keep, reject, or split",
-        icon:"/logos/filter.svg"
+        description:"Filter arrays or objects based on conditions"
     },
     {
         type:NodeType.CASHFREE,
         label:"Cashfree",
         description:"35 operations — orders, refunds, payouts, UPI, payment links",
         icon:"/logos/cashfree.svg"
-    }
+    },
+    {
+        type:NodeType.AGGREGATE,
+        label:"Aggregate",
+        description:"Sum, count, average, group, pivot, and more on arrays",
+        icon:TrendingUp
+    },
 
 ]
 

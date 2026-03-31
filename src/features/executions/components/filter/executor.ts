@@ -39,8 +39,11 @@ export const filterExecutor: NodeExecutor = async ({
   // ── Step 2: Execute filter ─────────────────────────────────────────────────
   let result: Record<string, unknown>
 
+ 
+
   try {
     result = await step.run(`filter-${nodeId}-execute`, async () => {
+
       // Parse condition groups from JSON
       let conditionGroups: ConditionGroup[]
       try {
