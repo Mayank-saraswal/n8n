@@ -1,4 +1,5 @@
 import pg from "pg"
+import Cursor from "pg-cursor"
 
 export interface PostgresConnectionConfig {
   host: string
@@ -22,6 +23,9 @@ export async function createConnection(
       ? { rejectUnauthorized: false }
       : { rejectUnauthorized: true, ca: config.sslCertificate }
 
+  const connectionTimeoutSec = config.connectionTimeout ?? 10
+  const queryTimeoutSec = config.queryTimeout ?? 30
+
   const client = new pg.Client({
     host: config.host,
     port: config.port,
@@ -29,8 +33,8 @@ export async function createConnection(
     user: config.user,
     password: config.password,
     ssl: sslConfig,
-    connectionTimeoutMillis: config.connectionTimeout * 1000,
-    statement_timeout: config.queryTimeout * 1000,
+    connectionTimeoutMillis: connectionTimeoutSec * 1000,
+    statement_timeout: queryTimeoutSec * 1000,
   })
 
   await client.connect()
@@ -68,22 +72,34 @@ export async function executeQuery(
   rowCount: number
   fields: Array<{ name: string; dataTypeID: number }>
 }> {
-  const result = await client.query({
-    text: sql,
-    values: params,
-  })
+  const cursor = client.query(new Cursor(sql, params))
+  let rows: Record<string, unknown>[] = []
+  
+  try {
+    // In newer pg-cursor versions, read() without callback returns a promise
+    rows = await cursor.read(maxRows)
+  } catch (err) {
+    throw err
+  } finally {
+    // Close the cursor if it has a promise-based close (or callback)
+    try {
+      await cursor.close()
+    } catch {
+      // ignore close errors
+    }
+  }
 
-  // Hard cap on result rows to prevent OOM
-  const rows = result.rows.slice(0, maxRows)
-  const rowCount = result.rowCount ?? rows.length
+  // pg-cursor stores the query result internal object
+  const anyCursor = cursor as any
+  const fields = anyCursor._result?.fields?.map((f: any) => ({
+    name: f.name,
+    dataTypeID: f.dataTypeID,
+  })) ?? []
 
   return {
     rows,
-    rowCount,
-    fields: result.fields.map((f) => ({
-      name: f.name,
-      dataTypeID: f.dataTypeID,
-    })),
+    rowCount: rows.length,
+    fields,
   }
 }
 

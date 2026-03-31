@@ -65,6 +65,14 @@ export const aggregateRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      const existingNode = await prisma.aggregateNode.findUnique({
+        where: { nodeId: input.nodeId },
+        include: { workflow: { select: { userId: true } } },
+      })
+      if (existingNode && existingNode.workflow.userId !== ctx.auth.user.id) {
+        throw new TRPCError({ code: "UNAUTHORIZED" })
+      }
+
       const workflow = await prisma.workflow.findUnique({
         where: { id: input.workflowId },
         select: { userId: true },
@@ -75,14 +83,16 @@ export const aggregateRouter = createTRPCRouter({
 
       // Validate JSON fields
       try {
-        JSON.parse(input.multiOps)
+        const parsedMultiOps = JSON.parse(input.multiOps)
+        z.array(aggregateOpSchema).parse(parsedMultiOps)
       } catch {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "multiOps must be valid JSON" })
+        throw new TRPCError({ code: "BAD_REQUEST", message: "multiOps must be a valid array of operations" })
       }
       try {
-        JSON.parse(input.groupAggOps)
+        const parsedGroupAggOps = JSON.parse(input.groupAggOps)
+        z.array(aggregateOpSchema).parse(parsedGroupAggOps)
       } catch {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "groupAggOps must be valid JSON" })
+        throw new TRPCError({ code: "BAD_REQUEST", message: "groupAggOps must be a valid array of operations" })
       }
 
       const { nodeId, workflowId, ...fields } = input
@@ -110,7 +120,14 @@ export const aggregateRouter = createTRPCRouter({
 
   getToken: protectedProcedure
     .input(z.object({ nodeId: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      const node = await prisma.aggregateNode.findUnique({
+        where: { nodeId: input.nodeId },
+        include: { workflow: { select: { userId: true } } },
+      })
+      if (!node || node.workflow.userId !== ctx.auth.user.id) {
+        throw new TRPCError({ code: "UNAUTHORIZED" })
+      }
       const token = await getSubscriptionToken(inngest, {
         channel: aggregateChannelName(input.nodeId),
         topics: ["status"],

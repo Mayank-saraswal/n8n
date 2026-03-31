@@ -35,7 +35,6 @@ CREATE TABLE IF NOT EXISTS "AggregateNode" (
 
 CREATE UNIQUE INDEX IF NOT EXISTS "AggregateNode_nodeId_key" ON "AggregateNode"("nodeId");
 CREATE INDEX IF NOT EXISTS "AggregateNode_workflowId_idx" ON "AggregateNode"("workflowId");
-CREATE INDEX IF NOT EXISTS "AggregateNode_nodeId_idx" ON "AggregateNode"("nodeId");
 
 ALTER TABLE "AggregateNode"
   ADD CONSTRAINT "AggregateNode_workflowId_fkey"

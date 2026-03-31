@@ -7,9 +7,9 @@ export interface BuiltQuery {
 
 function quote(identifier: string): string {
   if (identifier.includes(".")) {
-    return identifier.split(".").map(p => `"${p}"`).join(".")
+    return identifier.split(".").map(p => `"${p.replace(/"/g, '""')}"`).join(".")
   }
-  return `"${identifier}"`
+  return `"${identifier.replace(/"/g, '""')}"`
 }
 
 function buildWhereClause(conditions: WhereCondition[], startIndex: number = 1): { text: string, params: unknown[], nextIndex: number } {
@@ -65,7 +65,10 @@ function buildWhereClause(conditions: WhereCondition[], startIndex: number = 1):
 function buildJoinClause(joins: JoinClause[]): string {
   if (!joins || joins.length === 0) return ""
   return joins.map(j => {
-    return `${j.type} JOIN ${quote(j.table)} AS "${j.alias}" ON ${j.on}`
+    if (!/^[a-zA-Z0-9_.\s="'<>=!()-]+$/.test(j.on)) {
+      throw new Error(`Invalid characters in JOIN ON clause: ${j.on}`)
+    }
+    return `${j.type} JOIN ${quote(j.table)} AS "${j.alias.replace(/"/g, '""')}" ON ${j.on}`
   }).join(" ") + " "
 }
 
@@ -175,7 +178,10 @@ export function buildInsertMany(options: { schema: string; table: string; rows: 
   return { sql, params }
 }
 
-export function buildUpdate(options: { schema: string; table: string; data: Record<string, unknown>; where: WhereCondition[]; returnData: boolean }): BuiltQuery {
+export function buildUpdate(options: { schema: string; table: string; data: Record<string, unknown>; where: WhereCondition[]; returnData: boolean; allowFullTableUpdate: boolean }): BuiltQuery {
+  if ((!options.where || options.where.length === 0) && !options.allowFullTableUpdate) {
+    throw new Error("UPDATE without WHERE conditions is not allowed. Set allowFullTableUpdate to true to overwrite the entire table.")
+  }
   const tableRef = `${quote(options.schema)}.${quote(options.table)}`
   const keys = Object.keys(options.data)
   
@@ -250,7 +256,6 @@ export function buildFullTextSearch(options: { schema: string; table: string; co
 
 export function buildJsonPathQuery(options: { schema: string; table: string; column: string; jsonPath: string; where: WhereCondition[] }): BuiltQuery {
   const tableRef = `${quote(options.schema)}.${quote(options.table)}`
-  let innerSql = `SELECT *, ${quote(options.column)} #>> $1::text[] AS json_value FROM ${tableRef} WHERE ${quote(options.column)} @? $2::jsonpath`
   
   // Actually, `#>>` expects text array and `@?` expects jsonpath. 
   // Let's modify to a generic form for JSONPath filtering
@@ -293,15 +298,26 @@ export function buildJsonSetField(options: { schema: string; table: string; colu
 
 export function buildCreateTable(options: { schema: string; table: string; columns: ColumnDefinition[]; ifNotExists: boolean }): BuiltQuery {
   const tableRef = `${quote(options.schema)}.${quote(options.table)}`
-  let sql = `CREATE TABLE ${options.ifNotExists ? "IF NOT EXISTS" : ""} ${tableRef} (`
+  const ifNotExistsStr = options.ifNotExists ? "IF NOT EXISTS " : ""
+  let sql = `CREATE TABLE ${ifNotExistsStr}${tableRef} (`
   
   const colDefs = options.columns.map(c => {
     let def = `${quote(c.name)} ${c.type}`
     if (!c.nullable) def += " NOT NULL"
-    if (c.default) def += ` DEFAULT ${c.default}`
+    if (c.default) {
+      if (!/^[a-zA-Z0-9_.'()\-+/*:\s]+$/.test(c.default)) {
+        throw new Error(`Invalid characters in DEFAULT clause: ${c.default}`)
+      }
+      def += ` DEFAULT ${c.default}`
+    }
     if (c.primaryKey) def += " PRIMARY KEY"
     if (c.unique && !c.primaryKey) def += " UNIQUE"
-    if (c.references) def += ` REFERENCES ${c.references}`
+    if (c.references) {
+      if (!/^[a-zA-Z0-9_.")(]+$/.test(c.references)) {
+        throw new Error(`Invalid characters in REFERENCES clause: ${c.references}`)
+      }
+      def += ` REFERENCES ${c.references}`
+    }
     return def
   })
   

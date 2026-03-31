@@ -11,4 +11,4 @@ export const filterChannel = (nodeId?: string) =>
       nodeId: string
       status: "loading" | "success" | "error"
     }>()
-  )
+  )()

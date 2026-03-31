@@ -16,7 +16,6 @@ export type PostgresOperation =
   | "CREATE_TABLE"
   | "DROP_TABLE"
   | "EXECUTE_FUNCTION"
-  | "COPY_FROM"
   | "EXECUTE_EXPLAIN"
   | "FULL_TEXT_SEARCH"
   | "JSON_PATH_QUERY"
@@ -106,6 +105,7 @@ export type PostgresNodeData = {
   variableName?: string
   returnData?: boolean
   continueOnFail?: boolean
+  allowFullTableUpdate?: boolean
 } & Record<string, unknown>
 
 export const OPERATION_LABELS: Record<PostgresOperation, string> = {
@@ -126,7 +126,6 @@ export const OPERATION_LABELS: Record<PostgresOperation, string> = {
   CREATE_TABLE:          "Create Table",
   DROP_TABLE:            "Drop Table",
   EXECUTE_FUNCTION:      "Execute Function / Procedure",
-  COPY_FROM:             "Bulk Copy From (COPY)",
   EXECUTE_EXPLAIN:       "Explain Query (EXPLAIN ANALYZE)",
   FULL_TEXT_SEARCH:      "Full Text Search",
   JSON_PATH_QUERY:       "JSON Path Query (JSONB)",
@@ -139,7 +138,7 @@ export const TABLE_OPS: PostgresOperation[] = [
   "SELECT", "SELECT_ONE", "COUNT", "EXISTS", "INSERT", "UPDATE",
   "DELETE", "UPSERT", "INSERT_MANY", "GET_TABLE_SCHEMA",
   "FULL_TEXT_SEARCH", "JSON_PATH_QUERY", "JSON_SET_FIELD",
-  "JSON_AGGREGATE", "DROP_TABLE",
+  "JSON_AGGREGATE", "DROP_TABLE", "CREATE_TABLE",
 ]
 
 // Operations that need WHERE conditions builder

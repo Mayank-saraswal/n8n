@@ -33,7 +33,7 @@ export const filterExecutor: NodeExecutor = async ({
   // ── Step 2: Execute filter ─────────────────────────────────────────────────
   let result: Record<string, unknown>
 
-  await publish(filterChannel(nodeId)().status({ nodeId, status: "loading" }))
+  await publish(filterChannel(nodeId).status({ nodeId, status: "loading" }))
 
   try {
     result = await step.run(`filter-${nodeId}-execute`, async () => {
@@ -220,7 +220,7 @@ export const filterExecutor: NodeExecutor = async ({
       return stepResult
     })
   } catch (err) {
-    await publish(filterChannel(nodeId)().status({ nodeId, status: "error" }))
+    await publish(filterChannel(nodeId).status({ nodeId, status: "error" }))
 
     if (err instanceof NonRetriableError) throw err
 
@@ -245,7 +245,7 @@ export const filterExecutor: NodeExecutor = async ({
 
   const variableName = config.variableName || "filter"
 
-  await publish(filterChannel(nodeId)().status({ nodeId, status: "success" }))
+  await publish(filterChannel(nodeId).status({ nodeId, status: "success" }))
 
-  return { [variableName]: result! }
+  return { ...context, [variableName]: result! }
 }

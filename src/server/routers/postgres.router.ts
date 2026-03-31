@@ -78,6 +78,14 @@ export const postgresRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      const existingNode = await prisma.postgresNode.findUnique({
+        where: { nodeId: input.nodeId },
+        include: { workflow: { select: { userId: true } } },
+      })
+      if (existingNode && existingNode.workflow.userId !== ctx.auth.user.id) {
+        throw new TRPCError({ code: "UNAUTHORIZED" })
+      }
+
       const workflow = await prisma.workflow.findUnique({
         where: { id: input.workflowId },
         select: { userId: true },
@@ -133,7 +141,14 @@ export const postgresRouter = createTRPCRouter({
 
   getToken: protectedProcedure
     .input(z.object({ nodeId: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      const node = await prisma.postgresNode.findUnique({
+        where: { nodeId: input.nodeId },
+        include: { workflow: { select: { userId: true } } },
+      })
+      if (!node || node.workflow.userId !== ctx.auth.user.id) {
+        throw new TRPCError({ code: "UNAUTHORIZED" })
+      }
       const token = await getSubscriptionToken(inngest, {
         channel: postgresChannelName(input.nodeId), // String — per Rule 5
         topics: ["status"],
@@ -147,23 +162,9 @@ export const postgresRouter = createTRPCRouter({
       const credential = await prisma.credential.findFirst({
         where: { id: input.credentialId, userId: ctx.auth.user.id }
       })
-      // Using prisma.credential, fallback to type casting if schema still says 'Credenial' 
-      // User noted: `prisma.credenial.findFirst` if Prisma schema typo is present. Let's use any if TS complains
-      // Let's use string keys for generic query if needed
+      
       if (!credential) {
-         // Fallback to "Credenial" if not fixed
-         const fallbackCred = await (prisma as any).credenial?.findFirst?.({
-           where: { id: input.credentialId, userId: ctx.auth.user.id }
-         })
-         if (!fallbackCred) {
-           throw new TRPCError({ code: "NOT_FOUND", message: "Credential not found" })
-         }
-         const config = JSON.parse(decrypt(fallbackCred.value)) as PostgresConnectionConfig
-         const result = await testConnection(config)
-         if (!result.success) {
-           throw new TRPCError({ code: "BAD_REQUEST", message: result.error ?? "Connection failed" })
-         }
-         return { latencyMs: result.latencyMs, success: true }
+        throw new TRPCError({ code: "NOT_FOUND", message: "Credential not found" })
       }
 
       const config = JSON.parse(decrypt(credential.value)) as PostgresConnectionConfig

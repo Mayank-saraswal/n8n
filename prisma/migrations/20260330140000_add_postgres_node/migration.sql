@@ -53,8 +53,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS "PostgresNode_nodeId_key"
   ON "PostgresNode"("nodeId");
 CREATE INDEX IF NOT EXISTS "PostgresNode_workflowId_idx"
   ON "PostgresNode"("workflowId");
-CREATE INDEX IF NOT EXISTS "PostgresNode_nodeId_idx"
-  ON "PostgresNode"("nodeId");
 CREATE INDEX IF NOT EXISTS "PostgresNode_credentialId_idx"
   ON "PostgresNode"("credentialId");
 

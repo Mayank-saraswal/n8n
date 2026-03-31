@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { createId } from "@paralleldrive/cuid2"
 import {
@@ -76,6 +76,18 @@ function MultiOpBuilder({
     },
     [onChange]
   )
+
+  useEffect(() => {
+    try {
+      const parsed = JSON.parse(value) as AggregateOp[]
+      // Only update if stringified value changed to prevent unnecessary re-renders
+      if (JSON.stringify(parsed) !== JSON.stringify(ops)) {
+        setOps(parsed)
+      }
+    } catch {
+      // ignore
+    }
+  }, [value])
 
   const addOp = () => {
     update([
@@ -256,6 +268,15 @@ export function AggregateDialog({
       continueOnFail: merged.continueOnFail ?? false,
     },
   })
+
+  useEffect(() => {
+    if (dbConfig) {
+      form.reset({
+        ...defaultValues,
+        ...dbConfig,
+      })
+    }
+  }, [dbConfig, defaultValues, form])
 
   const { register, watch, setValue, handleSubmit, formState: { isSubmitting } } = form
   const operation = watch("operation") as AggregateOperation

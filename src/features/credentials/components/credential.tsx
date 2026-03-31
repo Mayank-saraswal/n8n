@@ -59,7 +59,7 @@ const formSchema = z.object({
     postgresDatabase: z.string().optional(),
     postgresUser: z.string().optional(),
     postgresPassword: z.string().optional(),
-    postgresSsl: z.boolean().optional(),
+    postgresSsl: z.enum(["disable", "require", "verify-full"]).optional(),
 }).superRefine((data, ctx) => {
     if (data.type === CredentialType.GMAIL) {
         // Gmail now uses OAuth2 via GoogleConnectButton — no required form fields
@@ -601,13 +601,13 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                     postgresDatabase: parsed.database ?? "",
                     postgresUser: parsed.user ?? "",
                     postgresPassword: parsed.password ?? "",
-                    postgresSsl: parsed.ssl ?? false,
+                    postgresSsl: parsed.ssl ?? "disable",
                 }
             } catch {
-                return { postgresHost: "", postgresPort: 5432, postgresDatabase: "", postgresUser: "", postgresPassword: "", postgresSsl: false }
+                return { postgresHost: "", postgresPort: 5432, postgresDatabase: "", postgresUser: "", postgresPassword: "", postgresSsl: "disable" }
             }
         }
-        return { postgresHost: "", postgresPort: 5432, postgresDatabase: "", postgresUser: "", postgresPassword: "", postgresSsl: false }
+        return { postgresHost: "", postgresPort: 5432, postgresDatabase: "", postgresUser: "", postgresPassword: "", postgresSsl: "disable" }
     }, [initialData])
 
     const form = useForm<FormValues>({
@@ -652,7 +652,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                 postgresDatabase: "",
                 postgresUser: "",
                 postgresPassword: "",
-                postgresSsl: false,
+                postgresSsl: "disable",
             }
     })
 
@@ -1667,8 +1667,8 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                             <FormItem>
                                                 <FormLabel>SSL Mode</FormLabel>
                                                 <Select
-                                                    onValueChange={(v) => field.onChange(v === "true")}
-                                                    value={field.value ? "true" : "false"}
+                                                    onValueChange={field.onChange}
+                                                    value={field.value ?? "disable"}
                                                 >
                                                     <FormControl>
                                                         <SelectTrigger className="w-full">
@@ -1676,8 +1676,9 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                        <SelectItem value="false">Disable / Require (Default)</SelectItem>
-                                                        <SelectItem value="true">Enable (Required for many managed DBs)</SelectItem>
+                                                        <SelectItem value="disable">Disable (Default)</SelectItem>
+                                                        <SelectItem value="require">Require (Managed DBs, Supabase, etc.)</SelectItem>
+                                                        <SelectItem value="verify-full">Verify Full</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                                 <FormDescription>Select Enable if connecting to Supabase, Neon, AWS RDS, etc.</FormDescription>

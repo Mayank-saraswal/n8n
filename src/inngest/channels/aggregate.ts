@@ -5,9 +5,10 @@ export const AGGREGATE_CHANNEL = "aggregate-execution"
 export const aggregateChannelName = (nodeId?: string): string =>
   `${AGGREGATE_CHANNEL}${nodeId ? `-${nodeId}` : ""}`
 
-export const aggregateChannel = channel(aggregateChannelName).addTopic(
-  topic("status").type<{
-    nodeId: string
-    status: "loading" | "success" | "error"
-  }>()
-)
+export const aggregateChannel = (nodeId?: string) =>
+  channel(aggregateChannelName(nodeId)).addTopic(
+    topic("status").type<{
+      nodeId: string
+      status: "loading" | "success" | "error"
+    }>()
+  )()

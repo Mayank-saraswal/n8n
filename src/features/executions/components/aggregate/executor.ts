@@ -454,5 +454,5 @@ export const aggregateExecutor: NodeExecutor = async ({
 
   await publish(aggregateChannel(nodeId).status({ nodeId, status: "success" }))
 
-  return { [variableName]: result! }
+  return { ...context, [variableName]: result! }
 }

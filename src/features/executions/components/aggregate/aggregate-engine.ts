@@ -62,12 +62,20 @@ export function computeAverage(values: number[]): number | null {
 
 export function computeMin(values: number[]): number | null {
   if (values.length === 0) return null
-  return Math.min(...values)
+  let min = values[0]!
+  for (let i = 1; i < values.length; i++) {
+    if (values[i]! < min) min = values[i]!
+  }
+  return min
 }
 
 export function computeMax(values: number[]): number | null {
   if (values.length === 0) return null
-  return Math.max(...values)
+  let max = values[0]!
+  for (let i = 1; i < values.length; i++) {
+    if (values[i]! > max) max = values[i]!
+  }
+  return max
 }
 
 export function computeMedian(values: number[]): number | null {
@@ -335,9 +343,11 @@ export function computePivot(
           case "SUM":
             val = roundTo(computeSum(vals), roundDecimals)
             break
-          case "AVERAGE":
-            val = computeAverage(vals) !== null ? roundTo(computeAverage(vals)!, roundDecimals) : null
+          case "AVERAGE": {
+            const avg = computeAverage(vals)
+            val = avg !== null ? roundTo(avg, roundDecimals) : null
             break
+          }
           case "MIN":
             val = computeMin(vals)
             break

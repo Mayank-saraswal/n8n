@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import {
   Dialog,
@@ -47,6 +47,7 @@ interface PostgresFormValues {
   returnData: boolean
   limitRows: number
   offsetRows: number
+  allowFullTableUpdate: boolean
 }
 
 const OPERATIONS: Record<PostgresOperation, string> = {
@@ -67,7 +68,7 @@ const OPERATIONS: Record<PostgresOperation, string> = {
   CREATE_TABLE: "Create Table",
   DROP_TABLE: "Drop Table",
   EXECUTE_FUNCTION: "Execute DB Function",
-  COPY_FROM: "Copy From Bulk",
+  
   EXECUTE_EXPLAIN: "Explain Query Plan",
   FULL_TEXT_SEARCH: "Full Text Search",
   JSON_PATH_QUERY: "JSON Path Query",
@@ -107,8 +108,18 @@ export function PostgresDialog({ open, onOpenChange, onSubmit, defaultValues, no
       returnData: (merged.returnData as boolean) ?? true,
       limitRows: (merged.limitRows as number) ?? 0,
       offsetRows: (merged.offsetRows as number) ?? 0,
+      allowFullTableUpdate: (merged.allowFullTableUpdate as boolean) ?? false,
     }
   })
+
+  useEffect(() => {
+    if (dbConfig) {
+      form.reset({
+        ...defaultValues,
+        ...dbConfig,
+      } as unknown as PostgresFormValues)
+    }
+  }, [dbConfig, defaultValues, form])
 
   const { register, watch, setValue, handleSubmit, formState: { isSubmitting } } = form
   const operation = watch("operation") as PostgresOperation
@@ -157,6 +168,7 @@ export function PostgresDialog({ open, onOpenChange, onSubmit, defaultValues, no
         offsetRows: Number(values.offsetRows),
         returnData: values.returnData,
         continueOnFail: values.continueOnFail,
+        allowFullTableUpdate: values.allowFullTableUpdate,
       }
       await upsertMutation.mutateAsync(payload)
       onSubmit(payload)
@@ -318,6 +330,14 @@ export function PostgresDialog({ open, onOpenChange, onSubmit, defaultValues, no
                     <p className="text-xs text-muted-foreground">Catch errors and output them instead of terminating the workflow.</p>
                   </div>
                   <Switch checked={watch("continueOnFail")} onCheckedChange={(v) => setValue("continueOnFail", v)} />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Allow Full Table Update</Label>
+                    <p className="text-xs text-muted-foreground">Allow UPDATE operation without WHERE conditions.</p>
+                  </div>
+                  <Switch checked={watch("allowFullTableUpdate")} onCheckedChange={(v) => setValue("allowFullTableUpdate", v)} />
                 </div>
               </div>
             </TabsContent>

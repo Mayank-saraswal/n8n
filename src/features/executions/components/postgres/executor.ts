@@ -341,6 +341,7 @@ export const postgresExecutor: NodeExecutor = async ({
               data: resolvedData,
               where,
               returnData: config.returnData ?? true,
+              allowFullTableUpdate: config.allowFullTableUpdate ?? false,
             })
 
             const queryResult = await executeQuery(client, built.sql, built.params, 10000)
@@ -781,7 +782,7 @@ export const postgresExecutor: NodeExecutor = async ({
       })
     })
   } catch (err) {
-    await publish(postgresChannel(nodeId).status({ nodeId, status: "error" }))
+    await publish(postgresChannel(nodeId).topics.status({ nodeId, status: "error" }))
 
     if (err instanceof NonRetriableError) throw err
 
@@ -801,10 +802,10 @@ export const postgresExecutor: NodeExecutor = async ({
     }
   }
 
-  await publish(postgresChannel(nodeId).status({ nodeId, status: "success" }))
+  await publish(postgresChannel(nodeId).topics.status({ nodeId, status: "success" }))
 
-  // Rule 12: return ONLY the new variable
-  return { [variableName]: result! }
+  // Return merged context
+  return { ...context, [variableName]: result! }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -821,8 +822,8 @@ function parseWhereConditions(
       value: r(c.value),
       value2: r(c.value2 || ""),
     }))
-  } catch {
-    return []
+  } catch (err) {
+    throw new NonRetriableError("Invalid whereConditions JSON: " + (err instanceof Error ? err.message : String(err)))
   }
 }
 
