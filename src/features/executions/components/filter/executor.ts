@@ -11,6 +11,7 @@ export const filterExecutor: NodeExecutor = async ({
   context,
   step,
   publish,
+  userId,
 }) => {
   // ── Step 1: Load config ────────────────────────────────────────────────────
   const config = await step.run(`filter-${nodeId}-load`, async () => {
@@ -22,18 +23,23 @@ export const filterExecutor: NodeExecutor = async ({
 
   await step.run(`filter-${nodeId}-validate`, async () => {
     if (!config) throw new NonRetriableError("Filter node not configured. Open settings to configure.")
+    if (config.workflow.userId !== userId) throw new NonRetriableError("Unauthorized")
     return { valid: true }
   })
 
-  // Narrow TypeScript type to ensure config is not null
   if (!config) {
     throw new NonRetriableError("Filter node not configured. Open settings to configure.")
   }
 
+  const variableName = config.variableName || "filter"
+
+  // ── Publish loading OUTSIDE step.run ────────────────────────────────────────
+  await publish(filterChannel(nodeId).status({ nodeId, status: "loading" }))
+
   // ── Step 2: Execute filter ─────────────────────────────────────────────────
   let result: Record<string, unknown>
 
-  await publish(filterChannel(nodeId).status({ nodeId, status: "loading" }))
+ 
 
   try {
     result = await step.run(`filter-${nodeId}-execute`, async () => {
@@ -66,7 +72,6 @@ export const filterExecutor: NodeExecutor = async ({
           if (typeof resolved === "string" && resolved.trim().startsWith("{")) {
             inputObject = JSON.parse(resolved) as Record<string, unknown>
           } else {
-            // resolveTemplate always returns string — try JSON parse
             try {
               const parsed = JSON.parse(String(resolved))
               if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
@@ -113,10 +118,7 @@ export const filterExecutor: NodeExecutor = async ({
 
       try {
         const resolved = resolveTemplate(config.inputArray, context)
-        // resolveTemplate returns a string; check if the original context had an array
-        // by trying to get the value directly via template key resolution
         if (typeof resolved === "string") {
-          // Try parsing as JSON array
           if (resolved.trim().startsWith("[")) {
             try {
               const parsed = JSON.parse(resolved)
@@ -139,7 +141,6 @@ export const filterExecutor: NodeExecutor = async ({
               "Use {{variableName.fieldName}} where fieldName is an array."
             )
           } else {
-            // Might be a stringified non-array — try to find in context
             throw new NonRetriableError(
               `Input Array resolved to a non-array value: "${resolved.slice(0, 100)}". ` +
               "Use {{variableName.fieldName}} where fieldName is an array."
@@ -242,8 +243,6 @@ export const filterExecutor: NodeExecutor = async ({
       )
     }
   }
-
-  const variableName = config.variableName || "filter"
 
   await publish(filterChannel(nodeId).status({ nodeId, status: "success" }))
 
