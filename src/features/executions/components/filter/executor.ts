@@ -246,5 +246,5 @@ export const filterExecutor: NodeExecutor = async ({
 
   await publish(filterChannel(nodeId).status({ nodeId, status: "success" }))
 
-  return { [variableName]: result! }
+  return { ...context, [variableName]: result! }
 }

@@ -1,7 +1,7 @@
 "use client"
 import { createId} from "@paralleldrive/cuid2"
 import { useReactFlow } from "@xyflow/react"
-import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, GitForkIcon, SlidersHorizontalIcon, TableIcon, CodeIcon, RepeatIcon, TimerIcon, MergeIcon, AlertTriangleIcon, UploadIcon, ArrowUpDown, Filter, TrendingUp} from "lucide-react"
+import {  GlobeIcon , MousePointerIcon , LinkIcon , ClockIcon, GitBranchIcon, GitForkIcon, SlidersHorizontalIcon, TableIcon, CodeIcon, RepeatIcon, TimerIcon, MergeIcon, AlertTriangleIcon, UploadIcon, ArrowUpDown, Filter, TrendingUp, Database} from "lucide-react"
 import { useCallback } from "react"
 import { toast } from "sonner"
 import { 
@@ -298,6 +298,12 @@ const executionNodes: NodeTypeOptions[] = [
         label:"Aggregate",
         description:"Sum, count, average, group, pivot, and more on arrays",
         icon:TrendingUp
+    },
+    {
+        type:NodeType.POSTGRES,
+        label:"PostgreSQL",
+        description:"Execute secure, parameterized database queries",
+        icon:Database
     },
 
 ]

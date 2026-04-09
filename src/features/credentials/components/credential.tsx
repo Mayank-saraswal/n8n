@@ -54,6 +54,12 @@ const formSchema = z.object({
     cashfreeEnvironment: z.enum(["production", "sandbox"]).optional(),
     cashfreePayoutClientId: z.string().optional(),
     cashfreePayoutClientSecret: z.string().optional(),
+    postgresHost: z.string().optional(),
+    postgresPort: z.coerce.number().optional(),
+    postgresDatabase: z.string().optional(),
+    postgresUser: z.string().optional(),
+    postgresPassword: z.string().optional(),
+    postgresSsl: z.enum(["disable", "require", "verify-full"]).optional(),
 }).superRefine((data, ctx) => {
     if (data.type === CredentialType.GMAIL) {
         // Gmail now uses OAuth2 via GoogleConnectButton — no required form fields
@@ -202,6 +208,13 @@ const formSchema = z.object({
             })
         }
     }
+    if (data.type === CredentialType.POSTGRES) {
+        if (!data.postgresHost) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Host is required", path: ["postgresHost"] })
+        if (!data.postgresPort) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Port is required", path: ["postgresPort"] })
+        if (!data.postgresDatabase) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Database is required", path: ["postgresDatabase"] })
+        if (!data.postgresUser) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "User is required", path: ["postgresUser"] })
+        if (!data.postgresPassword) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Password is required", path: ["postgresPassword"] })
+    }
     if (data.type === CredentialType.SLACK) {
         if (data.slackAuthType === "bot_token" && !data.slackBotToken) {
             ctx.addIssue({
@@ -330,6 +343,11 @@ const credentialTypeOptions = [
         value: CredentialType.CASHFREE,
         label: "Cashfree",
         logo: "/logos/cashfree.svg"
+    },
+    {
+        value: CredentialType.POSTGRES,
+        label: "PostgreSQL",
+        logo: "/logos/postgres.svg"
     },
 
 ]
@@ -573,10 +591,29 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
         return { cashfreeClientId: "", cashfreeClientSecret: "", cashfreeEnvironment: "sandbox" as const, cashfreePayoutClientId: "", cashfreePayoutClientSecret: "" }
     }, [initialData])
 
+    const postgresDefaults = useMemo(() => {
+        if (initialData?.type === CredentialType.POSTGRES && initialData.value) {
+            try {
+                const parsed = JSON.parse(initialData.value)
+                return {
+                    postgresHost: parsed.host ?? "",
+                    postgresPort: parsed.port ?? 5432,
+                    postgresDatabase: parsed.database ?? "",
+                    postgresUser: parsed.user ?? "",
+                    postgresPassword: parsed.password ?? "",
+                    postgresSsl: parsed.ssl ?? "disable",
+                }
+            } catch {
+                return { postgresHost: "", postgresPort: 5432, postgresDatabase: "", postgresUser: "", postgresPassword: "", postgresSsl: "disable" }
+            }
+        }
+        return { postgresHost: "", postgresPort: 5432, postgresDatabase: "", postgresUser: "", postgresPassword: "", postgresSsl: "disable" }
+    }, [initialData])
+
     const form = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
+        resolver: zodResolver(formSchema) as any,
         defaultValues: initialData
-            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...msg91Defaults, ...shiprocketDefaults, ...slackDefaults, ...zohoDefaults, ...hubspotDefaults, ...freshdeskDefaults, ...cashfreeDefaults }
+            ? { ...initialData, gmailEmail: "", gmailAppPassword: "", ...whatsappDefaults, ...notionDefaults, ...razorpayDefaults, ...msg91Defaults, ...shiprocketDefaults, ...slackDefaults, ...zohoDefaults, ...hubspotDefaults, ...freshdeskDefaults, ...cashfreeDefaults, ...postgresDefaults }
             : {
                 name: "",
                 type: CredentialType.OPENAI,
@@ -610,6 +647,12 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                 cashfreeEnvironment: "sandbox",
                 cashfreePayoutClientId: "",
                 cashfreePayoutClientSecret: "",
+                postgresHost: "",
+                postgresPort: 5432,
+                postgresDatabase: "",
+                postgresUser: "",
+                postgresPassword: "",
+                postgresSsl: "disable",
             }
     })
 
@@ -629,6 +672,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
     const isHubspot = watchType === CredentialType.HUBSPOT
     const isFreshdesk = watchType === CredentialType.FRESHDESK
     const isCashfree = watchType === CredentialType.CASHFREE
+    const isPostgres = watchType === CredentialType.POSTGRES
     const watchSlackAuthType = form.watch("slackAuthType")
 
     const onSubmit = async (values: FormValues) => {
@@ -736,6 +780,17 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             })
         }
 
+        if (values.type === CredentialType.POSTGRES) {
+            submitValues.value = JSON.stringify({
+                host: values.postgresHost,
+                port: values.postgresPort,
+                database: values.postgresDatabase,
+                user: values.postgresUser,
+                password: values.postgresPassword,
+                ssl: values.postgresSsl,
+            })
+        }
+
         // For Slack, encode based on auth type
         if (values.type === CredentialType.SLACK) {
             if (values.slackAuthType === "bot_token") {
@@ -751,7 +806,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
             }
         }
 
-        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, msg91AuthKey, shiprocketEmail, shiprocketPassword, zohoClientId, zohoClientSecret, zohoRefreshToken, zohoRegion, slackAuthType, slackBotToken, slackWebhookUrl, hubspotAccessToken, hubspotRefreshToken, hubspotExpiresAt, hubspotPortalId, hubspotHubId, freshdeskApiKey, freshdeskDomain, cashfreeClientId, cashfreeClientSecret, cashfreeEnvironment, cashfreePayoutClientId, cashfreePayoutClientSecret, ...payload } = submitValues
+        const { gmailEmail, gmailAppPassword, whatsappAccessToken, whatsappPhoneNumberId, notionApiKey, razorpayKeyId, razorpayKeySecret, msg91AuthKey, shiprocketEmail, shiprocketPassword, zohoClientId, zohoClientSecret, zohoRefreshToken, zohoRegion, slackAuthType, slackBotToken, slackWebhookUrl, hubspotAccessToken, hubspotRefreshToken, hubspotExpiresAt, hubspotPortalId, hubspotHubId, freshdeskApiKey, freshdeskDomain, cashfreeClientId, cashfreeClientSecret, cashfreeEnvironment, cashfreePayoutClientId, cashfreePayoutClientSecret, postgresHost, postgresPort, postgresDatabase, postgresUser, postgresPassword, postgresSsl, ...payload } = submitValues
 
         if (isEdit && initialData?.id) {
             await updateCredential.mutate({
@@ -856,10 +911,14 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                        currentValue === "slack-credential" ||
                                                        currentValue === "freshdesk-credential" ||
                                                        currentValue === "cashfree-credential" ||
+                                                       currentValue === "postgres-credential" ||
                                                       currentValue.startsWith("{")
                                                     ) {
                                                       form.setValue("value", "")
                                                     }
+                                                }
+                                                if (val === CredentialType.POSTGRES) {
+                                                    form.setValue("value", "postgres-credential")
                                                 }
                                             }}
                                             defaultValue={field.value}
@@ -1499,7 +1558,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                     </div>
 
                                     <FormField
-                                        control={form.control}
+                                        control={form.control as any}
                                         name="cashfreePayoutClientId"
                                         render={({ field }) => (
                                             <FormItem>
@@ -1512,7 +1571,7 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                         )}
                                     />
                                     <FormField
-                                        control={form.control}
+                                        control={form.control as any}
                                         name="cashfreePayoutClientSecret"
                                         render={({ field }) => (
                                             <FormItem>
@@ -1520,6 +1579,109 @@ export const CredentialForm = ({ initialData }: CredentialsFormPage) => {
                                                 <FormControl>
                                                     <Input type="password" placeholder="Enter Cashfree Payouts Client Secret" {...field} />
                                                 </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </>
+                            ) : isPostgres ? (
+                                <>
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                                        <p className="font-medium mb-1">PostgreSQL Database Connection</p>
+                                        <p>Secure credentials for connecting your PostgreSQL database. Ensure the host allows external connections from our servers if not locally hosted.</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control as any}
+                                            name="postgresHost"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Host <span className="text-red-500">*</span></FormLabel>
+                                                    <FormControl>
+                                                        <Input type="text" placeholder="e.g. localhost or postgres.example.com" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control as any}
+                                            name="postgresPort"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Port <span className="text-red-500">*</span></FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" placeholder="5432" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                    <FormField
+                                            control={form.control as any}
+                                            name="postgresDatabase"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Database Name <span className="text-red-500">*</span></FormLabel>
+                                                <FormControl>
+                                                    <Input type="text" placeholder="e.g. public_db" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control as any}
+                                            name="postgresUser"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>User <span className="text-red-500">*</span></FormLabel>
+                                                    <FormControl>
+                                                        <Input type="text" placeholder="Database user" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control as any}
+                                            name="postgresPassword"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Password <span className="text-red-500">*</span></FormLabel>
+                                                    <FormControl>
+                                                        <Input type="password" placeholder="Database password" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                    <FormField
+                                            control={form.control as any}
+                                            name="postgresSsl"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>SSL Mode</FormLabel>
+                                                <Select
+                                                    onValueChange={field.onChange}
+                                                    value={field.value ?? "disable"}
+                                                >
+                                                    <FormControl>
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Select SSL mode" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="disable">Disable (Default)</SelectItem>
+                                                        <SelectItem value="require">Require (Managed DBs, Supabase, etc.)</SelectItem>
+                                                        <SelectItem value="verify-full">Verify Full</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormDescription>Select Enable if connecting to Supabase, Neon, AWS RDS, etc.</FormDescription>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
