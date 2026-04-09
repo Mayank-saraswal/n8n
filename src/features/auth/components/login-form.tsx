@@ -28,8 +28,11 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export function LoginForm(){
+function LoginContent(){
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const isVerified = searchParams.get("verified") === "true";
+
     const form = useForm<LoginFormValues>({
         resolver: zodResolver(loginSchema),
         defaultValues: {
@@ -42,7 +45,6 @@ export function LoginForm(){
     const signInGithub = async()=>{
         await authClient.signIn.social({
           provider:"github",
-          
         },{
           onSuccess:()=>{
             router.push("/");
@@ -57,7 +59,6 @@ export function LoginForm(){
      const signInGoogle = async()=>{
         await authClient.signIn.social({
           provider:"google",
-          
         },{
           onSuccess:()=>{
             router.push("/");
@@ -80,7 +81,17 @@ export function LoginForm(){
                 router.push("/");
             },
             onError:(ctx)=>{
-                toast.error(ctx.error.message);
+                // Check if the error is related to unverified email
+                if (ctx.error.message?.includes("EMAIL_NOT_VERIFIED") || ctx.error.status === 403) {
+                     toast.error(
+                        <div className="flex flex-col gap-1">
+                            <span>Please verify your email before logging in.</span>
+                            <Link href="/resend-verification" className="underline font-medium">Resend verification email &rarr;</Link>
+                        </div>
+                     );
+                } else {
+                     toast.error(ctx.error.message);
+                }
             }
 
         }
@@ -102,6 +113,11 @@ export function LoginForm(){
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)}>
                             <div className="grid gap-6">
+                                {isVerified && (
+                                    <div className="p-3 bg-green-500/10 text-green-500 rounded-md text-sm text-center font-medium border border-green-500/20">
+                                        Email verified! Enter your password to continue.
+                                    </div>
+                                )}
                                 <div className="flex flex-col gap-4">
                                     <Button 
                                     variant="outline"
@@ -211,4 +227,12 @@ export function LoginForm(){
         </div>
     );
 
+}
+
+export function LoginForm() {
+  return (
+    <React.Suspense>
+      <LoginContent />
+    </React.Suspense>
+  )
 }

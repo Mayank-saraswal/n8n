@@ -78,22 +78,25 @@ export function RegisterForm() {
 
 
     const onSubmit = async (values: RegisterFormValues) => {
-        await authClient.signUp.email(
-        {
-            name: values.email,
-            email: values.email,
-            password: values.password,
-            callbackURL: "/"
-        },
-        {
-                onSuccess: () => {
-                    router.push("/")
-                },
-                onError: (ctx) => {
-                    toast.error(ctx.error.message ||"Failed to create account");
-                }
+        try {
+            const res = await fetch("/api/auth/custom-signup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: values.email,
+                    password: values.password,
+                    name: values.email.split("@")[0]
+                })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                router.push(`/check-email?email=${encodeURIComponent(values.email)}`);
+            } else {
+                toast.error(data.error || "Failed to create account");
+            }
+        } catch (error) {
+            toast.error("Network error. Please try again.");
         }
-        )
     }
     const isPending = form.formState.isSubmitting;
     return (

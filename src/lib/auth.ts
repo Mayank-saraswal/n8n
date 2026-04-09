@@ -10,7 +10,8 @@ export const auth = betterAuth({
  }),
  emailAndPassword:{
     enabled:true,
-    autoSignIn:true
+    autoSignIn:true,
+    requireEmailVerification: true
  },
  trustedOrigins: [
     "https://nodebase.tech",
