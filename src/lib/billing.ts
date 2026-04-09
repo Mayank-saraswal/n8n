@@ -1,9 +1,9 @@
+import { razorpayBilling } from "./razorpay-billing"
 import {
-  razorpayBilling,
   RAZORPAY_PLAN_IDS,
   PLAN_LIMITS,
   type PlanKey,
-} from "./razorpay-billing"
+} from "./plan-limits"
 import prisma from "./db"
 
 // ── Create or get Razorpay customer ──────────────────────────────────────────

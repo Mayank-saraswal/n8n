@@ -1,5 +1,5 @@
 import prisma from "@/lib/db"
-import { PLAN_LIMITS, type PlanKey } from "@/lib/razorpay-billing"
+import { PLAN_LIMITS, type PlanKey } from "@/lib/plan-limits"
 import { TRPCError } from "@trpc/server"
 
 /**

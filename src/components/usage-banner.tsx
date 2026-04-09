@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { ZapIcon, SparklesIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { PLAN_LIMITS } from "@/lib/razorpay-billing"
+import { PLAN_LIMITS } from "@/lib/plan-limits"
 
 export const UsageBanner = () => {
   const trpc = useTRPC()
