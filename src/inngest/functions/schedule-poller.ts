@@ -7,7 +7,7 @@ export const schedulePoller = inngest.createFunction(
     id: "schedule-poller",
     name: "Schedule Trigger Poller",
   },
-  { cron: "* * * * *" },
+  { cron: "0 9 * * *" },
   async ({ step }) => {
     return await step.run("check-scheduled-workflows", async () => {
       const activeTriggers = await prisma.scheduleTrigger.findMany({
